@@ -30,11 +30,19 @@ describe("GET /api/checklist", () => {
       "Camera Operators",
       "Director (Switcher)",
       "Miscellaneous",
+      "Technical Director",
     ]);
-    expect(body.categories.map((c) => c.sections.length)).toEqual([11, 7, 6, 6, 2]);
+    expect(body.categories.map((c) => c.sections.length)).toEqual([12, 8, 7, 7, 3, 3]);
     expect(body.categories.map((c) => c.sections.reduce((n, s) => n + s.tasks.length, 0))).toEqual([
-      43, 15, 13, 15, 7,
+      45, 17, 16, 18, 11, 7,
     ]);
+
+    // Every department ends its working day with an After Service section (Presentation's is followed by Key Reminders).
+    const lastSection = (name: string) => body.categories.find((c) => c.name === name)?.sections.at(-1)?.name;
+    for (const name of ["Audio Engineer", "Camera Operators", "Director (Switcher)", "Miscellaneous", "Technical Director"]) {
+      expect(lastSection(name)).toBe("After Service");
+    }
+    expect(body.categories[0].sections.map((s) => s.name).slice(-2)).toEqual(["After Service", "Key Reminders"]);
 
     const first = body.categories[0].sections[0];
     expect(first.name).toBe("Power & Initial System Check");

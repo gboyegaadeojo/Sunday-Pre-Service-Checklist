@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.6 · **Date:** October 2026
+> **Based on:** requirements.md v1.7 · **Date:** October 2026
 > **Status:** Approved
 
 ---
@@ -171,11 +171,24 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 - **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the reset controls appear.
 
 ### Stage 7 — Team mapping and access, with the fake Planning Center
-- The Fake Planning Center provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the dev login page.
+- The Fake Planning Center provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its positions use the church's real Planning Center position names (below).
 - Admin mapping screen: pick a Service Type, then link teams or positions to categories. Unlinked items are marked, position links override team links, and items that have gone missing are flagged (US-15).
 - Access is based on linked-team membership and the `team_verified_at` stamp (US-02). Scheduled categories are highlighted first, and users who aren't scheduled see a note (US-05).
 - Manual department pick is remembered on the device for the day. Fallback banner and 90-day rule when Planning Center is "down" (US-04a). Current service now comes from Planning Center plans (US-07).
 - `pco_cache` is used here.
+- **Expected mapping** of the church's real Planning Center positions to checklist departments (requirements v1.7):
+
+  | Planning Center position | Checklist department |
+  |---|---|
+  | Audio | Audio Engineer |
+  | Camera 1 | Camera Operators |
+  | Camera 2 | Camera Operators |
+  | Propresenter | Presentation / Computer Graphics |
+  | Production Director | Director (Switcher) |
+  | Miscellaneous | Miscellaneous |
+  | Technical Director | Technical Director |
+
+- **Technical Directors should also be given the app's Director role.** An Admin grants it on the Users page (Stage 6). The mapping above only gives them access and highlights their Technical Director checklist. The Director role adds reset/undo. Roles are never granted automatically from Planning Center (US-03).
 - **Test in the browser:** link "Camera 2" to Camera Operators and sign in as a fake Camera 2 volunteer to see it highlighted. Switch Planning Center to "down" and check the banner, the manual pick and the never-verified message.
 
 ### Stage 8 — Real Planning Center

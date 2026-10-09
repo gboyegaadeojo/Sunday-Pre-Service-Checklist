@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.6 · **Date:** October 2026  
+> **Version:** 1.7 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.6
+## 0. Changes in Version 1.7
+
+| # | Change | Why |
+|---|--------|-----|
+| C13 | **Seed checklist matches the church's Planning Center positions** (Audio, Camera 1, Camera 2, Propresenter, Production Director, Miscellaneous, Technical Director). New sixth department **Technical Director**; **After Service** sections added to Presentation / Computer Graphics, Audio Engineer, Camera Operators, Director (Switcher), and Miscellaneous (Section 6, US-14). | Every Planning Center position now has a matching checklist department, and shutdown work is tracked. |
+
+## Changes in Version 1.6
 
 | # | Change | Why |
 |---|--------|-----|
@@ -251,7 +257,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 **Acceptance Criteria:**
 - The app is deployed with the IFC Pre-Service Checklist (Section 6) pre-loaded as the default list.
-- All 5 departments (Presentation/Computer Graphics, Audio Engineer, Camera Operators, Director, Miscellaneous) with their sections and tasks are present.
+- All 6 departments (Presentation/Computer Graphics, Audio Engineer, Camera Operators, Director, Miscellaneous, Technical Director) with their sections and tasks are present.
 - The seeded list is fully editable by admins after launch.
 
 ---
@@ -443,7 +449,11 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Follow the service flow smoothly
 - Keep ProPresenter cues ready and respond quickly
 
-**11. Key Reminders**
+**11. After Service**
+- Clear the stage display
+- Shut down or sleep the Mac as agreed
+
+**12. Key Reminders**
 - Audio MUST be tested
 - Videos MUST be tested
 - Images MUST be horizontal
@@ -484,6 +494,10 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Mute mics that are not in use
 - Follow the order of service for mic and music cues
 
+**8. After Service**
+- Power down amplifiers and powered speakers first, then the console
+- Return all microphones
+
 ---
 
 ### Camera Operators
@@ -512,6 +526,11 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 **6. During Service**
 - Hold a steady shot while live; reframe only after the Director cuts away
 - Follow church guidelines on filming the congregation, especially children
+
+**7. After Service**
+- Power down cameras
+- Put camera batteries on charge
+- Cap the lenses
 
 ---
 
@@ -544,6 +563,11 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Call shots ahead of time ("Ready camera 2. Take 2.")
 - Watch the stream output for audio or video problems
 
+**7. After Service**
+- End the livestream and confirm it has stopped on the streaming platform
+- Stop the backup recording and confirm the file saved
+- Power down the switcher, multiview, and encoder
+
 ---
 
 ### Miscellaneous
@@ -559,6 +583,29 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Tidy or tape down cables in walkways
 - Restock spare batteries, adapters, and cables
 
+**3. After Service**
+- Collect all batteries and return them to charging
+- Turn off all TVs and screens
+- Power down servers and equipment in the correct order
+- Tidy the booth and stage cables
+
+---
+
+### Technical Director
+
+**1. Before Service**
+- Confirm the order of service with the pastor
+- Check in with the worship leader and band on any changes
+- Confirm all departments are staffed
+- Review the progress dashboard before 9:55 AM and follow up with any department that's behind
+
+**2. During Service**
+- Be the point of contact for pastors, band, and volunteers
+- Watch for problems and coordinate fixes
+
+**3. After Service**
+- Confirm all departments have completed their After Service tasks
+
 ---
 ## 7. Architecture Note
 
@@ -568,4 +615,4 @@ Planning Center data is cached briefly on the server (a few minutes per service)
 
 ---
 
-*End of Requirements — Version 1.6*
+*End of Requirements — Version 1.7*
