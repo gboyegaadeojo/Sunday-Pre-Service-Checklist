@@ -41,6 +41,9 @@ export const putJson = <T>(path: string) => send<T>(path, { method: "PUT" });
 
 export const deleteJson = <T>(path: string) => send<T>(path, { method: "DELETE" });
 
+export const patchJson = <T = void>(path: string, body: unknown) =>
+  send<T>(path, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
 export const postJson = <T = void>(path: string, body?: unknown) =>
   send<T>(path, {
     method: "POST",

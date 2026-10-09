@@ -135,3 +135,39 @@ export interface DevUsersResponse {
 export interface DevSignInRequest {
   key: string;
 }
+
+// Admin checklist editor (Stage 5). Admin-only endpoints under /api/admin.
+
+/** Longest department/section name and task text the editor accepts (trimmed). */
+export const NAME_MAX = 120;
+export const TASK_TEXT_MAX = 500;
+
+export interface AdminTask {
+  id: number;
+  text: string;
+}
+
+export interface AdminSection {
+  id: number;
+  name: string;
+  tasks: AdminTask[];
+}
+
+export interface AdminCategory {
+  id: number;
+  name: string;
+  /** Planning Center team/position links that hiding this department would remove (US-12). */
+  linkCount: number;
+  sections: AdminSection[];
+}
+
+/** GET /api/admin/lists/:listId (listId may be "default"): the list's live structure. */
+export interface AdminListResponse {
+  list: { id: number; name: string; description: string | null; isDefault: boolean };
+  categories: AdminCategory[];
+}
+
+/** POST that creates an item. */
+export interface CreatedResponse {
+  id: number;
+}

@@ -78,7 +78,7 @@ describe("header navigation", () => {
   it.each([
     ["volunteer", ["Checklist", "Progress"]],
     ["director", ["Checklist", "Progress"]],
-    ["admin", ["Checklist", "Progress", "Activity"]],
+    ["admin", ["Checklist", "Progress", "Admin"]],
   ] as const)("shows the %s only the sections they may use", (role, labels) => {
     render(<AppNav user={user(role)} route="checklist" onNavigate={() => {}} />);
     expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(labels);

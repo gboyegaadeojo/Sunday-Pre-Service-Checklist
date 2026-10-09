@@ -110,14 +110,22 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   |---|---|---|
   | Progress view (`/progress`, data from `GET /api/checklist`) | everyone with access | `requireAccess` |
   | Reset and undo (`POST /api/services/:id/reset`, `/undo-reset`) | Admins and Directors | `requireStaff` |
-  | Activity log (`/activity`, `GET /api/services/:id|current/events`) | Admins only | `requireAdmin` |
+  | Activity log (`/admin/activity`, `GET /api/services/:id|current/events`) | Admins only | `requireAdmin` |
+  | Checklist editor (`/admin/checklist`, `/api/admin/*`) | Admins only | `requireAdmin` on the whole router |
 
   `GET /api/checklist` adds `service.reset` only for staff. The UI hides what a role can't use (`AppNav`, `ProgressPage`), and `test/client/stage4-roles.test.tsx` checks that it never offers what the server refuses.
 - **Reset and undo** (`db/resets.ts`):
   - Reset archives active check-offs under a new `resets` row, storing `archived_count`. It's refused when nothing is checked, so an extra reset can't take away the chance to undo the real one.
   - Undo restores only the latest reset, and only once. Tasks checked since the reset keep the newer check-off (D3).
   - Both confirm first in the UI (`ConfirmDialog`, native `<dialog>`).
-- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress` and `/activity` (the Worker's SPA fallback serves them). The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
+- **Admin workspace** (design.md §7): the header's **Admin** tab leads to sub-tabs (`AdminTabs`), currently Checklist and Activity. Only list sections that exist.
+- **Checklist editor** (Stage 5):
+  - The server side is `routes/admin-structure.ts` and `db/admin-structure.ts`. Every write requires the item and its whole ancestry (up to the list) to be live (`LIVE_*` guards). New items get the next `sort_order`.
+  - Hiding sets `deleted_at` and never erases. Hiding a department also deletes its `team_links` in the same transaction.
+  - Names and task text are trimmed, must not be empty, and are limited to `NAME_MAX` and `TASK_TEXT_MAX` in `shared/types.ts`.
+  - The client is `lib/useAdminList.ts` (server first, then reload; never optimistic) and `components/admin/*` (`EditorContext`, one inline `TextEditor` open at a time, `ActionMenu` "⋯" per item, `ConfirmDialog` before any hide).
+  - Tests use their own list (ID 77) so the seed checklist stays untouched.
+- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist` and `/admin/activity`, with aliases `/admin` and `/activity`. The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
 - **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
 
 ## Rules from the requirements

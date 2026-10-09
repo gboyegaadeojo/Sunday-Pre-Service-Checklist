@@ -4,8 +4,10 @@ import { ApiError, getJson, postJson } from "./api";
 import { AppHeader } from "./components/app/AppHeader";
 import { EmptyState, ErrorState, LoadingState } from "./components/ui/States";
 import { BrandingContext, NO_BRANDING, documentTitle } from "./lib/branding";
+import { AdminTabs } from "./components/admin/AdminTabs";
 import { useRoute } from "./lib/router";
 import { ActivityPage } from "./pages/ActivityPage";
+import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
 import { ChecklistPage } from "./pages/ChecklistPage";
 import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
@@ -115,14 +117,25 @@ export function App() {
     switch (route) {
       case "progress":
         return <ProgressPage user={user} onAccessChanged={onAccessChanged} />;
-      case "activity":
-        // The link is hidden for non-admins; this covers a typed or bookmarked URL. The server refuses too.
-        return user.isAdmin ? (
-          <ActivityPage onAccessChanged={onAccessChanged} />
-        ) : (
-          <main className="mx-auto max-w-app px-4 py-10 md:px-6">
-            <EmptyState title="Admins only" message="The activity log is available to Admins." />
-          </main>
+      case "admin-checklist":
+      case "admin-activity":
+        // The Admin link is hidden for non-admins; this covers a typed or bookmarked URL. The server refuses too.
+        if (!user.isAdmin) {
+          return (
+            <main className="mx-auto max-w-app px-4 py-10 md:px-6">
+              <EmptyState title="Admins only" message="This area is available to Admins." />
+            </main>
+          );
+        }
+        return (
+          <>
+            <AdminTabs route={route} onNavigate={navigate} />
+            {route === "admin-activity" ? (
+              <ActivityPage onAccessChanged={onAccessChanged} />
+            ) : (
+              <ChecklistEditorPage onAccessChanged={onAccessChanged} />
+            )}
+          </>
         );
       default:
         return <ChecklistPage user={user} onAccessChanged={onAccessChanged} />;
