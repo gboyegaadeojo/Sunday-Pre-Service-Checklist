@@ -4,8 +4,12 @@ import { ApiError, getJson, postJson } from "./api";
 import { AppHeader } from "./components/app/AppHeader";
 import { ErrorState, LoadingState } from "./components/ui/States";
 import { ChecklistPage } from "./pages/ChecklistPage";
+import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
 import { SignInPage } from "./pages/SignInPage";
+
+// The developer test-user sign-in is chosen at build time: production builds keep only SignInPage.
+const SignIn = import.meta.env.DEV ? DevSignInPage : SignInPage;
 
 type Session =
   | { status: "loading" }
@@ -63,7 +67,7 @@ export function App() {
     );
   }
 
-  if (session.status === "signed_out") return <SignInPage onSignedIn={() => void loadSession()} />;
+  if (session.status === "signed_out") return <SignIn onSignedIn={() => void loadSession()} />;
 
   const { user } = session;
   return (

@@ -8,6 +8,8 @@
 > - The fake login and fake Planning Center in the approved build plan are allowed until Stages 8–9. "No mock data" means no made-up numbers or placeholder content in the UI.
 > - The requirements file is `docs/requirements.md`.
 > - Department names come from the checklist data. The seed's "Director (Switcher)" is the brief's "Director".
+> - **Requirements v1.6 overrides §6 on who sees the dashboard:** the progress dashboard is for everyone with access, Volunteers included. Reset and "Undo reset" stay Admin/Director-only, and list management and Planning Center mapping stay Admin-only.
+> - The sign-in screen shows exactly one sign-in option, "Sign in with Planning Center". Users never choose a role. Local development may add a separate, clearly labelled developer-only test-user control, which never exists in production builds.
 
 ## Role and Expectations
 

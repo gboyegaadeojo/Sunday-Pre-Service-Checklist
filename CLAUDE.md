@@ -62,7 +62,16 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   1. **Build time.** It's mounted only inside `if (import.meta.env.DEV)` in `src/worker/index.ts`. `vite build` sets that to false and drops the code, which is why the routes are built by the `createDevAuthRoutes()` factory: no module-level side effects. The production bundle contains no test users at all. `test/production-build.test.ts` builds the app and proves this (the bundle has no test-user strings, and `/api/dev/*` returns 404 even with `DEV_AUTH=true`).
   2. **Run time, locally.** It answers only when `DEV_AUTH=true` is in `.dev.vars`.
 
-  Keep both locks. Never import from `src/worker/dev/` outside that `DEV` branch.
+  The client follows the same pattern. `App.tsx` picks `import.meta.env.DEV ? DevSignInPage : SignInPage`, so the developer test-user control never reaches the production client bundle. The production-build test also checks `dist/client`.
+
+  Keep both locks. Never import from `src/worker/dev/` or `pages/DevSignInPage.tsx` outside those `DEV` branches.
+- **Sign-in screen** (`components/app/SignInScreen.tsx`): exactly one option, "Sign in with Planning Center". Roles are determined after sign-in and are never chosen by the user. Locally that button signs in as the test volunteer, and the dashed "Developer only" box below the card switches test users. In production the button stays disabled with a note until Stage 8 connects Planning Center OAuth.
+- **Who can do what** (requirements v1.6):
+  - Progress view: everyone with access.
+  - Reset and undo: Admins and Directors only.
+  - List management, team mapping and role management: Admins only.
+
+  Enforce each rule on the server, not only by hiding UI.
 - **`DEV_AUTH` must never be set in Cloudflare** (Worker variables or secrets, dashboard or `wrangler secret put`). It belongs only in local `.dev.vars`. A production Worker ignores it and logs an error if it's present.
 - **Tests** (`test/`):
   - Use the helpers in `test/helpers.ts`: `request()` calls the Hono app with the test bindings, and `signInAs("volunteer" | "admin" | "director" | "outsider")` returns a session cookie.

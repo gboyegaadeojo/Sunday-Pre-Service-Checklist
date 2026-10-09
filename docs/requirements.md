@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.5 · **Date:** October 2026  
+> **Version:** 1.6 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.5
+## 0. Changes in Version 1.6
+
+| # | Change | Why |
+|---|--------|-----|
+| C12 | **The progress view is available to everyone with access** (Volunteers, Admins, Directors), not only Admins and Directors (US-09, US-10). Reset/undo remain Admin/Director only; list management and team mapping remain Admin only. | Project owner decision. |
+
+## Changes in Version 1.5
 
 | # | Change | Why |
 |---|--------|-----|
@@ -31,7 +37,7 @@
 
 ## 1. Scope Summary
 
-A mobile-friendly web app for a church's media/production volunteers. Volunteers sign in with Planning Center, see their department's checklist for the current service, and check off tasks. Admins manage lists, link Planning Center teams to checklist categories, and track overall progress. The app must cost $0/month to host.
+A mobile-friendly web app for a church's media/production volunteers. Volunteers sign in with Planning Center, see their department's checklist for the current service, and check off tasks. Everyone on the team can follow overall progress. Admins manage lists and link Planning Center teams to checklist categories. The app must cost $0/month to host.
 
 ---
 
@@ -39,9 +45,9 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 | Role | Description |
 |------|-------------|
-| **Volunteer** | A member of a linked media team in Planning Center (see US-15). Sees all categories, with their own shown first. Checks off tasks. |
+| **Volunteer** | A member of a linked media team in Planning Center (see US-15). Sees all categories, with their own shown first. Checks off tasks. Sees the progress view. |
 | **Admin** | Manages task lists, categories, tasks, and team mappings. Sees full progress. Can grant/revoke Admin and Director roles. Can reset or restore a service checklist. Always has access, scheduled or not. |
-| **Director** | Sees the progress view. Can reset or restore a service checklist. No list-management permissions. Always has access, scheduled or not. |
+| **Director** | Sees the progress view. Can reset or restore a service checklist. No list-management or team-mapping permissions. Always has access, scheduled or not. |
 | **Not on a media team** | Signed in with Planning Center but not a member of any linked team and has no Admin/Director role. Sees an explanation page only. |
 
 ---
@@ -170,22 +176,23 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 ---
 
-**US-09 — Admin sees overall service progress**  
-*As an admin, I want a dashboard showing which departments are done and which have open tasks.*
+**US-09 — The team sees overall service progress**  
+*As a media team member, I want a dashboard showing which departments are done and which have open tasks.*
 
 **Acceptance Criteria:**
-- Progress view is accessible to Admins and Directors.
+- Progress view is accessible to everyone with access (US-02): Volunteers, Admins, and Directors. Users who are not on a media team cannot see it.
 - Each category shows: total tasks, completed count, and a color indicator (green = all done, yellow = in progress, grey = not started). Color is never the only indicator; counts and labels are always shown.
 - Expanding a category shows which volunteer checked off each task and at what time.
 - View refreshes automatically about every 30 seconds while open, and shows a "last updated" time with a manual refresh button.
 
 ---
 
-**US-10 — Director sees progress without editing lists**  
-*As the Director, I want the same progress view as admins but I don't need list management tools.*
+**US-10 — Director resets and restores without editing lists**  
+*As the Director, I want to reset or restore the service checklist from the progress view, but I don't need list management tools.*
 
 **Acceptance Criteria:**
-- Director role sees the full progress view.
+- Director role sees the full progress view (as does everyone with access, US-09), plus the reset and "Undo reset" controls (US-07).
+- Reset and "Undo reset" are visible only to Admins and Directors, and the server rejects them from anyone else.
 - List management and team mapping UI is not visible to Directors, and the server rejects those actions from Directors.
 - Director role is granted by an Admin within the app.
 
@@ -326,7 +333,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Hidden-not-erased deletes; task text snapshots on check-off
 - Mobile-responsive UI with dark theme
 - Admin: create/edit/delete task lists, categories, sections, and tasks
-- Admin/Director: progress view per service
+- Progress view per service for everyone with access; reset/undo for Admins/Directors
 - Seed data: IFC Pre-Service Checklist pre-loaded at launch
 - Free hosting: Cloudflare Workers + D1
 
@@ -367,6 +374,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q16 | Editing sections | Admins can add, rename, reorder, and delete (hide) sections within a category (US-12a). |
 | Q17 | One team in several categories? | No — each team or position links to exactly one category. |
 | Q18 | Undo reset after a task was re-checked | The newer check-off wins; the archived one is not restored for that task. |
+| Q19 | Who sees the progress view | Everyone with access (Volunteers, Admins, Directors). Reset/undo: Admins and Directors only. List management and team mapping: Admins only. |
 
 ---
 
@@ -560,4 +568,4 @@ Planning Center data is cached briefly on the server (a few minutes per service)
 
 ---
 
-*End of Requirements — Version 1.5*
+*End of Requirements — Version 1.6*

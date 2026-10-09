@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.5 · **Date:** October 2026
+> **Based on:** requirements.md v1.6 · **Date:** October 2026
 > **Status:** Approved
 
 ---
@@ -144,8 +144,9 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 - **Test in the browser:** all 5 departments and their sections appear. Check the layout at 375 px and 768 px in devtools, and confirm there's no horizontal scroll.
 
 ### Stage 2 — Fake login, sessions and roles
-- Add a dev-only `/dev-login` page where you pick a fake user: Volunteer, Admin, Director, or Not on a media team. It creates the same signed session cookie that real sign-in will use later.
-- Fake login is enabled only when `DEV_AUTH=true` is set in `.dev.vars`. The route doesn't exist otherwise, and stage 8 removes it from production builds.
+- The sign-in screen looks like the real one: a single "Sign in with Planning Center" button. Roles are worked out after sign-in and never chosen by the user. Locally, the button signs in as the test volunteer.
+- A small, clearly labelled developer-only control under the sign-in card switches between test users: Volunteer, Admin, Director, or Not on a media team. It creates the same signed session cookie that real sign-in will use later.
+- Fake login can't exist in production. Production builds drop it entirely, from both the Worker and the client code, and a test proves it. Locally it also needs `DEV_AUTH=true` in `.dev.vars`.
 - Middleware loads the session and re-reads roles from D1 on every request. The "Not on a media team" user sees the explanation page (US-02), and the header shows the user's name and a sign-out link.
 - **Test in the browser:** sign in as each fake user and confirm what each one can see. Delete the cookie and confirm you're sent back to sign-in.
 
@@ -155,9 +156,9 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 - **Test in the browser:** check tasks as the Volunteer, then sign in as the Admin and see the same ticks with names and times. Stop the dev server mid-tap to see the checkmark revert and the error appear.
 
 ### Stage 4 — Progress view, reset and undo
-- A progress page for Admins and Directors: per-category counts, a colour plus a text label, and expandable rows showing who checked each task and when. It auto-refreshes every ~30 seconds and has a "last updated" time and a refresh button (US-09, US-10).
-- Reset with a confirmation prompt that archives check-offs, plus "Undo reset" (US-07). Volunteers get 403 from the server.
-- **Test in the browser:** use two browser profiles, one as Volunteer checking tasks and one as Director watching progress update. Reset, then undo. Call the reset API as the Volunteer and confirm it's rejected.
+- A progress page for everyone with access (US-09, requirements v1.6): per-category counts, a colour plus a text label, and expandable rows showing who checked each task and when. It auto-refreshes every ~30 seconds and has a "last updated" time and a refresh button (US-09, US-10).
+- Reset with a confirmation prompt that archives check-offs, plus "Undo reset" (US-07). These controls show only for Admins and Directors, and the server returns 403 to Volunteers.
+- **Test in the browser:** use two browser profiles, one as Volunteer checking tasks and one as Director watching progress update. Confirm the Volunteer sees progress but no reset controls. Reset, then undo. Call the reset API as the Volunteer and confirm it's rejected.
 
 ### Stage 5 — Admin list management
 - Lists: create, edit, delete and set the default (US-11).
@@ -167,7 +168,7 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 
 ### Stage 6 — Admin user management
 - Users page: grant or revoke Admin and Director (US-03). Revoking takes effect on the user's next page load.
-- **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the progress view appear.
+- **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the reset controls appear.
 
 ### Stage 7 — Team mapping and access, with the fake Planning Center
 - The Fake Planning Center provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the dev login page.
@@ -180,7 +181,7 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 ### Stage 8 — Real Planning Center
 - `RealPlanningCenter` uses the church-level token (read-only) for teams, positions, rosters and plans, with a 5-second timeout (US-04a, US-17).
 - Planning Center OAuth sign-in: the code exchange happens in the Worker, the volunteer's token is discarded after identifying them, and there are clear error messages when Planning Center is down (US-01, US-04b).
-- Fake login is removed from production builds.
+- The sign-in button starts the real Planning Center flow. The developer-only test-user control stays local-only, and production builds already exclude it (Stage 2).
 - You'll need: an OAuth app and a church token registered at api.planningcenteronline.com (Q7), stored in `.dev.vars`.
 - **Test in the browser:** sign in with your real Planning Center account locally, link real teams and confirm your real schedule is highlighted.
 
