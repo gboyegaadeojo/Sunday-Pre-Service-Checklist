@@ -35,6 +35,52 @@ export interface ServiceInfo {
   published: boolean;
   /** The church's IANA time zone (setting), for showing check-off times. */
   timeZone: string;
+  /**
+   * Latest reset of this service: only sent to Admins and Directors (US-07, US-17); absent for others.
+   * null when the service has never been reset.
+   */
+  reset?: ResetInfo | null;
+}
+
+export interface ResetInfo {
+  id: number;
+  at: string;
+  by: string;
+  /** Check-offs it archived. */
+  archived: number;
+  undoneAt: string | null;
+  undoneBy: string | null;
+  /** True until it is undone; only the latest reset can be undone, "until the next reset" (US-07). */
+  canUndo: boolean;
+}
+
+/** POST /api/services/:id/reset and /undo-reset */
+export interface ResetResponse {
+  reset: ResetInfo;
+  /** Check-offs archived (reset) or restored (undo). */
+  affected: number;
+}
+
+/** One row of the append-only activity log (GET /api/services/:id/events, Admin only). */
+export interface ActivityEvent {
+  id: number;
+  at: string;
+  action: "check" | "uncheck" | "reset" | "undo_reset";
+  outcome: "applied" | "no_change" | "not_found" | "service_changed";
+  taskId: number | null;
+  /** The task's current text, or null for service-wide actions or unknown tasks. */
+  taskText: string | null;
+  affected: number | null;
+  user: string;
+  sessionId: string | null;
+  tabId: string | null;
+}
+
+export interface ActivityResponse {
+  service: { id: number; date: string; timeZone: string };
+  events: ActivityEvent[];
+  /** True when older entries exist beyond the returned page. */
+  truncated: boolean;
 }
 
 export interface ChecklistResponse {
@@ -51,7 +97,7 @@ export interface CheckoffResponse {
 export interface ApiErrorBody {
   error: string;
   /** Lets the client tell "signed out" (401) from "not on a media team" (403). */
-  code?: "signed_out" | "no_access" | "service_changed";
+  code?: "signed_out" | "no_access" | "forbidden" | "service_changed" | "nothing_to_reset" | "nothing_to_undo";
 }
 
 export interface CurrentUser {

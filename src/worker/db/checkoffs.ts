@@ -1,7 +1,7 @@
 import type { TaskCheckoff } from "../../shared/types";
 
 // A check-off is active when it has not been unchecked or archived by a reset.
-const ACTIVE = "unchecked_at IS NULL AND reset_id IS NULL";
+export const ACTIVE = "unchecked_at IS NULL AND reset_id IS NULL";
 
 /** Who made a check/uncheck request, for the append-only checkoff_events log. */
 export interface Actor {
@@ -13,10 +13,12 @@ export interface Actor {
 }
 
 export type CheckoffOutcome = "applied" | "no_change" | "not_found" | "service_changed";
+export type CheckoffAction = "check" | "uncheck" | "reset" | "undo_reset";
 
-const EVENT_COLUMNS = "service_id, task_id, action, outcome, user_pco_id, user_name, session_id, tab_id, user_agent";
+/** Columns of checkoff_events filled for every entry; `affected` is added where it applies. */
+export const EVENT_COLUMNS = "service_id, task_id, action, outcome, user_pco_id, user_name, session_id, tab_id, user_agent";
 
-const actorValues = (a: Actor) => [a.userId, a.userName, a.sessionId, a.tabId, a.userAgent] as const;
+export const actorValues = (a: Actor) => [a.userId, a.userName, a.sessionId, a.tabId, a.userAgent] as const;
 
 async function getActiveCheckoff(db: D1Database, serviceId: number, taskId: number): Promise<TaskCheckoff | null> {
   const row = await db
@@ -92,7 +94,7 @@ export async function uncheckTask(db: D1Database, args: { serviceId: number; tas
 /** Logs an attempt that was refused before touching check-offs (e.g. the service is no longer current). */
 export async function logRejectedAttempt(
   db: D1Database,
-  args: { serviceId: number; taskId: number; action: "check" | "uncheck"; outcome: CheckoffOutcome; actor: Actor },
+  args: { serviceId: number; taskId: number | null; action: CheckoffAction; outcome: CheckoffOutcome; actor: Actor },
 ): Promise<void> {
   await db
     .prepare(`INSERT INTO checkoff_events (${EVENT_COLUMNS}) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`)

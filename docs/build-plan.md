@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.9 · **Date:** October 2026
+> **Based on:** requirements.md v1.10 · **Date:** October 2026
 > **Status:** Approved
 
 ---

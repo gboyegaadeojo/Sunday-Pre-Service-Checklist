@@ -2,7 +2,7 @@ import { type Context, Hono } from "hono";
 import type { ApiErrorBody, CheckoffResponse } from "../../shared/types";
 import { type Actor, checkTask, logRejectedAttempt, uncheckTask } from "../db/checkoffs";
 import { type Service, getCurrentService } from "../db/services";
-import type { User } from "../db/users";
+import { actorFor } from "../lib/actor";
 import { requireAccess } from "../middleware/auth";
 import type { AppEnv } from "../types";
 
@@ -11,20 +11,6 @@ import type { AppEnv } from "../types";
 // Anyone with access may check and uncheck. Only the *current* service can be changed: a page left
 // open past the end of the service day gets 409 and reloads instead of writing to the wrong service.
 // Every attempt that gets this far is written to the append-only checkoff_events log.
-
-const TAB_ID = /^[A-Za-z0-9-]{1,64}$/;
-
-function actorFor(c: Context<AppEnv>): Actor {
-  const user = c.var.user as User; // requireAccess guarantees a user
-  const tabId = c.req.header("X-Tab-Id") ?? "";
-  return {
-    userId: user.id,
-    userName: user.name,
-    sessionId: c.var.sessionId,
-    tabId: TAB_ID.test(tabId) ? tabId : null,
-    userAgent: c.req.header("User-Agent")?.slice(0, 300) ?? null,
-  };
-}
 
 type Resolved = { service: Service; taskId: number; actor: Actor } | Response;
 

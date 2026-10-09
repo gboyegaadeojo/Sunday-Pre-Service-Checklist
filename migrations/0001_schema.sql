@@ -64,9 +64,11 @@ CREATE INDEX tasks_section ON tasks (section_id);
 
 -- Services and check-offs ----------------------------------------------------
 
--- One service per Sunday (Q4). Created lazily when first opened (US-07).
+-- One service per service day (Q4). Created lazily when first opened (US-07).
+-- AUTOINCREMENT: a service ID is never reused, so the activity log (keyed by service_id, no FK)
+-- can never point at the wrong service.
 CREATE TABLE services (
-  id           INTEGER PRIMARY KEY,
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
   service_date TEXT NOT NULL UNIQUE,
   pco_plan_id  TEXT,
   list_id      INTEGER NOT NULL REFERENCES task_lists (id),
@@ -80,6 +82,7 @@ CREATE TABLE resets (
   reset_by_pco_id  TEXT NOT NULL,
   reset_by_name    TEXT NOT NULL,
   reset_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  archived_count   INTEGER NOT NULL DEFAULT 0,  -- check-offs this reset archived
   undone_by_pco_id TEXT,
   undone_by_name   TEXT,
   undone_at        TEXT

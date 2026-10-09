@@ -1,12 +1,20 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.9 · **Date:** October 2026  
+> **Version:** 1.10 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.9
+## 0. Changes in Version 1.10
+
+| # | Change | Why |
+|---|--------|-----|
+| C16 | **New: append-only activity log** of every check, uncheck, reset, and undo, with who, when, which task, and which sign-in session and browser tab; Admins can review it per service (new US-07a). | A permanent safety net: any unexpected check-off can be traced, and the record can't be altered. |
+| C17 | **The open checklist updates itself** about every 30 seconds while visible and right after returning to the tab (US-06). | Resets and teammates' check-offs appear without reloading. |
+| C18 | **Reset is refused when nothing is checked; undo applies once, to the latest reset** (US-07). | An accidental extra reset must never take away the chance to undo the real one. |
+
+## Changes in Version 1.9
 
 | # | Change | Why |
 |---|--------|-----|
@@ -64,7 +72,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Role | Description |
 |------|-------------|
 | **Volunteer** | A member of a linked media team in Planning Center (see US-15). Sees all categories, with their own shown first. Checks off tasks. Sees the progress view. |
-| **Admin** | Manages task lists, categories, tasks, and team mappings. Sees full progress. Can grant/revoke Admin and Director roles. Can reset or restore a service checklist. Always has access, scheduled or not. |
+| **Admin** | Manages task lists, categories, tasks, and team mappings. Sees full progress. Can grant/revoke Admin and Director roles. Can reset or restore a service checklist. Reviews the activity log (US-07a). Always has access, scheduled or not. |
 | **Director** | Sees the progress view. Can reset or restore a service checklist. No list-management or team-mapping permissions. Always has access, scheduled or not. |
 | **Not on a media team** | Signed in with Planning Center but not a member of any linked team and has no Admin/Director role. Sees an explanation page only. |
 
@@ -161,6 +169,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Tapping marks the task complete and records the volunteer's display name, Planning Center person ID, a timestamp, and a snapshot of the task text, its department, and its section at that moment (US-13).
 - The UI updates immediately (optimistic update). If the save fails, the checkmark reverts and a brief error message appears.
 - A completed task can be unchecked. Unchecking records who unchecked it and when.
+- The open checklist refreshes itself about every 30 seconds while the page is visible, and right after the user returns to it, so resets and teammates' check-offs appear without reloading. A refresh never undoes a tap that is still saving.
 
 ---
 
@@ -177,7 +186,19 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Reset shows a confirmation prompt: "This will clear all check-offs for this service. Are you sure?"
 - A reset is not destructive: cleared check-offs are archived, and an Admin or Director can restore them with an "Undo reset" option until the next reset.
 - If a task was checked again after the reset, undoing the reset keeps the newer check-off; the archived one for that task is not restored.
+- Reset is refused when nothing is checked, so an accidental extra reset can never take away the chance to undo an earlier one. Undo applies once, to the latest reset.
 - Past service check-off data is preserved and accessible to admins.
+
+---
+
+**US-07a — Admin reviews the activity log**  
+*As an admin, I want a permanent record of every check-off change, so I can see exactly who changed what if something looks wrong.*
+
+**Acceptance Criteria:**
+- Every check, uncheck, reset, and undo that reaches the server is logged, including attempts that changed nothing or were refused (e.g. the service had ended), with: who, when, which task (or how many check-offs a reset/undo affected), the outcome, the sign-in session, and the browser tab.
+- Each log entry is written in the same transaction as the change it describes.
+- The log is append-only: entries can never be edited or deleted, by anyone, through the app or directly in the database.
+- Admins can view the log for the current service, newest first; past services' logs are part of service history. Directors and Volunteers cannot see it, and the server rejects their requests.
 
 ---
 
@@ -368,6 +389,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Fallback when Planning Center data is unavailable (manual department selection)
 - One service per service day; per-service check-off state; "current service" defined in the church's time zone (both admin-editable settings)
 - Manual reset (Admins/Directors only) with confirmation and undo
+- Append-only activity log of every check-off change; Admin-only activity view (US-07a)
+- Checklist and progress view refresh themselves about every 30 seconds while open
 - Hidden-not-erased deletes; task text snapshots on check-off
 - Mobile-responsive UI with dark theme
 - Admin: create/edit/delete task lists, categories, sections, and tasks
@@ -402,7 +425,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q6 | Database | Cloudflare D1, Free plan ($0). Chosen over Supabase (free projects can pause after 7 days of low activity). |
 | Q7 | Planning Center API access | Two credentials: an OAuth app for volunteer sign-in, and a church-level access token for reading teams and schedules. Both registered at api.planningcenteronline.com by someone with the right Planning Center permissions. |
 | Q8 | API down during service | Never block on Sunday morning: 30-day sessions plus manual department selection for recently verified team members. |
-| Q9 | Checklist reset | No automatic reset — each service has its own record. Manual reset for Admins/Directors only, with confirmation and undo. |
+| Q9 | Checklist reset | No automatic reset — each service has its own record. Manual reset for Admins/Directors only, with confirmation and undo. Reset is refused when nothing is checked; undo applies once, to the latest reset. |
 | Q10 | Editing tasks mid-service | Allow edits. Check-offs stay linked; history shows the task text snapshot. |
 | Q11 | Seed checklist content | IFC Pre-Service Checklist (Section 6). Editable by Admins after launch. |
 | Q12 | Who gets access | Members of any linked media team (roster, not just this week's schedule), plus Admins and Directors. |
@@ -416,6 +439,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q20 | Restructuring the checklist | Admins can move tasks between sections (any department) and sections between departments, and reorder everything, using a phone-friendly "Move to…" menu. Moves stay within the same list. Drag-and-drop is optional on desktop. |
 | Q21 | History after a move | Check-offs snapshot task text, department, and section. Past services show tasks where they were at check-off time. A task moved mid-service keeps its check-off. |
 | Q22 | Church-specific values | Nothing church-specific is hardcoded: structure, content, Planning Center names, service day, time zone and branding all come from the database and are admin-editable (US-11a). The seed is only starting data. |
+| Q23 | Auditing check-offs | Append-only activity log of every check, uncheck, reset, and undo (who, when, task, outcome, session, tab), written in the same transaction as the change. Admins only can view it. Never edited or deleted. |
+| Q24 | Seeing others' changes | The checklist and the progress view refresh about every 30 seconds while visible and on returning to the tab. No push notifications (out of scope). |
 
 ---
 
@@ -650,4 +675,4 @@ Planning Center data is cached briefly on the server (a few minutes per service)
 
 ---
 
-*End of Requirements — Version 1.9*
+*End of Requirements — Version 1.10*

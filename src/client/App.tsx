@@ -2,11 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import type { BrandingResponse, CurrentUser, MeResponse } from "../shared/types";
 import { ApiError, getJson, postJson } from "./api";
 import { AppHeader } from "./components/app/AppHeader";
-import { ErrorState, LoadingState } from "./components/ui/States";
+import { EmptyState, ErrorState, LoadingState } from "./components/ui/States";
 import { BrandingContext, NO_BRANDING, documentTitle } from "./lib/branding";
+import { useRoute } from "./lib/router";
+import { ActivityPage } from "./pages/ActivityPage";
 import { ChecklistPage } from "./pages/ChecklistPage";
 import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
+import { ProgressPage } from "./pages/ProgressPage";
 import { SignInPage } from "./pages/SignInPage";
 
 // The developer test-user sign-in is chosen at build time: production builds keep only SignInPage.
@@ -24,6 +27,7 @@ export function App() {
   const [branding, setBranding] = useState<BrandingResponse | undefined>(undefined);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const { route, navigate } = useRoute();
 
   // Who is signed in, and with what access. Re-run whenever the server says the session or access changed.
   const loadSession = useCallback(async () => {
@@ -90,15 +94,38 @@ export function App() {
     if (session.status === "signed_out") return <SignIn onSignedIn={() => void loadSession()} />;
 
     const { user } = session;
+    const onAccessChanged = () => void loadSession();
     return (
       <>
-        <AppHeader user={user} onSignOut={() => void signOut()} signingOut={signingOut} signOutError={signOutError} />
-        {user.hasAccess ? (
-          <ChecklistPage user={user} onAccessChanged={() => void loadSession()} />
-        ) : (
-          <NoAccessPage onSignOut={() => void signOut()} signingOut={signingOut} />
-        )}
+        <AppHeader
+          user={user}
+          route={route}
+          onNavigate={navigate}
+          onSignOut={() => void signOut()}
+          signingOut={signingOut}
+          signOutError={signOutError}
+        />
+        {renderPage(user, onAccessChanged)}
       </>
     );
+  }
+
+  function renderPage(user: CurrentUser, onAccessChanged: () => void) {
+    if (!user.hasAccess) return <NoAccessPage onSignOut={() => void signOut()} signingOut={signingOut} />;
+    switch (route) {
+      case "progress":
+        return <ProgressPage user={user} onAccessChanged={onAccessChanged} />;
+      case "activity":
+        // The link is hidden for non-admins; this covers a typed or bookmarked URL. The server refuses too.
+        return user.isAdmin ? (
+          <ActivityPage onAccessChanged={onAccessChanged} />
+        ) : (
+          <main className="mx-auto max-w-app px-4 py-10 md:px-6">
+            <EmptyState title="Admins only" message="The activity log is available to Admins." />
+          </main>
+        );
+      default:
+        return <ChecklistPage user={user} onAccessChanged={onAccessChanged} />;
+    }
   }
 }

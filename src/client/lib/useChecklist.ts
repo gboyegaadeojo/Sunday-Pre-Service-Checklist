@@ -3,6 +3,9 @@ import type { ChecklistResponse, ChecklistTask, CheckoffResponse } from "../../s
 import { ApiError, deleteJson, getJson, isAuthError, putJson } from "../api";
 import { withCheckoff } from "./checklist";
 
+/** How often the open checklist picks up resets and teammates' check-offs while the tab is visible. */
+export const CHECKLIST_REFRESH_MS = 30_000;
+
 export type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
@@ -33,12 +36,18 @@ export function useChecklist({ userName, onAccessChanged }: Options) {
   // Kept in a ref so a new callback from the parent never triggers a reload.
   const onAccessChangedRef = useRef(onAccessChanged);
   onAccessChangedRef.current = onAccessChanged;
+  // Bumped on every tap. A background refresh that was in flight across a tap carries stale data for
+  // that task, so its result is dropped (the next refresh catches up) rather than undoing the tap on screen.
+  const tapSeq = useRef(0);
 
   const load = useCallback(
     async ({ quiet = false } = {}) => {
+      if (quiet && pendingRef.current.size > 0) return; // never refresh over a save in progress
       if (!quiet) setState({ status: "loading" });
+      const seqAtStart = tapSeq.current;
       try {
         const checklist = await getJson<ChecklistResponse>("/api/checklist");
+        if (quiet && (tapSeq.current !== seqAtStart || pendingRef.current.size > 0)) return;
         setState({ status: "ready", checklist });
       } catch (err) {
         if (isAuthError(err)) return onAccessChangedRef.current();
@@ -52,13 +61,18 @@ export function useChecklist({ userName, onAccessChanged }: Options) {
     void load();
   }, [load]);
 
-  // Pick up teammates' check-offs (and a new service day) when the volunteer comes back to the tab.
+  // Pick up resets, teammates' check-offs and a new service day without a reload: right after returning
+  // to the tab, and every 30 seconds while it is visible.
   useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible" && pendingRef.current.size === 0) void load({ quiet: true });
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") void load({ quiet: true });
     };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+    const timer = setInterval(refreshIfVisible, CHECKLIST_REFRESH_MS);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
   }, [load]);
 
   const setTaskCheckoff = (taskId: number, checkoff: ChecklistTask["checkoff"]) =>
@@ -67,6 +81,7 @@ export function useChecklist({ userName, onAccessChanged }: Options) {
   const toggle = async (task: ChecklistTask) => {
     if (state.status !== "ready" || pendingRef.current.has(task.id)) return;
     const { service } = state.checklist;
+    tapSeq.current += 1;
     const before = task.checkoff;
     const url = `/api/services/${service.id}/tasks/${task.id}/checkoff`;
 

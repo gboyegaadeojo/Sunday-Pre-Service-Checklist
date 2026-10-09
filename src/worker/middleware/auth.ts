@@ -84,3 +84,21 @@ export const requireAccess = createMiddleware<AppEnv>(async (c, next) => {
   }
   await next();
 });
+
+/** Admins and Directors: reset and undo a service checklist (US-07, US-10). */
+export const requireStaff = createMiddleware<AppEnv>(async (c, next) => {
+  const user = c.var.user;
+  if (!user) return c.json<ApiErrorBody>({ error: "Please sign in.", code: "signed_out" }, 401);
+  if (!user.isAdmin && !user.isDirector) {
+    return c.json<ApiErrorBody>({ error: "Only Admins and Directors can do this.", code: "forbidden" }, 403);
+  }
+  await next();
+});
+
+/** Admins only: list management, team mapping, roles, and the activity log (US-03, US-12–15). */
+export const requireAdmin = createMiddleware<AppEnv>(async (c, next) => {
+  const user = c.var.user;
+  if (!user) return c.json<ApiErrorBody>({ error: "Please sign in.", code: "signed_out" }, 401);
+  if (!user.isAdmin) return c.json<ApiErrorBody>({ error: "Only Admins can do this.", code: "forbidden" }, 403);
+  await next();
+});

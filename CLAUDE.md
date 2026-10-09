@@ -96,13 +96,28 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - `lib/service-day.ts` is pure date maths from the `time_zone` and `service_weekday` settings. `db/services.ts` `getCurrentService` creates the service row on first view with the default list at that moment, and the service keeps that list.
   - Invalid or missing calendar settings throw (500). Never fall back to a hardcoded value.
   - `PUT`/`DELETE /api/services/:serviceId/tasks/:taskId/checkoff` only accept the *current* service (409 `service_changed` otherwise) and tasks that are live in its list. A second check of an already-checked task keeps the first check-off.
-  - Client state lives in `lib/useChecklist.ts`: optimistic toggle, revert on failure, and `SaveState` for the "All changes saved" indicator. It reloads quietly when the tab becomes visible.
+  - Client state lives in `lib/useChecklist.ts`: optimistic toggle, revert on failure, and `SaveState` for the "All changes saved" indicator. It refreshes quietly every 30 seconds while visible and on returning to the tab (US-06, C17), but never while a save is in flight. A refresh result is dropped if a tap happened while it was loading (`tapSeq`), so a refresh can never untick a tap. `test/client/checklist-refresh.test.tsx` covers this race.
   - Sections finished at page load start collapsed, decided once so a section never closes under the user's finger.
 - **Check-off activity log** (`checkoff_events`, migration `0004`):
   - Every check or uncheck attempt that reaches the check-off logic is logged in the same `db.batch` transaction as the write. The outcome is computed in SQL with `changes()`.
   - It records the user, the session ID (`sid` in the session token, kept on renewal), the tab ID (`X-Tab-Id`, a random value per page load from `api.ts`) and the user agent.
   - It is **append-only**: triggers abort `UPDATE` and `DELETE`. Never work around them, and never clear the table in tests; read only rows after a marker ID instead.
-  - New code that changes check-offs (reset, undo in Stage 4) must log to it too.
+  - Reset and undo log to it as well (`action` reset/undo_reset, `task_id` NULL, `affected` = count). Any future code that changes check-offs must log here too.
+  - `services.id` is `AUTOINCREMENT`, so a service ID is never reused and old log rows can never attach to a new service.
+- **Roles per feature (requirements v1.6), enforced on the server first:**
+
+  | Feature | Who | Guard |
+  |---|---|---|
+  | Progress view (`/progress`, data from `GET /api/checklist`) | everyone with access | `requireAccess` |
+  | Reset and undo (`POST /api/services/:id/reset`, `/undo-reset`) | Admins and Directors | `requireStaff` |
+  | Activity log (`/activity`, `GET /api/services/:id|current/events`) | Admins only | `requireAdmin` |
+
+  `GET /api/checklist` adds `service.reset` only for staff. The UI hides what a role can't use (`AppNav`, `ProgressPage`), and `test/client/stage4-roles.test.tsx` checks that it never offers what the server refuses.
+- **Reset and undo** (`db/resets.ts`):
+  - Reset archives active check-offs under a new `resets` row, storing `archived_count`. It's refused when nothing is checked, so an extra reset can't take away the chance to undo the real one.
+  - Undo restores only the latest reset, and only once. Tasks checked since the reset keep the newer check-off (D3).
+  - Both confirm first in the UI (`ConfirmDialog`, native `<dialog>`).
+- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress` and `/activity` (the Worker's SPA fallback serves them). The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
 - **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
 
 ## Rules from the requirements

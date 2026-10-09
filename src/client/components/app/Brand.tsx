@@ -1,7 +1,8 @@
 import { useBranding } from "../../lib/branding";
 
 // Header/sign-in branding from settings. Lines with no value are left out.
-export function Brand() {
+// compact: below the sm breakpoint show only the mark (if there is one), to leave room for navigation.
+export function Brand({ compact = false }: { compact?: boolean }) {
   const { shortName, teamName, appName } = useBranding();
   const title = teamName ?? appName ?? "Checklist";
   const subtitle = teamName ? appName : null;
@@ -16,7 +17,7 @@ export function Brand() {
           {shortName}
         </span>
       )}
-      <p className="min-w-0 leading-tight">
+      <p className={`min-w-0 leading-tight ${compact && shortName ? "hidden sm:block" : ""}`}>
         <span className="block truncate text-sm font-semibold">{title}</span>
         {subtitle && <span className="block truncate text-meta text-fg-muted">{subtitle}</span>}
       </p>
