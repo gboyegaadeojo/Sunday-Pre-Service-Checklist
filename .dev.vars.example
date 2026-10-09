@@ -1,0 +1,8 @@
+# Copy to .dev.vars for local development. .dev.vars is gitignored and must never be committed (US-16).
+
+# Signs the session cookie. Generate one with:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+SESSION_SECRET=
+
+# Enables the fake test-user sign-in locally. NEVER set DEV_AUTH in Cloudflare; production builds ignore it.
+DEV_AUTH=true

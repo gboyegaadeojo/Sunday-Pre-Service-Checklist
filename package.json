@@ -8,8 +8,8 @@
     "preview": "vite preview",
     "lint": "biome lint --error-on-warnings",
     "typecheck": "wrangler types && tsc -p tsconfig.app.json && tsc -p tsconfig.worker.json",
-    "test": "vitest run",
-    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "test": "vite build --logLevel warn && vitest run",
+    "check": "npm run lint && npm run typecheck && npm test",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "prepare": "git config core.hooksPath .githooks"
   },

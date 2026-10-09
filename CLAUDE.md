@@ -16,14 +16,16 @@ A checklist app for the IFC media team. They use it to prepare and verify the pr
 npm run dev          # applies local D1 migrations, then serves the app at http://localhost:5173
 npm run check        # lint + typecheck + tests + build: everything the pre-commit hook runs
 npm run lint         # Biome (lint only, no formatter). Warnings count as failures
-npm test             # Vitest inside the Workers runtime against a fresh local D1
-npx vitest run test/checklist.test.ts -t "hides deleted"   # single file / single test
+npm test             # production build, then Vitest inside the Workers runtime against a fresh local D1
+npx vitest run test/checklist.test.ts -t "hides deleted"   # single file / single test (no rebuild; production-build test uses the last dist/)
 npm run typecheck    # regenerates worker-configuration.d.ts (wrangler types), then tsc on client and worker
 npm run build        # production build into dist/
 npm run db:migrate   # apply migrations to the local D1 only
 ```
 
 Local D1 state lives in `.wrangler/state`. Delete that folder to reset the local database to schema + seed.
+
+First-time setup: copy `.dev.vars.example` to `.dev.vars` and fill in `SESSION_SECRET` (the file explains how to generate one). The dev server only reads `.dev.vars` at startup, so restart it after changing that file.
 
 ## Before every commit
 
@@ -51,9 +53,29 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - Section numbers ("1.", "2.") are derived from `sort_order` in the UI, not stored.
   - `0002_seed_ifc_checklist.sql` was generated from Section 6 of the requirements.
   - Migrations that have been applied must not be edited once deployed (Stage 9). Add a new migration instead.
-- **Tests** (`test/`) call the Hono app directly with `app.request(path, init, env)`, where `env` comes from `cloudflare:test`. Migrations are applied in `test/apply-migrations.ts`. Tests that modify data reset it in `beforeEach`.
-- **UI**: React + Tailwind v4, dark-only (booth use). Design tokens are defined in `@theme` in `src/client/styles.css`. Tailwind's default palette is switched off, so use only the token colours. Shared building blocks go in `src/client/components/ui/` and checklist screen components go in `src/client/components/checklist/`. Tap targets are at least 44 px, ideally 48. The layout must work at 375 px, 768 px and desktop widths.
-- **Planned, not built yet** (see build plan): signed-cookie sessions with roles re-read from D1 on every request, a `PlanningCenter` interface with fake and real implementations, Winnipeg-time "current service" logic, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
+- **Auth** (`src/worker/middleware/auth.ts`, `src/worker/lib/session.ts`):
+  - The `session` cookie is an HMAC-signed token holding only the user's Planning Center person ID. It lasts 30 days, is re-issued once it's over an hour old, and is HttpOnly and SameSite=Lax. It's Secure whenever the request is https.
+  - `loadSession` runs on all `/api/*` routes. It re-reads the user and their roles from D1 into `c.var.user` on every request (US-03).
+  - Guard routes with `requireUser` (signed in) or `requireAccess` (signed in and allowed in, per `hasAccess` in `lib/access.ts`). Errors carry `code: "signed_out"` (401) or `"no_access"` (403).
+  - `upsertSignedInUser` never overwrites existing role flags. Roles change only in-app.
+- **Fake sign-in** (`/api/dev/*`, with the test users in `src/worker/dev/fake-users.ts`; IDs start with `dev-`) is local-only and has two locks:
+  1. **Build time.** It's mounted only inside `if (import.meta.env.DEV)` in `src/worker/index.ts`. `vite build` sets that to false and drops the code, which is why the routes are built by the `createDevAuthRoutes()` factory: no module-level side effects. The production bundle contains no test users at all. `test/production-build.test.ts` builds the app and proves this (the bundle has no test-user strings, and `/api/dev/*` returns 404 even with `DEV_AUTH=true`).
+  2. **Run time, locally.** It answers only when `DEV_AUTH=true` is in `.dev.vars`.
+
+  Keep both locks. Never import from `src/worker/dev/` outside that `DEV` branch.
+- **`DEV_AUTH` must never be set in Cloudflare** (Worker variables or secrets, dashboard or `wrangler secret put`). It belongs only in local `.dev.vars`. A production Worker ignores it and logs an error if it's present.
+- **Tests** (`test/`):
+  - Use the helpers in `test/helpers.ts`: `request()` calls the Hono app with the test bindings, and `signInAs("volunteer" | "admin" | "director" | "outsider")` returns a session cookie.
+  - `vitest.config.ts` supplies `SESSION_SECRET` (random per run) and `DEV_AUTH`. Migrations are applied in `test/apply-migrations.ts`.
+  - Tests that modify data reset it in `beforeEach`.
+- **UI**:
+  - React + Tailwind v4, dark-only (booth use).
+  - Design tokens are defined in `@theme` in `src/client/styles.css`. Tailwind's default palette is switched off, so use only the token colours.
+  - Components live in `src/client/components/`: `ui/` for shared building blocks, `app/` for the header, brand and user menu, `checklist/` for checklist screen parts.
+  - `App.tsx` owns the session state (loading, signed out, signed in, error) from `GET /api/auth/me`. Pages call `onAccessChanged` when an API call returns 401 or 403 (`isAuthError` in `api.ts`).
+  - Use `usePopover` for menus.
+  - Tap targets are at least 44 px, ideally 48. The layout must work at 375 px, 768 px and desktop widths.
+- **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, Winnipeg-time "current service" logic, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
 
 ## Rules from the requirements
 

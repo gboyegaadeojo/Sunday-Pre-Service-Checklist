@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ChecklistResponse } from "../../shared/types";
-import { getJson } from "../api";
-import { AppHeader } from "../components/checklist/AppHeader";
+import { getJson, isAuthError } from "../api";
 import { DepartmentNav } from "../components/checklist/DepartmentNav";
 import { DepartmentPicker } from "../components/checklist/DepartmentPicker";
 import { DepartmentView } from "../components/checklist/DepartmentView";
@@ -13,7 +12,8 @@ type State =
   | { status: "error"; message: string }
   | { status: "ready"; checklist: ChecklistResponse };
 
-export function ChecklistPage() {
+/** onAccessChanged: the server said the session ended or access was revoked (US-03), so re-check. */
+export function ChecklistPage({ onAccessChanged }: { onAccessChanged: () => void }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<number>>(new Set());
@@ -23,9 +23,10 @@ export function ChecklistPage() {
     try {
       setState({ status: "ready", checklist: await getJson<ChecklistResponse>("/api/checklist") });
     } catch (err) {
+      if (isAuthError(err)) return onAccessChanged();
       setState({ status: "error", message: (err as Error).message });
     }
-  }, []);
+  }, [onAccessChanged]);
 
   useEffect(() => {
     void load();
@@ -44,9 +45,7 @@ export function ChecklistPage() {
   };
 
   return (
-    <>
-      <AppHeader />
-      <main className="mx-auto max-w-app px-4 pt-4 pb-16 md:px-6 md:pt-6">
+    <main className="mx-auto max-w-app px-4 pt-4 pb-16 md:px-6 md:pt-6">
         {state.status === "loading" && <LoadingState label="Loading checklist…" />}
 
         {state.status === "error" && (
@@ -54,8 +53,7 @@ export function ChecklistPage() {
         )}
 
         {state.status === "ready" && renderChecklist(state.checklist)}
-      </main>
-    </>
+    </main>
   );
 
   function renderChecklist(checklist: ChecklistResponse) {

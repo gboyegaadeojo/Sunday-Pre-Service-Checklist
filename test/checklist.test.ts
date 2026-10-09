@@ -1,12 +1,14 @@
 import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ChecklistResponse } from "../src/shared/types";
-import app from "../src/worker/index";
+import { request, signInAs, withCookie } from "./helpers";
 
-const getChecklist = () => app.request("/api/checklist", {}, env);
+let cookie: string;
+const getChecklist = () => request("/api/checklist", withCookie(cookie));
 
 // Undo any soft-deletes a test made, in case storage is shared between tests.
 beforeEach(async () => {
+  cookie = await signInAs("volunteer");
   await env.DB.batch([
     env.DB.prepare("UPDATE task_lists SET deleted_at = NULL, is_default = 1 WHERE id = 1"),
     env.DB.prepare("UPDATE categories SET deleted_at = NULL"),
@@ -70,7 +72,7 @@ describe("GET /api/checklist", () => {
 
 describe("unknown API routes", () => {
   it("return JSON 404", async () => {
-    const res = await app.request("/api/nope", {}, env);
+    const res = await request("/api/nope");
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Not found" });
   });

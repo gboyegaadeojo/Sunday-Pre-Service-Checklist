@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
 import type { ChecklistCategory } from "../../../shared/types";
 import { countCategoryTasks, plural } from "../../lib/checklist";
+import { usePopover } from "../../lib/usePopover";
 import { Chevron } from "../ui/Chevron";
 import { DepartmentNav } from "./DepartmentNav";
 
@@ -12,32 +12,12 @@ interface Props {
 
 // Mobile department menu (design.md §3C, §5): a sticky bar that opens the same list as the sidebar.
 export function DepartmentPicker({ departments, selected, onSelect }: Props) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setOpen(false);
-      buttonRef.current?.focus();
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  const { open, setOpen, close, rootRef, triggerRef } = usePopover();
 
   return (
     <div ref={rootRef} className="sticky top-14 z-20 -mx-4 mt-3 border-b border-line bg-bg px-4 py-2 md:hidden">
       <button
-        ref={buttonRef}
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -65,8 +45,7 @@ export function DepartmentPicker({ departments, selected, onSelect }: Props) {
             selectedId={selected.id}
             onSelect={(id) => {
               onSelect(id);
-              setOpen(false);
-              buttonRef.current?.focus();
+              close();
             }}
           />
         </nav>
