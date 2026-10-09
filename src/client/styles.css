@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Dark-only: the app is used in a low-light booth (US-08). */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-neutral-950 text-neutral-100 antialiased;
+}
