@@ -1,5 +1,5 @@
 import type { ChecklistCategory } from "../../../shared/types";
-import { countCategoryTasks, plural } from "../../lib/checklist";
+import { categoryProgress } from "../../lib/checklist";
 import { usePopover } from "../../lib/usePopover";
 import { Chevron } from "../ui/Chevron";
 import { DepartmentNav } from "./DepartmentNav";
@@ -13,6 +13,7 @@ interface Props {
 // Mobile department menu (design.md §3C, §5): a sticky bar that opens the same list as the sidebar.
 export function DepartmentPicker({ departments, selected, onSelect }: Props) {
   const { open, setOpen, close, rootRef, triggerRef } = usePopover();
+  const progress = categoryProgress(selected);
 
   return (
     <div ref={rootRef} className="sticky top-14 z-20 -mx-4 mt-3 border-b border-line bg-bg px-4 py-2 md:hidden">
@@ -29,7 +30,8 @@ export function DepartmentPicker({ departments, selected, onSelect }: Props) {
           <span className="block text-sm leading-snug font-semibold wrap-anywhere">{selected.name}</span>
         </span>
         <span className="shrink-0 text-meta text-fg-muted tabular-nums">
-          {plural(countCategoryTasks(selected), "task")}
+          {progress.done}/{progress.total}
+          <span className="sr-only"> tasks done</span>
         </span>
         <Chevron open={open} />
       </button>

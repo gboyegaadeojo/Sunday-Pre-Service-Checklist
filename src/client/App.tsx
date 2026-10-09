@@ -94,7 +94,7 @@ export function App() {
       <>
         <AppHeader user={user} onSignOut={() => void signOut()} signingOut={signingOut} signOutError={signOutError} />
         {user.hasAccess ? (
-          <ChecklistPage onAccessChanged={() => void loadSession()} />
+          <ChecklistPage user={user} onAccessChanged={() => void loadSession()} />
         ) : (
           <NoAccessPage onSignOut={() => void signOut()} signingOut={signingOut} />
         )}

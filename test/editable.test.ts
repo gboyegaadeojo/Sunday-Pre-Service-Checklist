@@ -1,7 +1,7 @@
 // "Everything is editable" (CLAUDE.md): church content and structure come from the database,
 // and the app copes with any shape of checklist.
 import { env } from "cloudflare:test";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { BrandingResponse, ChecklistResponse } from "../src/shared/types";
 import { request, signInAs, withCookie } from "./helpers";
 
@@ -57,7 +57,12 @@ describe("GET /api/branding", () => {
 });
 
 describe("checklist of any shape", () => {
+  // The current service is created from the default list on first view, so start and end without one.
+  const clearServices = () => env.DB.batch([env.DB.prepare("DELETE FROM checkoffs"), env.DB.prepare("DELETE FROM services")]);
+  beforeEach(clearServices);
+
   afterEach(async () => {
+    await clearServices();
     await env.DB.batch([
       env.DB.prepare("DELETE FROM tasks WHERE section_id IN (SELECT s.id FROM sections s JOIN categories c ON c.id = s.category_id WHERE c.list_id = 99)"),
       env.DB.prepare("DELETE FROM sections WHERE category_id IN (SELECT id FROM categories WHERE list_id = 99)"),

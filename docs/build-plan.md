@@ -120,6 +120,12 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 
 **Moves.** A move updates `tasks.section_id` or `sections.category_id` and gives the item the next `sort_order` at the end of its destination. Moves are only allowed to live destinations in the same list. Nothing in the code may assume which department owns a task; the seed is only a starting point.
 
+**checkoff_events** — append-only activity log (migration `0004`): one row per check or uncheck attempt that reaches the check-off logic.
+- Columns: `service_id`, `task_id`, `action` (check/uncheck), `outcome` (applied / no_change / not_found / service_changed), `user_pco_id`, `user_name`, `session_id` (random, fixed at sign-in, kept when the cookie renews), `tab_id` (random per page load, sent as `X-Tab-Id`), `user_agent`, `created_at`.
+- Written in the same transaction as the check-off itself.
+- Triggers abort any `UPDATE` or `DELETE`, so entries are never edited or removed.
+- No foreign keys, so the log outlives anything it mentions.
+
 **resets** — `id`, `service_id`, `reset_by_pco_id`, `reset_by_name`, `reset_at`, `undone_by_pco_id`, `undone_by_name`, `undone_at`. Only the most recent, not-yet-undone reset for a service can be undone (US-07).
 
 ### Planning Center
@@ -165,10 +171,12 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 ### Stage 4 — Progress view, reset and undo
 - A progress page for everyone with access (US-09, requirements v1.6): per-category counts, a colour plus a text label, and expandable rows showing who checked each task and when. It auto-refreshes every ~30 seconds and has a "last updated" time and a refresh button (US-09, US-10).
 - Reset with a confirmation prompt that archives check-offs, plus "Undo reset" (US-07). These controls show only for Admins and Directors, and the server returns 403 to Volunteers.
+- **Activity log for admins:** an Admin-only "Activity" view of `checkoff_events` for the current service. It shows time, person, check or uncheck, task, outcome, and short session and tab IDs, newest first. The server rejects non-admins. If it doesn't fit in Stage 4, it moves to the Stage 5 admin area (see below).
 - **Test in the browser:** use two browser profiles, one as Volunteer checking tasks and one as Director watching progress update. Confirm the Volunteer sees progress but no reset controls. Reset, then undo. Call the reset API as the Volunteer and confirm it's rejected.
 
 ### Stage 5 — Admin list management
 - Lists: create, edit, delete and set the default (US-11).
+- Service history (design.md §7) includes each past service's activity log from `checkoff_events`, read-only, unless Stage 4 already added the log view. Nothing in the admin area can edit or delete log entries.
 - Church settings screen (US-11a): time zone (validated IANA name), service weekday, and branding (short name, team name, app name). Admin-only on the server.
 - Categories, sections and tasks: add, rename or edit, reorder, and hidden delete with a confirmation prompt and warnings (US-12, US-12a, US-13).
 - **Restructuring (requirements v1.8):**

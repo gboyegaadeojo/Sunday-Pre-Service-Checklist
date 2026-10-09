@@ -31,8 +31,9 @@ const cookieOptions = (c: Context<AppEnv>) =>
     path: "/",
   }) as const;
 
-export async function startSession(c: Context<AppEnv>, userId: string, now = nowSeconds()) {
-  const token = await createSessionToken(sessionSecret(c), userId, now);
+/** Issues the session cookie. A new sign-in gets a new session ID; a renewal passes the existing one. */
+export async function startSession(c: Context<AppEnv>, userId: string, now = nowSeconds(), sessionId?: string) {
+  const token = await createSessionToken(sessionSecret(c), userId, now, sessionId);
   setCookie(c, SESSION_COOKIE, token, { ...cookieOptions(c), maxAge: SESSION_TTL_SECONDS });
 }
 
@@ -43,6 +44,7 @@ export function endSession(c: Context<AppEnv>) {
 /** Loads the signed-in user (roles fresh from D1) into c.var.user and renews the 30-day cookie. */
 export const loadSession = createMiddleware<AppEnv>(async (c, next) => {
   c.set("user", null);
+  c.set("sessionId", null);
   const token = getCookie(c, SESSION_COOKIE);
   if (token) {
     const now = nowSeconds();
@@ -52,9 +54,10 @@ export const loadSession = createMiddleware<AppEnv>(async (c, next) => {
       endSession(c);
     } else {
       c.set("user", user);
+      c.set("sessionId", session.sid);
       if (now - session.iat >= SESSION_RENEW_AFTER_SECONDS) {
         await touchUser(c.env.DB, user.id, new Date(now * 1000).toISOString());
-        await startSession(c, user.id, now);
+        await startSession(c, user.id, now, session.sid);
       }
     }
   }

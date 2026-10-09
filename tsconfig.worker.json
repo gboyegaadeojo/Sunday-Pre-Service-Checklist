@@ -22,5 +22,8 @@
     "src/worker",
     "src/shared",
     "test"
+  ],
+  "exclude": [
+    "test/client"
   ]
 }

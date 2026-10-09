@@ -8,6 +8,7 @@ export const SESSION_RENEW_AFTER_SECONDS = 60 * 60;
 
 export interface SessionPayload {
   sub: string; // Planning Center person ID
+  sid: string; // random session ID, fixed at sign-in and kept on renewal (audit log)
   iat: number; // issued at, seconds
   exp: number; // expires at, seconds
 }
@@ -29,8 +30,13 @@ const hmacKey = (secret: string) =>
     "verify",
   ]);
 
-export async function createSessionToken(secret: string, sub: string, now: number): Promise<string> {
-  const payload: SessionPayload = { sub, iat: now, exp: now + SESSION_TTL_SECONDS };
+export async function createSessionToken(
+  secret: string,
+  sub: string,
+  now: number,
+  sid: string = crypto.randomUUID(),
+): Promise<string> {
+  const payload: SessionPayload = { sub, sid, iat: now, exp: now + SESSION_TTL_SECONDS };
   const body = toBase64Url(encoder.encode(JSON.stringify(payload)));
   const signature = await crypto.subtle.sign("HMAC", await hmacKey(secret), encoder.encode(body));
   return `${body}.${toBase64Url(new Uint8Array(signature))}`;
@@ -49,7 +55,8 @@ export async function verifySessionToken(secret: string, token: string, now: num
     );
     if (!valid) return null;
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as SessionPayload;
-    if (typeof payload.sub !== "string" || typeof payload.exp !== "number" || payload.exp <= now) return null;
+    if (typeof payload.sub !== "string" || typeof payload.sid !== "string") return null;
+    if (typeof payload.exp !== "number" || payload.exp <= now) return null;
     return payload;
   } catch {
     return null; // malformed base64 or JSON

@@ -1,5 +1,6 @@
 import type { ChecklistCategory } from "../../../shared/types";
-import { countCategoryTasks, plural } from "../../lib/checklist";
+import { categoryProgress, progressStatus } from "../../lib/checklist";
+import { StatusDot } from "../ui/StatusDot";
 
 interface Props {
   departments: ChecklistCategory[];
@@ -7,13 +8,14 @@ interface Props {
   onSelect: (id: number) => void;
 }
 
-// Department list shared by the desktop sidebar and the mobile picker (design.md §3C).
-// Completed counts and status are added in Stage 3.
+// Department list shared by the desktop sidebar and the mobile picker (design.md §3C):
+// name, done/total, and status (dot plus a screen-reader label; the count is always visible).
 export function DepartmentNav({ departments, selectedId, onSelect }: Props) {
   return (
     <ul className="space-y-1">
       {departments.map((d) => {
         const selected = d.id === selectedId;
+        const progress = categoryProgress(d);
         return (
           <li key={d.id}>
             <button
@@ -28,8 +30,9 @@ export function DepartmentNav({ departments, selectedId, onSelect }: Props) {
                 <span aria-hidden="true" className="absolute inset-y-2.5 left-0 w-1 rounded-full bg-accent" />
               )}
               <span className="min-w-0 flex-1 leading-snug wrap-anywhere">{d.name}</span>
-              <span className="shrink-0 text-meta font-normal text-fg-muted tabular-nums">
-                {plural(countCategoryTasks(d), "task")}
+              <span className="flex shrink-0 items-center gap-2 text-meta font-normal text-fg-muted tabular-nums">
+                <StatusDot status={progressStatus(progress)} />
+                {progress.done}/{progress.total}
               </span>
             </button>
           </li>

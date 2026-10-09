@@ -10,6 +10,9 @@ const getChecklist = () => request("/api/checklist", withCookie(cookie));
 beforeEach(async () => {
   cookie = await signInAs("volunteer");
   await env.DB.batch([
+    // A fresh service each test, so it is created from the default list as the test leaves it.
+    env.DB.prepare("DELETE FROM checkoffs"),
+    env.DB.prepare("DELETE FROM services"),
     env.DB.prepare("UPDATE task_lists SET deleted_at = NULL, is_default = 1 WHERE id = 1"),
     env.DB.prepare("UPDATE categories SET deleted_at = NULL"),
     env.DB.prepare("UPDATE sections SET deleted_at = NULL"),

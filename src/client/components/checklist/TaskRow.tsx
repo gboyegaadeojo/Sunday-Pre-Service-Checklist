@@ -1,14 +1,43 @@
 import type { ChecklistTask } from "../../../shared/types";
+import { formatTime } from "../../lib/format";
+import { CheckIcon } from "../ui/Icons";
 
-// Read-only in Stage 1: no check-offs exist yet, so the row has no checkbox and is not interactive.
-// Stage 3 makes the whole row a 48px checkbox target (design.md §3E).
-export function TaskRow({ task }: { task: ChecklistTask }) {
+interface Props {
+  task: ChecklistTask;
+  timeZone: string;
+  saving: boolean;
+  onToggle: () => void;
+}
+
+// A task as a native checkbox: the whole row is the label, so it is one 48px+ tap target
+// (US-06, design.md §3E) and keyboard/screen-reader behaviour comes from the platform.
+export function TaskRow({ task, timeZone, saving, onToggle }: Props) {
+  const checked = task.checkoff !== null;
   return (
-    <li className="flex min-h-12 items-start gap-3 px-4 py-3">
-      <span aria-hidden="true" className="flex h-[1.375rem] w-6 shrink-0 items-center">
-        <span className="size-1.5 rounded-full bg-idle" />
-      </span>
-      <span className="max-w-[72ch] min-w-0 text-task text-fg wrap-anywhere">{task.text}</span>
+    <li>
+      <label
+        aria-busy={saving}
+        className="flex min-h-12 cursor-pointer items-start gap-3 px-4 py-3 transition-colors select-none hover:bg-hover has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-accent-soft"
+      >
+        <input type="checkbox" className="sr-only" checked={checked} onChange={onToggle} />
+        <span aria-hidden="true" className="flex h-[1.375rem] w-6 shrink-0 items-center">
+          <span
+            className={`grid size-5 place-items-center rounded-[5px] border-2 transition-colors ${
+              checked ? "border-success bg-success text-bg" : "border-fg-muted/70 bg-transparent"
+            }`}
+          >
+            {checked && <CheckIcon className="size-3.5" />}
+          </span>
+        </span>
+        <span className="min-w-0 max-w-[72ch]">
+          <span className={`block text-task wrap-anywhere ${checked ? "text-fg-muted" : "text-fg"}`}>{task.text}</span>
+          {task.checkoff && (
+            <span className="mt-0.5 block text-meta text-fg-muted">
+              {task.checkoff.by} · {formatTime(task.checkoff.at, timeZone)}
+            </span>
+          )}
+        </span>
+      </label>
     </li>
   );
 }

@@ -13,10 +13,16 @@ export class ApiError extends Error {
 /** 401 or 403: the session ended or access changed, so the app should re-check who is signed in. */
 export const isAuthError = (err: unknown) => err instanceof ApiError && (err.status === 401 || err.status === 403);
 
+/**
+ * Random ID for this page load, sent with every request and recorded in the server's check-off log, so
+ * activity can be traced to a browser tab. Uses getRandomValues, which also works on plain-http LAN testing.
+ */
+export const TAB_ID = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
+
 async function send<T>(path: string, init: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(path, { ...init, headers: { Accept: "application/json", ...init.headers } });
+    res = await fetch(path, { ...init, headers: { Accept: "application/json", "X-Tab-Id": TAB_ID, ...init.headers } });
   } catch {
     throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
@@ -30,6 +36,10 @@ async function send<T>(path: string, init: RequestInit): Promise<T> {
 }
 
 export const getJson = <T>(path: string) => send<T>(path, {});
+
+export const putJson = <T>(path: string) => send<T>(path, { method: "PUT" });
+
+export const deleteJson = <T>(path: string) => send<T>(path, { method: "DELETE" });
 
 export const postJson = <T = void>(path: string, body?: unknown) =>
   send<T>(path, {

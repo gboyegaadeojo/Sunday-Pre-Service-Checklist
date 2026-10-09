@@ -18,6 +18,7 @@ npm run check        # lint + typecheck + tests + build: everything the pre-comm
 npm run lint         # Biome (lint only, no formatter). Warnings count as failures
 npm test             # production build, then Vitest inside the Workers runtime against a fresh local D1
 npx vitest run test/checklist.test.ts -t "hides deleted"   # single file / single test (no rebuild; production-build test uses the last dist/)
+npx vitest run --project client   # browser-code tests only (happy-dom; test/client/*.test.tsx). --project worker for the rest
 npm run typecheck    # regenerates worker-configuration.d.ts (wrangler types), then tsc on client and worker
 npm run build        # production build into dist/
 npm run db:migrate   # apply migrations to the local D1 only
@@ -91,7 +92,18 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - Use `usePopover` for menus.
   - Tap targets are at least 44 px, ideally 48. The layout must work at 375 px, 768 px and desktop widths.
 - **Settings and branding.** Church-specific values live in the `settings` table (`src/worker/db/settings.ts`), seeded by `0003_default_settings.sql` and edited by admins (Stage 5). `GET /api/branding` is public and returns only the short name, team name and app name. The client shares them via `BrandingContext` (`src/client/lib/branding.ts`), and `Brand` and the tab title read from it. If a value is missing, it's left out; never add a church-specific fallback.
-- **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, Winnipeg-time "current service" logic, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
+- **Current service and check-offs** (Stage 3):
+  - `lib/service-day.ts` is pure date maths from the `time_zone` and `service_weekday` settings. `db/services.ts` `getCurrentService` creates the service row on first view with the default list at that moment, and the service keeps that list.
+  - Invalid or missing calendar settings throw (500). Never fall back to a hardcoded value.
+  - `PUT`/`DELETE /api/services/:serviceId/tasks/:taskId/checkoff` only accept the *current* service (409 `service_changed` otherwise) and tasks that are live in its list. A second check of an already-checked task keeps the first check-off.
+  - Client state lives in `lib/useChecklist.ts`: optimistic toggle, revert on failure, and `SaveState` for the "All changes saved" indicator. It reloads quietly when the tab becomes visible.
+  - Sections finished at page load start collapsed, decided once so a section never closes under the user's finger.
+- **Check-off activity log** (`checkoff_events`, migration `0004`):
+  - Every check or uncheck attempt that reaches the check-off logic is logged in the same `db.batch` transaction as the write. The outcome is computed in SQL with `changes()`.
+  - It records the user, the session ID (`sid` in the session token, kept on renewal), the tab ID (`X-Tab-Id`, a random value per page load from `api.ts`) and the user agent.
+  - It is **append-only**: triggers abort `UPDATE` and `DELETE`. Never work around them, and never clear the table in tests; read only rows after a marker ID instead.
+  - New code that changes check-offs (reset, undo in Stage 4) must log to it too.
+- **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
 
 ## Rules from the requirements
 
