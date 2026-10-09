@@ -26,7 +26,7 @@ export function DepartmentPicker({ departments, selected, onSelect }: Props) {
       >
         <span className="min-w-0 flex-1">
           <span className="block text-meta text-fg-muted">Department</span>
-          <span className="block text-sm leading-snug font-semibold">{selected.name}</span>
+          <span className="block text-sm leading-snug font-semibold wrap-anywhere">{selected.name}</span>
         </span>
         <span className="shrink-0 text-meta text-fg-muted tabular-nums">
           {plural(countCategoryTasks(selected), "task")}
@@ -38,7 +38,7 @@ export function DepartmentPicker({ departments, selected, onSelect }: Props) {
         <nav
           id="department-menu"
           aria-label="Departments"
-          className="absolute inset-x-4 top-full mt-1 rounded-card border border-line bg-panel p-1.5"
+          className="absolute inset-x-4 top-full mt-1 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-card border border-line bg-panel p-1.5"
         >
           <DepartmentNav
             departments={departments}

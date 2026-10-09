@@ -38,6 +38,13 @@ export interface CurrentUser {
   hasAccess: boolean;
 }
 
+/** Church branding from settings (admin-editable). A null field has no value set. */
+export interface BrandingResponse {
+  shortName: string | null;
+  teamName: string | null;
+  appName: string | null;
+}
+
 export interface MeResponse {
   user: CurrentUser;
 }

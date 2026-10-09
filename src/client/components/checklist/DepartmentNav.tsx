@@ -27,7 +27,7 @@ export function DepartmentNav({ departments, selectedId, onSelect }: Props) {
               {selected && (
                 <span aria-hidden="true" className="absolute inset-y-2.5 left-0 w-1 rounded-full bg-accent" />
               )}
-              <span className="flex-1 leading-snug">{d.name}</span>
+              <span className="min-w-0 flex-1 leading-snug wrap-anywhere">{d.name}</span>
               <span className="shrink-0 text-meta font-normal text-fg-muted tabular-nums">
                 {plural(countCategoryTasks(d), "task")}
               </span>

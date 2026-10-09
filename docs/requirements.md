@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.8 · **Date:** October 2026  
+> **Version:** 1.9 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.8
+## 0. Changes in Version 1.9
+
+| # | Change | Why |
+|---|--------|-----|
+| C15 | **Church-specific settings are admin-editable** (new US-11a): time zone and service weekday (seeded America/Winnipeg and Sunday), and the branding shown in the app (short name, team name, app name). US-05, US-07 and the decisions table now refer to the configured service day and time zone instead of fixed values. | The church will keep changing; nothing church-specific may be hardcoded. |
+
+## Changes in Version 1.8
 
 | # | Change | Why |
 |---|--------|-----|
@@ -143,7 +149,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Using the team mapping (US-15), the user's category is shown first and highlighted. Other categories are visible but collapsed or visually secondary.
 - If a volunteer is scheduled on multiple teams or positions, all of their categories are shown first.
 - If the user is a team member but not scheduled, or their team/position has no mapping, all categories are shown with none highlighted, and they can choose their department (remembered on that device for the day).
-- If no service is published in Planning Center, the user sees the default checklist for the upcoming Sunday with a note: "No service is published in Planning Center yet — your checklist is ready when you are."
+- If no service is published in Planning Center, the user sees the default checklist for the upcoming service day (US-07) with a note: "No service is published in Planning Center yet — your checklist is ready when you are."
 
 ---
 
@@ -164,8 +170,9 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 **Acceptance Criteria:**
 - Check-off state is stored per service, not per list definition. A new service automatically starts with every task unchecked — no scheduled reset job is needed.
 - **Current service** is defined as: the Planning Center plan, in the Service Type selected by an Admin (US-15), with the earliest date that is today or later. A service stays "current" until 11:59 PM on its date.
-- If no plan is published, the current service is the upcoming Sunday (or today, if today is Sunday).
-- All dates and times use the **America/Winnipeg** time zone, including daylight saving changes, even though the server runs in UTC.
+- If no plan is published, the current service is the next **service weekday** (or today, if today is that weekday).
+- All dates and times use the church's **time zone**, including daylight saving changes, even though the server runs in UTC.
+- The service weekday and time zone are settings an Admin can change in the app (US-11a). They are seeded as Sunday and America/Winnipeg; neither is fixed in code.
 - Admins and Directors can manually reset the current service's checklist. Volunteers cannot.
 - Reset shows a confirmation prompt: "This will clear all check-offs for this service. Are you sure?"
 - A reset is not destructive: cleared check-offs are archived, and an Admin or Director can restore them with an "Undo reset" option until the next reset.
@@ -219,8 +226,20 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 **Acceptance Criteria:**
 - Admin can create a list with a name and optional description.
-- One list can be set as the default for regular Sunday services.
+- One list can be set as the default for regular services.
 - Lists appear in an admin management view.
+
+---
+
+**US-11a — Admin edits church settings**  
+*As an admin, I want to change the church's settings in the app, so nothing church-specific needs a developer.*
+
+**Acceptance Criteria:**
+- Admin can edit the **time zone** (validated as a real IANA time zone, e.g. America/Winnipeg) and the **service weekday** (US-07).
+- Admin can edit the **branding** shown in the header, on the sign-in screen, and in the browser tab: short name (logo mark), team name, and app name. Empty values are simply left out of the display.
+- Seeded starting values: America/Winnipeg, Sunday, "IFC", "IFC Production", "Pre-Service Checklist".
+- Changes take effect on the next page load. Only Admins can change settings; the server rejects anyone else.
+- The branding values are readable without signing in (the sign-in screen shows them); no other setting is exposed publicly.
 
 ---
 
@@ -347,7 +366,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Roles: Volunteer, Admin, Director, Not on a media team
 - Admin and Director flags in the app database, manageable by Admins in-app
 - Fallback when Planning Center data is unavailable (manual department selection)
-- One service per Sunday; per-service check-off state; "current service" defined in Winnipeg time
+- One service per service day; per-service check-off state; "current service" defined in the church's time zone (both admin-editable settings)
 - Manual reset (Admins/Directors only) with confirmation and undo
 - Hidden-not-erased deletes; task text snapshots on check-off
 - Mobile-responsive UI with dark theme
@@ -359,7 +378,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 ### Later — Explicitly Out of Scope for V1
 - Push notifications / SMS alerts when a category falls behind
 - Multiple simultaneous active checklists per service
-- Multiple services per Sunday
+- Multiple services per service day
 - Assigning tasks to specific individuals (not just departments)
 - Comments or notes on individual tasks
 - Historical reporting / analytics across multiple services
@@ -377,8 +396,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 |---|----------|----------|
 | Q1 | Admin identification | App-managed flag in D1, keyed by Planning Center person ID. First admin seeded at deploy. |
 | Q2 | Director identification | Same mechanism — separate Director flag, granted by Admins in-app. |
-| Q3 | No service published yet | Show the default checklist for the upcoming Sunday with a note. |
-| Q4 | Multiple service times? | No — single service per Sunday. |
+| Q3 | No service published yet | Show the default checklist for the upcoming service day with a note. |
+| Q4 | Multiple service times? | No — single service per service day (weekday is an admin setting, seeded Sunday). |
 | Q5 | Hosting | Cloudflare Workers, Free plan ($0). Chosen over Vercel (free plan limited to personal, non-commercial use). |
 | Q6 | Database | Cloudflare D1, Free plan ($0). Chosen over Supabase (free projects can pause after 7 days of low activity). |
 | Q7 | Planning Center API access | Two credentials: an OAuth app for volunteer sign-in, and a church-level access token for reading teams and schedules. Both registered at api.planningcenteronline.com by someone with the right Planning Center permissions. |
@@ -388,7 +407,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q11 | Seed checklist content | IFC Pre-Service Checklist (Section 6). Editable by Admins after launch. |
 | Q12 | Who gets access | Members of any linked media team (roster, not just this week's schedule), plus Admins and Directors. |
 | Q13 | Mapping Planning Center to categories | Admin screen links teams/positions (by Planning Center ID) to categories. Position link overrides team link. |
-| Q14 | Time zone | America/Winnipeg for all service dates and times. |
+| Q14 | Time zone | The church's time zone, an admin setting (seeded America/Winnipeg), for all service dates and times. |
 | Q15 | Deleting tasks/categories | Hidden, not erased. Past records are never broken. |
 | Q16 | Editing sections | Admins can add, rename, reorder, and delete (hide) sections within a category (US-12a). |
 | Q17 | One team in several categories? | No — each team or position links to exactly one category. |
@@ -396,6 +415,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q19 | Who sees the progress view | Everyone with access (Volunteers, Admins, Directors). Reset/undo: Admins and Directors only. List management and team mapping: Admins only. |
 | Q20 | Restructuring the checklist | Admins can move tasks between sections (any department) and sections between departments, and reorder everything, using a phone-friendly "Move to…" menu. Moves stay within the same list. Drag-and-drop is optional on desktop. |
 | Q21 | History after a move | Check-offs snapshot task text, department, and section. Past services show tasks where they were at check-off time. A task moved mid-service keeps its check-off. |
+| Q22 | Church-specific values | Nothing church-specific is hardcoded: structure, content, Planning Center names, service day, time zone and branding all come from the database and are admin-editable (US-11a). The seed is only starting data. |
 
 ---
 
@@ -630,4 +650,4 @@ Planning Center data is cached briefly on the server (a few minutes per service)
 
 ---
 
-*End of Requirements — Version 1.8*
+*End of Requirements — Version 1.9*

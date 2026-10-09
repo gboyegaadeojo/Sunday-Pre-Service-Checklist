@@ -27,6 +27,10 @@ Local D1 state lives in `.wrangler/state`. Delete that folder to reset the local
 
 First-time setup: copy `.dev.vars.example` to `.dev.vars` and fill in `SESSION_SECRET` (the file explains how to generate one). The dev server only reads `.dev.vars` at startup, so restart it after changing that file.
 
+## Everything is editable
+
+The church will keep changing its checklist, departments, and team structure. Never hardcode church-specific content or structure in the code. This includes department names, the number of departments, sections, tasks, task text, task lists, Planning Center position or team names, service times, and church name or email. All of it must come from the database and be editable by admins in the app. The seed file is only starting data. Layouts must work with any number of departments, sections, or tasks. If a requirement seems to need something hardcoded, stop and ask the user first.
+
 ## Before every commit
 
 Before committing, always:
@@ -86,10 +90,11 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - `App.tsx` owns the session state (loading, signed out, signed in, error) from `GET /api/auth/me`. Pages call `onAccessChanged` when an API call returns 401 or 403 (`isAuthError` in `api.ts`).
   - Use `usePopover` for menus.
   - Tap targets are at least 44 px, ideally 48. The layout must work at 375 px, 768 px and desktop widths.
+- **Settings and branding.** Church-specific values live in the `settings` table (`src/worker/db/settings.ts`), seeded by `0003_default_settings.sql` and edited by admins (Stage 5). `GET /api/branding` is public and returns only the short name, team name and app name. The client shares them via `BrandingContext` (`src/client/lib/branding.ts`), and `Brand` and the tab title read from it. If a value is missing, it's left out; never add a church-specific fallback.
 - **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, Winnipeg-time "current service" logic, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
 
 ## Rules from the requirements
 
 - Secrets go only in Worker secrets or `.dev.vars` (gitignored). They must never appear in code or in browser responses (US-16).
 - The browser never talks to D1 or Planning Center directly. The server checks the session and role on every request and returns only the data that role is allowed to see (US-17).
-- All service dates and times use America/Winnipeg (US-07).
+- All service dates and times use the church's time zone and service weekday from the `settings` table (US-07, US-11a; seeded America/Winnipeg and Sunday). Never write a time zone or weekday into code.

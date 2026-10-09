@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { loadSession } from "./middleware/auth";
 import { authRoutes } from "./routes/auth";
+import { brandingRoutes } from "./routes/branding";
 import { checklistRoutes } from "./routes/checklist";
 import { createDevAuthRoutes } from "./routes/dev-auth";
 import type { AppEnv } from "./types";
@@ -11,6 +12,7 @@ const app = new Hono<AppEnv>();
 app.use("/api/*", loadSession);
 
 app.route("/api/auth", authRoutes);
+app.route("/api/branding", brandingRoutes);
 app.route("/api/checklist", checklistRoutes);
 
 // Fake sign-in exists only in local development (vite dev server and tests). `vite build` replaces

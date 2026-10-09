@@ -8,7 +8,7 @@ export function TaskRow({ task }: { task: ChecklistTask }) {
       <span aria-hidden="true" className="flex h-[1.375rem] w-6 shrink-0 items-center">
         <span className="size-1.5 rounded-full bg-idle" />
       </span>
-      <span className="max-w-[72ch] text-task text-fg">{task.text}</span>
+      <span className="max-w-[72ch] min-w-0 text-task text-fg wrap-anywhere">{task.text}</span>
     </li>
   );
 }

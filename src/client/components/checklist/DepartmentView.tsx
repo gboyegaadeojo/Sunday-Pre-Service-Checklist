@@ -13,7 +13,7 @@ export function DepartmentView({ department, collapsedSections, onToggleSection 
   return (
     <section aria-labelledby="department-heading">
       <header className="mb-4">
-        <h1 id="department-heading" className="text-page font-semibold tracking-tight">
+        <h1 id="department-heading" className="text-page font-semibold tracking-tight wrap-anywhere">
           {department.name}
         </h1>
         <p className="mt-0.5 text-meta text-fg-muted">

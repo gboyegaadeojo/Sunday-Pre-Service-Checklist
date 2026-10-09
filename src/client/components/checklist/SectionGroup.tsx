@@ -25,18 +25,23 @@ export function SectionGroup({ section, number, expanded, onToggle }: Props) {
           className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-hover"
         >
           <span className="w-6 shrink-0 text-meta text-fg-muted tabular-nums">{number}.</span>
-          <span className="flex-1 text-base leading-snug font-semibold">{section.name}</span>
+          <span className="min-w-0 flex-1 text-base leading-snug font-semibold wrap-anywhere">{section.name}</span>
           <span className="shrink-0 text-meta text-fg-muted tabular-nums">{plural(section.tasks.length, "task")}</span>
           <Chevron open={expanded} />
         </button>
       </h2>
-      {expanded && (
-        <ul id={panelId} className="pb-2">
-          {section.tasks.map((task) => (
-            <TaskRow key={task.id} task={task} />
-          ))}
-        </ul>
-      )}
+      {expanded &&
+        (section.tasks.length === 0 ? (
+          <p id={panelId} className="px-4 pb-4 pl-13 text-meta text-fg-muted">
+            No tasks in this section yet.
+          </p>
+        ) : (
+          <ul id={panelId} className="pb-2">
+            {section.tasks.map((task) => (
+              <TaskRow key={task.id} task={task} />
+            ))}
+          </ul>
+        ))}
     </div>
   );
 }

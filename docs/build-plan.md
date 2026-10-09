@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.8 · **Date:** October 2026
+> **Based on:** requirements.md v1.9 · **Date:** October 2026
 > **Status:** Approved
 
 ---
@@ -17,7 +17,7 @@
 | Styling | **Tailwind CSS** | Dark theme by default, responsive layouts at 375 and 768 px, and easy 44 px tap targets. |
 | Database schema | **Plain SQL migrations** using `wrangler d1 migrations` | No ORM dependency. Typed query helpers live in one file. |
 | Sessions | HMAC-signed cookie (HttpOnly, Secure, SameSite=Lax, 30-day sliding expiry) built with Web Crypto | No session library needed. Roles are re-read from D1 on every request (US-03). |
-| Time zone | `Intl.DateTimeFormat` with `America/Winnipeg` | Built into Workers and handles daylight saving (US-07). |
+| Time zone | `Intl.DateTimeFormat` with the church's time zone from settings (seeded `America/Winnipeg`) | Built into Workers and handles daylight saving (US-07, US-11a). |
 | Tests | **Vitest** with `@cloudflare/vitest-pool-workers` | Runs server tests inside the Workers runtime against a real local D1. Covers the risky logic: current service, access rules, team mapping and reset/undo. |
 | Planning Center | A `PlanningCenter` interface with two implementations: **Fake** (stages 1–7) and **Real** (stage 8) | Every Planning Center–dependent feature can be built and tested before real credentials exist. The fake can also simulate an outage. |
 
@@ -35,13 +35,14 @@
 ├── .dev.vars.example         # Template only. Real .dev.vars is gitignored (US-16)
 ├── migrations/
 │   ├── 0001_schema.sql
-│   └── 0002_seed_ifc_checklist.sql   # Section 6 of requirements (US-14)
+│   ├── 0002_seed_ifc_checklist.sql   # Section 6 of requirements (US-14)
+│   └── 0003_default_settings.sql     # starting branding, time zone, service weekday (US-11a)
 ├── src/
 │   ├── worker/
 │   │   ├── index.ts          # Hono app: mounts routes and middleware
 │   │   ├── middleware/       # session loading, role guards (requireAdmin, requireStaff)
 │   │   ├── routes/           # auth, dev-auth, checklist, progress, admin-lists, admin-users, admin-mapping
-│   │   ├── lib/              # session, time (Winnipeg), current-service, access, reset
+│   │   ├── lib/              # session, time (church time zone), current-service, access, reset
 │   │   ├── db/               # typed query helpers
 │   │   └── pco/              # PlanningCenter interface, fake.ts, real.ts, cache.ts
 │   ├── client/
@@ -62,7 +63,7 @@
 
 ## 3. Database Tables
 
-All IDs are integers unless noted. Planning Center IDs are stored as text. Timestamps are ISO 8601 UTC. Service dates are `YYYY-MM-DD` in Winnipeg time.
+All IDs are integers unless noted. Planning Center IDs are stored as text. Timestamps are ISO 8601 UTC. Service dates are `YYYY-MM-DD` in the church's time zone (a setting).
 
 ### Users and settings
 
@@ -75,7 +76,7 @@ All IDs are integers unless noted. Planning Center IDs are stored as text. Times
 | `team_verified_at` | Last time membership in a linked team was confirmed (US-02, US-04a: 90-day rule) |
 | `created_at`, `last_seen_at` | |
 
-**settings** — key/value table. Holds the selected Planning Center Service Type ID and name (US-15).
+**settings** — key/value table of church-specific values, all admin-editable (US-11a, US-15): `church_short_name`, `team_name`, `app_name` (branding, public via `GET /api/branding`), `time_zone` (IANA), `service_weekday` (0 = Sunday … 6 = Saturday), and the selected Planning Center Service Type. Starting values come from `0003_default_settings.sql`; code never supplies defaults.
 
 ### Checklist definition
 
@@ -91,11 +92,11 @@ Deletes set `deleted_at` instead of removing the row (US-12, US-13).
 
 ### Services and check-offs
 
-**services** — one row per service (single service per Sunday, Q4)
+**services** — one row per service (single service per service day, Q4)
 | Column | Notes |
 |--------|-------|
 | `id` | |
-| `service_date` UNIQUE | Winnipeg date |
+| `service_date` UNIQUE | Date in the church's time zone |
 | `pco_plan_id` | Null when no plan is published (Q3). Filled in if a plan appears later |
 | `list_id` → task_lists | List used for this service (the default list at creation time) |
 | `created_at` | |
@@ -157,7 +158,7 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 - **Test in the browser:** sign in as each fake user and confirm what each one can see. Delete the cookie and confirm you're sent back to sign-in.
 
 ### Stage 3 — Check-offs per service
-- Calculate the current service in Winnipeg time (stages 3–6 use upcoming Sunday or today; Planning Center plans come in stage 7). Show the "No service is published…" note (US-05).
+- Calculate the current service using the `time_zone` and `service_weekday` settings. Stages 3–6 use the next service weekday or today; Planning Center plans come in Stage 7. Show the "No service is published…" note (US-05).
 - Tap to check or uncheck with an optimistic update and revert on error. Record who and when, plus snapshots of the task text, department and section (US-06, US-13).
 - **Test in the browser:** check tasks as the Volunteer, then sign in as the Admin and see the same ticks with names and times. Stop the dev server mid-tap to see the checkmark revert and the error appear.
 
@@ -168,6 +169,7 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 
 ### Stage 5 — Admin list management
 - Lists: create, edit, delete and set the default (US-11).
+- Church settings screen (US-11a): time zone (validated IANA name), service weekday, and branding (short name, team name, app name). Admin-only on the server.
 - Categories, sections and tasks: add, rename or edit, reorder, and hidden delete with a confirmation prompt and warnings (US-12, US-12a, US-13).
 - **Restructuring (requirements v1.8):**
   - Each task has a "Move to…" menu: choose a department, then a section. It can go to any live section in the list, including other departments.
@@ -187,12 +189,12 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 - **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the reset controls appear.
 
 ### Stage 7 — Team mapping and access, with the fake Planning Center
-- The Fake Planning Center provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its positions use the church's real Planning Center position names (below).
+- The Fake Planning Center provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its sample data, including the church's real position names (below), lives in a **dev-only data file** under `src/worker/dev/`. Production builds drop it, as with the test users, and the production-build test checks those names are absent. **Nothing is mapped automatically:** admins link every team or position in the mapping screen, with the fake data as with real data.
 - Admin mapping screen: pick a Service Type, then link teams or positions to categories. Unlinked items are marked, position links override team links, and items that have gone missing are flagged (US-15).
 - Access is based on linked-team membership and the `team_verified_at` stamp (US-02). Scheduled categories are highlighted first, and users who aren't scheduled see a note (US-05).
 - Manual department pick is remembered on the device for the day. Fallback banner and 90-day rule when Planning Center is "down" (US-04a). Current service now comes from Planning Center plans (US-07).
 - `pco_cache` is used here.
-- **Expected mapping** of the church's real Planning Center positions to checklist departments (requirements v1.7):
+- **Expected mapping** of the church's real Planning Center positions to checklist departments (requirements v1.7). This is for the admins to set up in the app, never hardcoded:
 
   | Planning Center position | Checklist department |
   |---|---|

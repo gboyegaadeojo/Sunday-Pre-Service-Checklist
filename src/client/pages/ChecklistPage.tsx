@@ -69,7 +69,7 @@ export function ChecklistPage({ onAccessChanged }: { onAccessChanged: () => void
         <DepartmentPicker departments={departments} selected={selected} onSelect={selectDepartment} />
         <div className="mt-4 md:mt-6 md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-8">
           <aside className="hidden md:block">
-            <nav aria-label="Departments" className="sticky top-20">
+            <nav aria-label="Departments" className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain pb-2">
               <p className="mb-2 px-4 text-meta font-medium text-fg-muted">Departments</p>
               <DepartmentNav departments={departments} selectedId={selected.id} onSelect={selectDepartment} />
             </nav>
