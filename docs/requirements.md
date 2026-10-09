@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.7 · **Date:** October 2026  
+> **Version:** 1.8 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.7
+## 0. Changes in Version 1.8
+
+| # | Change | Why |
+|---|--------|-----|
+| C14 | **Admins can restructure the checklist freely** (US-12, US-12a, US-13): move a task to any section in any department, move a whole section to another department, and reorder departments, sections, and tasks, using a "Move to…" menu that works on a phone. Check-offs now also snapshot the department and section (US-06), so past services show tasks where they were at the time. | The seeded checklist is only a starting point. Which department owns a task must be data the admins control, never fixed in code. |
+
+## Changes in Version 1.7
 
 | # | Change | Why |
 |---|--------|-----|
@@ -146,7 +152,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 **Acceptance Criteria:**
 - Each task has a tap target of at least 44×44 px.
-- Tapping marks the task complete and records the volunteer's display name, Planning Center person ID, a timestamp, and a snapshot of the task text at that moment.
+- Tapping marks the task complete and records the volunteer's display name, Planning Center person ID, a timestamp, and a snapshot of the task text, its department, and its section at that moment (US-13).
 - The UI updates immediately (optimistic update). If the save fails, the checkmark reverts and a brief error message appears.
 - A completed task can be unchecked. Unchecking records who unchecked it and when.
 
@@ -223,29 +229,36 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 **Acceptance Criteria:**
 - Admin can add, rename, delete (with confirmation + warning if tasks exist), and reorder categories.
-- Reorder via drag-and-drop or up/down controls.
+- Reorder with up/down controls or a "Move to…" menu that work on a phone. Drag-and-drop may be added on desktop but is never the only way.
 - Deleting a category hides it from current and future checklists but keeps it in the database, so past service records still display correctly. A deleted category's team mappings are removed, with a warning shown first.
 - Changes are immediately live for the next volunteer who loads the checklist.
 
 ---
 
 **US-12a — Admin manages sections within a category**  
-*As an admin, I want to add, rename, reorder, and delete the numbered sections inside a department so the checklist matches how we actually work.*
+*As an admin, I want to add, rename, reorder, move, and delete the numbered sections inside a department so the checklist matches how we actually work.*
 
 **Acceptance Criteria:**
 - Admin can add, rename, delete (with confirmation + warning if tasks exist), and reorder sections within a category.
-- Reorder via drag-and-drop or up/down controls.
+- Admin can move a whole section, with all its tasks, to a different department in the same list using a "Move to…" menu that works on a phone. The section is placed at the end of the destination department and can then be reordered.
+- Reorder with up/down controls or the "Move to…" menu. Drag-and-drop may be added on desktop but is never the only way.
+- Moving a section never changes past service records, and existing check-offs on its tasks stay attached (US-13).
 - Deleting a section hides it and its tasks from current and future checklists but keeps them in the database, so past service records still display correctly.
 - Changes are immediately live for the next volunteer who loads the checklist.
 
 ---
 
 **US-13 — Admin manages tasks within a category**  
-*As an admin, I want to add, edit, reorder, and delete individual tasks as the team streamlines its workflow.*
+*As an admin, I want to add, edit, reorder, move, and delete individual tasks as the team streamlines its workflow.*
 
 **Acceptance Criteria:**
-- Admin can add, edit, delete (with confirmation), and reorder tasks within a category.
+- Admin can add, edit, delete (with confirmation), and reorder tasks within a section.
+- Admin can move a task to any other section in the same list, including a section in a different department, using a "Move to…" menu (choose department, then section) that works on a phone. The task is placed at the end of the destination section and can then be reordered. Drag-and-drop may be added on desktop but is never the only way.
+- Tasks, sections, and departments can only be moved to live (not deleted) destinations.
 - No limit to the number of tasks per category.
+- **History rule:** moving a task or section never changes past records. Each check-off stores a snapshot of the task text, department, and section at check-off time (US-06), so past services show tasks where they were back then.
+- Moving a task during a live service keeps any existing check-off on it. The current service's checklist and progress view show the task, still checked, in its new place; the check-off record keeps the department and section it was checked in.
+- Which department or section a task belongs to is data that admins control. Nothing about it is hardcoded in the application; the seeded checklist (US-14) is only a starting point.
 - If a task is edited while a service is in progress, existing check-offs remain linked to the task. Past records show the task text snapshot saved at check-off time (US-06).
 - Deleting a task hides it from current and future checklists but keeps it in the database, so past service records are never broken.
 - No developer involvement required — all changes happen through the admin UI.
@@ -381,6 +394,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q17 | One team in several categories? | No — each team or position links to exactly one category. |
 | Q18 | Undo reset after a task was re-checked | The newer check-off wins; the archived one is not restored for that task. |
 | Q19 | Who sees the progress view | Everyone with access (Volunteers, Admins, Directors). Reset/undo: Admins and Directors only. List management and team mapping: Admins only. |
+| Q20 | Restructuring the checklist | Admins can move tasks between sections (any department) and sections between departments, and reorder everything, using a phone-friendly "Move to…" menu. Moves stay within the same list. Drag-and-drop is optional on desktop. |
+| Q21 | History after a move | Check-offs snapshot task text, department, and section. Past services show tasks where they were at check-off time. A task moved mid-service keeps its check-off. |
 
 ---
 
@@ -615,4 +630,4 @@ Planning Center data is cached briefly on the server (a few minutes per service)
 
 ---
 
-*End of Requirements — Version 1.7*
+*End of Requirements — Version 1.8*

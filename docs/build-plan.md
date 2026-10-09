@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.7 · **Date:** October 2026
+> **Based on:** requirements.md v1.8 · **Date:** October 2026
 > **Status:** Approved
 
 ---
@@ -107,11 +107,17 @@ Rows are created lazily the first time someone opens that service. No scheduled 
 |--------|-------|
 | `id`, `service_id`, `task_id` | |
 | `task_text_snapshot` | Task text at the moment of check-off (US-06, C8) |
+| `category_id_snapshot` → categories, `category_name_snapshot` | Department the task was in when checked (US-13 history rule, C14). The ID groups past records reliably; the name shows the department as it was called then |
+| `section_id_snapshot` → sections, `section_name_snapshot` | Section the task was in when checked, likewise |
 | `checked_by_pco_id`, `checked_by_name`, `checked_at` | |
 | `unchecked_by_pco_id`, `unchecked_by_name`, `unchecked_at` | Null while checked |
 | `reset_id` → resets | Set when a reset archives this row |
 
 A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A partial unique index on `(service_id, task_id)` for active rows stops two people from double-checking the same task at the same moment.
+
+**Where a check-off is shown.** The *current* service's checklist and progress view place each check-off by its task's current location, joining on `task_id`. So a task moved mid-service stays checked in its new place. *Past* services and service history group check-offs by the snapshot columns, so moves and renames never rewrite history. Past records cover what was checked. Unchecked tasks in a past service aren't stored per service.
+
+**Moves.** A move updates `tasks.section_id` or `sections.category_id` and gives the item the next `sort_order` at the end of its destination. Moves are only allowed to live destinations in the same list. Nothing in the code may assume which department owns a task; the seed is only a starting point.
 
 **resets** — `id`, `service_id`, `reset_by_pco_id`, `reset_by_name`, `reset_at`, `undone_by_pco_id`, `undone_by_name`, `undone_at`. Only the most recent, not-yet-undone reset for a service can be undone (US-07).
 
@@ -152,7 +158,7 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 
 ### Stage 3 — Check-offs per service
 - Calculate the current service in Winnipeg time (stages 3–6 use upcoming Sunday or today; Planning Center plans come in stage 7). Show the "No service is published…" note (US-05).
-- Tap to check or uncheck with an optimistic update and revert on error. Record who and when, plus the task text snapshot (US-06).
+- Tap to check or uncheck with an optimistic update and revert on error. Record who and when, plus snapshots of the task text, department and section (US-06, US-13).
 - **Test in the browser:** check tasks as the Volunteer, then sign in as the Admin and see the same ticks with names and times. Stop the dev server mid-tap to see the checkmark revert and the error appear.
 
 ### Stage 4 — Progress view, reset and undo
@@ -162,9 +168,19 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 
 ### Stage 5 — Admin list management
 - Lists: create, edit, delete and set the default (US-11).
-- Categories, sections and tasks: add, rename or edit, reorder with up/down controls, and hidden delete with a confirmation prompt and warnings (US-12, US-13).
-- Server rejects all of these for non-admins, including Directors.
-- **Test in the browser:** edit a task that's already checked and confirm the progress history still shows the old text. Delete a category and confirm it disappears from the checklist but past data still displays.
+- Categories, sections and tasks: add, rename or edit, reorder, and hidden delete with a confirmation prompt and warnings (US-12, US-12a, US-13).
+- **Restructuring (requirements v1.8):**
+  - Each task has a "Move to…" menu: choose a department, then a section. It can go to any live section in the list, including other departments.
+  - Each section has "Move to…": choose a department, and it moves with all its tasks.
+  - Departments, sections and tasks can all be reordered with up/down controls.
+  - Everything works on a phone. Desktop drag-and-drop is optional and not planned for the first pass.
+  - Moved items go to the end of their destination.
+- The server rejects all of these for non-admins, including Directors. It also rejects moves to deleted destinations or another list.
+- **Test in the browser:**
+  - Edit a task that's already checked and confirm the progress history still shows the old text.
+  - Move a checked task from Audio Engineer to Camera Operators during the current service. It stays checked and counts toward Camera Operators now, while its check-off record still says Audio Engineer.
+  - Move a whole section to another department on a 375 px screen.
+  - Delete a category and confirm it disappears from the checklist but past data still displays.
 
 ### Stage 6 — Admin user management
 - Users page: grant or revoke Admin and Director (US-03). Revoking takes effect on the user's next page load.

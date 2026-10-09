@@ -51,6 +51,8 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - The checklist definition is task_lists → categories → sections → tasks.
   - Definition rows are never deleted. `deleted_at` hides them, so every read must filter `deleted_at IS NULL` (US-12, US-12a, US-13).
   - Section numbers ("1.", "2.") are derived from `sort_order` in the UI, not stored.
+  - **The structure is data, never code.** Admins can move tasks between sections and departments, move sections between departments, and reorder everything (US-12, US-12a, US-13). Application code must never hardcode department or section names, IDs or ownership. Tests may use seed names.
+  - Check-offs snapshot the task text, department and section (`*_snapshot` columns). The current service places check-offs by the task's current location (`task_id`), so a moved task stays checked. Past services and history use the snapshots.
   - `0002_seed_ifc_checklist.sql` was generated from Section 6 of the requirements.
   - Migrations that have been applied must not be edited once deployed (Stage 9). Add a new migration instead.
 - **Auth** (`src/worker/middleware/auth.ts`, `src/worker/lib/session.ts`):

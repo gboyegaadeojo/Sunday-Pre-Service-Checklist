@@ -87,18 +87,25 @@ CREATE TABLE resets (
 CREATE INDEX resets_service ON resets (service_id);
 
 -- One row per check. Unchecking fills unchecked_*; a reset fills reset_id.
+-- The *_snapshot columns record the task's text, department and section at check-off time, so
+-- past services show tasks where they were even after admins move or rename them (US-06, US-13).
+-- The current service places check-offs by the task's current location (via task_id) instead.
 CREATE TABLE checkoffs (
-  id                  INTEGER PRIMARY KEY,
-  service_id          INTEGER NOT NULL REFERENCES services (id),
-  task_id             INTEGER NOT NULL REFERENCES tasks (id),
-  task_text_snapshot  TEXT NOT NULL,
-  checked_by_pco_id   TEXT NOT NULL,
-  checked_by_name     TEXT NOT NULL,
-  checked_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  unchecked_by_pco_id TEXT,
-  unchecked_by_name   TEXT,
-  unchecked_at        TEXT,
-  reset_id            INTEGER REFERENCES resets (id)
+  id                     INTEGER PRIMARY KEY,
+  service_id             INTEGER NOT NULL REFERENCES services (id),
+  task_id                INTEGER NOT NULL REFERENCES tasks (id),
+  task_text_snapshot     TEXT NOT NULL,
+  category_id_snapshot   INTEGER NOT NULL REFERENCES categories (id),
+  category_name_snapshot TEXT NOT NULL,
+  section_id_snapshot    INTEGER NOT NULL REFERENCES sections (id),
+  section_name_snapshot  TEXT NOT NULL,
+  checked_by_pco_id      TEXT NOT NULL,
+  checked_by_name        TEXT NOT NULL,
+  checked_at             TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  unchecked_by_pco_id    TEXT,
+  unchecked_by_name      TEXT,
+  unchecked_at           TEXT,
+  reset_id               INTEGER REFERENCES resets (id)
 );
 CREATE INDEX checkoffs_service ON checkoffs (service_id);
 
