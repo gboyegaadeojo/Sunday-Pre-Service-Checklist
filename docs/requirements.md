@@ -1,12 +1,20 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.4 · **Date:** October 2026  
+> **Version:** 1.5 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
-> **Status:** All decisions closed — ready for design
+> **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.4
+## 0. Changes in Version 1.5
+
+| # | Change | Why |
+|---|--------|-----|
+| C9 | **New: Admins manage sections within a category** (US-12a). | The seed checklist groups tasks into numbered sections, but no story covered editing them. |
+| C10 | **Each Planning Center team or position links to only one category** (US-15). | Keeps the mapping unambiguous. A category can still have many teams/positions. |
+| C11 | **Undoing a reset keeps newer check-offs** (US-07). | A task checked again after a reset must not be overwritten by the archived check-off. |
+
+## Changes in Version 1.4
 
 | # | Change | Why |
 |---|--------|-----|
@@ -143,6 +151,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Admins and Directors can manually reset the current service's checklist. Volunteers cannot.
 - Reset shows a confirmation prompt: "This will clear all check-offs for this service. Are you sure?"
 - A reset is not destructive: cleared check-offs are archived, and an Admin or Director can restore them with an "Undo reset" option until the next reset.
+- If a task was checked again after the reset, undoing the reset keeps the newer check-off; the archived one for that task is not restored.
 - Past service check-off data is preserved and accessible to admins.
 
 ---
@@ -207,6 +216,17 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 ---
 
+**US-12a — Admin manages sections within a category**  
+*As an admin, I want to add, rename, reorder, and delete the numbered sections inside a department so the checklist matches how we actually work.*
+
+**Acceptance Criteria:**
+- Admin can add, rename, delete (with confirmation + warning if tasks exist), and reorder sections within a category.
+- Reorder via drag-and-drop or up/down controls.
+- Deleting a section hides it and its tasks from current and future checklists but keeps them in the database, so past service records still display correctly.
+- Changes are immediately live for the next volunteer who loads the checklist.
+
+---
+
 **US-13 — Admin manages tasks within a category**  
 *As an admin, I want to add, edit, reorder, and delete individual tasks as the team streamlines its workflow.*
 
@@ -237,7 +257,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - The admin screen loads that Service Type's teams and positions from Planning Center and shows them in a list.
 - Admin links each team, or an individual position within a team, to a category in the default list (e.g. team "Production" → position "Camera 2" → "Camera Operators").
 - A position-level link overrides its team-level link.
-- One category can have many teams/positions linked to it.
+- One category can have many teams/positions linked to it, but each team or position links to only one category.
 - Only teams with at least one link count as "media teams" for access (US-02).
 - Teams or positions with no link are clearly marked as unlinked.
 - If a team or position is renamed in Planning Center, the link still works (links use Planning Center IDs, not names).
@@ -305,7 +325,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Manual reset (Admins/Directors only) with confirmation and undo
 - Hidden-not-erased deletes; task text snapshots on check-off
 - Mobile-responsive UI with dark theme
-- Admin: create/edit/delete task lists, categories, and tasks
+- Admin: create/edit/delete task lists, categories, sections, and tasks
 - Admin/Director: progress view per service
 - Seed data: IFC Pre-Service Checklist pre-loaded at launch
 - Free hosting: Cloudflare Workers + D1
@@ -344,6 +364,9 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q13 | Mapping Planning Center to categories | Admin screen links teams/positions (by Planning Center ID) to categories. Position link overrides team link. |
 | Q14 | Time zone | America/Winnipeg for all service dates and times. |
 | Q15 | Deleting tasks/categories | Hidden, not erased. Past records are never broken. |
+| Q16 | Editing sections | Admins can add, rename, reorder, and delete (hide) sections within a category (US-12a). |
+| Q17 | One team in several categories? | No — each team or position links to exactly one category. |
+| Q18 | Undo reset after a task was re-checked | The newer check-off wins; the archived one is not restored for that task. |
 
 ---
 
@@ -537,4 +560,4 @@ Planning Center data is cached briefly on the server (a few minutes per service)
 
 ---
 
-*End of Requirements — Version 1.4*
+*End of Requirements — Version 1.5*
