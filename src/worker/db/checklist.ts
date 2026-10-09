@@ -31,6 +31,7 @@ export async function getDefaultChecklist(db: D1Database): Promise<ChecklistResp
     .all<ChecklistRow>();
 
   // Rows arrive in display order, so the last category/section seen is the one to append to.
+  // A non-null section_id/task_id means the LEFT JOIN matched, so its NOT NULL name/text is set.
   const categories: ChecklistCategory[] = [];
   let category: ChecklistCategory | undefined;
   let section: ChecklistSection | undefined;
@@ -42,10 +43,10 @@ export async function getDefaultChecklist(db: D1Database): Promise<ChecklistResp
     }
     if (row.section_id === null) continue;
     if (section?.id !== row.section_id) {
-      section = { id: row.section_id, name: row.section_name!, tasks: [] };
+      section = { id: row.section_id, name: row.section_name as string, tasks: [] };
       category.sections.push(section);
     }
-    if (row.task_id !== null) section.tasks.push({ id: row.task_id, text: row.task_text! });
+    if (row.task_id !== null) section.tasks.push({ id: row.task_id, text: row.task_text as string });
   }
 
   return { list, categories };

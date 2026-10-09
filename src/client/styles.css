@@ -1,10 +1,59 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens from docs/design.md §2 and §10.
+ * Tailwind's default palette is switched off, so only these colours exist.
+ */
+@theme {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+
+  --color-bg: #050505; /* main background */
+  --color-panel: #0a0a0a; /* primary panels and navigation */
+  --color-surface: #0f0f0f; /* secondary surfaces */
+  --color-card: #141414; /* cards and task groups */
+  --color-hover: #1a1a1a; /* hover states */
+  --color-line: #242424; /* borders and separators */
+  --color-accent: #7c3aed; /* primary accent: fills, selected markers */
+  --color-accent-soft: #a78bfa; /* secondary accent: accent text, focus ring */
+  --color-fg: #f5f5f5; /* primary text */
+  --color-fg-muted: #a3a3a3; /* secondary text */
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-idle: #737373; /* neutral / not started; indicators only, too dim for body text */
+  --color-danger: #ef4444;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Type scale: page 24, section 16–18, task 15, meta 13 (design.md §2). */
+  --text-page: 1.5rem;
+  --text-page--line-height: 2rem;
+  --text-task: 0.9375rem;
+  --text-task--line-height: 1.375rem;
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.125rem;
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+
+  /* Layout */
+  --container-app: 85rem; /* ~1360px desktop content width (design.md §4) */
+  --container-reading: 46rem; /* comfortable task line length */
+}
+
 /* Dark-only: the app is used in a low-light booth (US-08). */
 :root {
   color-scheme: dark;
 }
 
 body {
-  @apply bg-neutral-950 text-neutral-100 antialiased;
+  @apply bg-bg font-sans text-fg antialiased;
+}
+
+/* One visible focus style everywhere (design.md §8). */
+:focus-visible {
+  outline: 2px solid var(--color-accent-soft);
+  outline-offset: 2px;
 }

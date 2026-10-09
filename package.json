@@ -6,9 +6,12 @@
     "dev": "npm run db:migrate && vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "lint": "biome lint --error-on-warnings",
     "typecheck": "wrangler types && tsc -p tsconfig.app.json && tsc -p tsconfig.worker.json",
-    "db:migrate": "wrangler d1 migrations apply DB --local"
+    "test": "vitest run",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "hono": "^4.13.13",
@@ -16,6 +19,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@cloudflare/vite-plugin": "^1.63.1",
     "@cloudflare/vitest-plugin": "^1.4.0",
     "@tailwindcss/vite": "^4.3.3",

@@ -1,0 +1,40 @@
+#!/bin/sh
+# Pre-commit checks (CLAUDE.md "Before every commit"). Enabled by `npm install`,
+# which runs the "prepare" script: git config core.hooksPath .githooks
+# Git for Windows runs this with its bundled sh, so it works on Windows, macOS and Linux.
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# 1. Files that must never be committed (US-16).
+blocked=$(printf '%s\n' "$staged" \
+  | grep -E '(^|/)(\.dev\.vars|\.env)(\.[^/]*)?$|(^|/)\.wrangler/|(^|/)node_modules/' \
+  | grep -v '\.dev\.vars\.example$')
+if [ -n "$blocked" ]; then
+  echo "pre-commit: these files must never be committed:"
+  printf '  %s\n' $blocked
+  echo "Unstage them with: git restore --staged <file>"
+  exit 1
+fi
+
+# 2. Likely secrets in added lines. This is a heuristic: a name like *_SECRET / *_TOKEN /
+#    *_PASSWORD / *_API_KEY assigned a long literal value, or a private key block.
+secrets=$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude)package-lock.json' \
+  | grep -E '^\+' \
+  | grep -E '([A-Z_]*(SECRET|TOKEN|PASSWORD|API_KEY)[A-Z_]*["'\'']?[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9_/+=-]{16,})|BEGIN [A-Z ]*PRIVATE KEY')
+if [ -n "$secrets" ]; then
+  echo "pre-commit: possible secret in staged changes:"
+  printf '%s\n' "$secrets" | sed 's/^/  /'
+  echo "Secrets belong in .dev.vars (local) or Worker secrets (production)."
+  exit 1
+fi
+
+# 3. Lint, type checks, tests and production build.
+if ! command -v npm >/dev/null 2>&1; then
+  echo "pre-commit: npm not found on PATH, so the checks can't run. Commit blocked."
+  exit 1
+fi
+echo "pre-commit: running lint, type checks, tests and build..."
+if ! npm run --silent check; then
+  echo "pre-commit: checks failed. Commit blocked."
+  exit 1
+fi

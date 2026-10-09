@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ChecklistResponse } from "../../shared/types";
 import { getJson } from "../api";
-import { CategoryCard } from "../components/CategoryCard";
+import { AppHeader } from "../components/checklist/AppHeader";
+import { DepartmentNav } from "../components/checklist/DepartmentNav";
+import { DepartmentPicker } from "../components/checklist/DepartmentPicker";
+import { DepartmentView } from "../components/checklist/DepartmentView";
+import { ServiceOverview } from "../components/checklist/ServiceOverview";
+import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 
 type State =
   | { status: "loading" }
@@ -10,7 +15,8 @@ type State =
 
 export function ChecklistPage() {
   const [state, setState] = useState<State>({ status: "loading" });
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<number>>(new Set());
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -25,47 +31,58 @@ export function ChecklistPage() {
     void load();
   }, [load]);
 
-  const toggle = (id: number) =>
-    setExpanded((prev) => {
+  const toggleSection = (id: number) =>
+    setCollapsedSections((prev) => {
       const next = new Set(prev);
       if (!next.delete(id)) next.add(id);
       return next;
     });
 
+  const selectDepartment = (id: number) => {
+    setSelectedId(id);
+    window.scrollTo({ top: 0 });
+  };
+
   return (
-    <div className="mx-auto min-h-dvh max-w-2xl px-4 pb-12">
-      <header className="sticky top-0 z-10 -mx-4 mb-4 border-b border-neutral-800 bg-neutral-950/95 px-4 py-3 backdrop-blur">
-        <h1 className="text-xl font-semibold">Pre-Service Checklist</h1>
-        {state.status === "ready" && <p className="text-sm text-neutral-400">{state.checklist.list.name}</p>}
-      </header>
+    <>
+      <AppHeader />
+      <main className="mx-auto max-w-app px-4 pt-4 pb-16 md:px-6 md:pt-6">
+        {state.status === "loading" && <LoadingState label="Loading checklist…" />}
 
-      {state.status === "loading" && <p className="py-8 text-center text-neutral-400">Loading checklist…</p>}
+        {state.status === "error" && (
+          <ErrorState title="Couldn't load the checklist" message={state.message} onRetry={() => void load()} />
+        )}
 
-      {state.status === "error" && (
-        <div role="alert" className="rounded-lg border border-red-900 bg-red-950/50 p-4">
-          <p className="mb-3 text-red-200">{state.message}</p>
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="min-h-11 rounded-md bg-neutral-800 px-4 font-medium hover:bg-neutral-700"
-          >
-            Try again
-          </button>
-        </div>
-      )}
-
-      {state.status === "ready" && (
-        <div className="space-y-3">
-          {state.checklist.categories.map((category) => (
-            <CategoryCard
-              key={category.id}
-              category={category}
-              expanded={expanded.has(category.id)}
-              onToggle={() => toggle(category.id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+        {state.status === "ready" && renderChecklist(state.checklist)}
+      </main>
+    </>
   );
+
+  function renderChecklist(checklist: ChecklistResponse) {
+    const departments = checklist.categories;
+    if (departments.length === 0) {
+      return <EmptyState title="This checklist has no departments yet." />;
+    }
+    const selected = departments.find((d) => d.id === selectedId) ?? departments[0];
+
+    return (
+      <>
+        <ServiceOverview checklist={checklist} />
+        <DepartmentPicker departments={departments} selected={selected} onSelect={selectDepartment} />
+        <div className="mt-4 md:mt-6 md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-8">
+          <aside className="hidden md:block">
+            <nav aria-label="Departments" className="sticky top-20">
+              <p className="mb-2 px-4 text-meta font-medium text-fg-muted">Departments</p>
+              <DepartmentNav departments={departments} selectedId={selected.id} onSelect={selectDepartment} />
+            </nav>
+          </aside>
+          <DepartmentView
+            department={selected}
+            collapsedSections={collapsedSections}
+            onToggleSection={toggleSection}
+          />
+        </div>
+      </>
+    );
+  }
 }
