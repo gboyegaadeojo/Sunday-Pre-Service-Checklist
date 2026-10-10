@@ -3,7 +3,7 @@
 > **How this brief is applied (project owner, October 2026)**
 >
 > - All UI work follows this brief. Apply it stage by stage, following `docs/build-plan.md`. Build each screen to this brief when its stage comes up, not earlier.
-> - **The requirements are in `docs/requirements.md` (currently v1.17). Where this brief and the requirements disagree, the requirements win.** This brief was brought in line with them in October 2026; later requirement changes apply even before the brief catches up.
+> - **The requirements are in `docs/requirements.md` (currently v1.20). Where this brief and the requirements disagree, the requirements win.** This brief was brought in line with them in October 2026; later requirement changes apply even before the brief catches up.
 > - Build the reusable components and design tokens from section 10 as screens need them.
 > - If a stage doesn't have the data yet (progress counts, user name, completion times), leave that part of the UI out rather than showing made-up numbers. Add it in the stage that provides the data.
 > - The fake login and fake schedule source in the approved build plan are allowed until Stages 9–10 (real Planning Center, then deployment). "No mock data" means no made-up numbers or placeholder content in the UI.
@@ -100,8 +100,8 @@ Create a compact, professional header containing:
 - Current service date and service information.
 - User avatar and display name.
 - User role where appropriate.
-- Access to role-authorized functions: Checklist and Progress for everyone with access, Admin for Admins.
-- A menu under the user's name with **Settings (Admins only)** above **Sign out**. Settings is reached only from here, not from the Admin area (requirements v1.15).
+- Access to role-authorized functions: Checklist and Progress for everyone with access. Nothing else in the header (requirements v1.20).
+- A menu under the user's name: who they are (avatar, name, role), then **Administrative Settings (Admins only)**, then **Sign out**, set apart with an icon. It's a keyboard menu (arrow keys, Home/End, Escape returns focus) and stays within the viewport.
 - A subtle connection or synchronization status when relevant.
 
 Do not waste excessive vertical space on the header.
@@ -282,9 +282,9 @@ Do not invent readiness thresholds or declare a service ready based solely on an
 
 ## 7. Admin Workspace
 
-Create a separate, role-protected Admin area, reached from the header's **Admin** tab, with its own navigation for each section. Only list sections that exist.
+Create a separate, role-protected Admin area, reached from **Administrative Settings** in an Admin's name menu (not a header tab), with its own navigation for each section. Only list sections that exist.
 
-As built (October 2026, project owner's sketches): the Admin tab opens an **Overview** with the current service at a glance (the same three figures as Progress, each department's status in one line, and the service's status) and a link to Progress for task details, reset and undo. On desktop (1024px and up) the sections are a sidebar menu, each with an icon, its name and one line about it, the current one outlined in purple. Phones and tablets keep a compact tab strip, and the Overview lists the sections with their descriptions.
+As built (October 2026, requirements v1.20): **Administrative Settings** in an Admin's name menu opens an **Overview** with the current service at a glance (the same three figures as Progress, each department's status in one line, and the service's status), a link to Progress for task details, reset and undo, and a shortcut card for each section with a line about it. The section navigation is described under Church settings below.
 
 Organize it into clear sections:
 
@@ -316,7 +316,7 @@ The append-only logs, read-only: check-offs, resets and undos for the current se
 ### History
 Previous services: what was done and what wasn't ("X of Y done" per department), tasks removed during the service, resets, and each service's activity log, as supported by the requirements (US-07, US-07b).
 
-**Settings is not part of the Admin area.** It lives in the menu under the user's name (§3A).
+**Church settings** (time zone, service day, branding; US-11a) is a section of Administrative Settings since requirements v1.20. As built: the sections are grouped (Service: Overview, Activity, History; Setup: Checklist Management, Team mapping, Church settings; People: Users & Permissions) in a compact sidebar from 1024px (one row per section, icon and label, a purple bar on the current one), a section selector on phones and tablets, and a breadcrumb (Home / Administrative Settings / section) over each page. Checklist Management covers the editor and Lists, with a switch between them. The Overview's shortcut cards carry a line about each section.
 
 Current service progress is on the Progress dashboard (§6), which Admins use like everyone else. The Overview shows only a compact summary of it and links there.
 

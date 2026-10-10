@@ -78,17 +78,15 @@ afterEach(() => {
 });
 
 describe("header navigation", () => {
-  it.each([
-    ["volunteer", ["Checklist", "Progress"]],
-    ["director", ["Checklist", "Progress"]],
-    ["admin", ["Checklist", "Progress", "Admin"]],
-  ] as const)("shows the %s only the sections they may use", (role, labels) => {
+  // Administrative Settings is in an Admin's menu, not the header (requirements v1.20).
+  it.each(["volunteer", "director", "admin"] as const)("shows the %s only Checklist and Progress", (role) => {
     render(<AppNav user={user(role)} route="checklist" onNavigate={() => {}} />);
-    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(labels);
+    expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(["Checklist", "Progress"]);
   });
 });
 
-// Settings (US-11a) is in the user menu, above Sign out, for Admins only.
+// The menu under the person's name (requirements v1.20): who they are, Administrative Settings for Admins only, then
+// Sign out, set apart. A keyboard menu: focus moves in on opening, arrows move, Escape closes and returns focus.
 describe("user menu", () => {
   const openMenu = (role: "volunteer" | "director" | "admin", onNavigate = vi.fn()) => {
     render(<UserMenu user={user(role)} route="checklist" onNavigate={onNavigate} onSignOut={() => {}} signingOut={false} signOutError={null} />);
@@ -96,32 +94,48 @@ describe("user menu", () => {
     return onNavigate;
   };
 
-  it.each(["volunteer", "director"] as const)("never offers Settings to a %s", (role) => {
+  it.each(["volunteer", "director"] as const)("never offers Administrative Settings to a %s", (role) => {
     openMenu(role);
-    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByText(`Test ${role}`)).toBeTruthy(); // who they are
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Sign out"]);
   });
 
-  it("offers an Admin Settings above Sign out, and closes after choosing it", () => {
+  it("offers an Admin Administrative Settings above Sign out, and closes after choosing it", () => {
     const onNavigate = openMenu("admin");
-    const settings = screen.getByRole("link", { name: "Settings" });
-    expect(settings.getAttribute("href")).toBe("/settings");
-    const signOut = screen.getByRole("button", { name: "Sign out" });
-    expect(settings.compareDocumentPosition(signOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    fireEvent.click(settings);
-    expect(onNavigate).toHaveBeenCalledWith("settings", "");
-    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+    const [admin, signOut] = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    expect(admin.textContent).toBe("Administrative Settings");
+    expect(admin.getAttribute("href")).toBe("/admin");
+    expect(signOut.textContent).toBe("Sign out");
+    fireEvent.click(admin);
+    expect(onNavigate).toHaveBeenCalledWith("admin-overview", "");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("works from the keyboard: focus moves in, arrows wrap, Escape closes and returns focus", async () => {
+    openMenu("admin");
+    const [admin, signOut] = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    await waitFor(() => expect(document.activeElement).toBe(admin));
+    fireEvent.keyDown(admin, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(signOut);
+    fireEvent.keyDown(signOut, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(admin);
+    fireEvent.keyDown(admin, { key: "End" });
+    expect(document.activeElement).toBe(signOut);
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Account: Test admin" }));
   });
 });
 
 describe("old addresses", () => {
   afterEach(() => window.history.replaceState(null, "", "/"));
 
-  it("redirects /admin/settings to /settings", () => {
-    window.history.replaceState(null, "", "/admin/settings");
+  it("redirects /settings to Church settings in Administrative Settings", () => {
+    window.history.replaceState(null, "", "/settings");
     const { result } = renderHook(() => useRoute());
-    expect(result.current.route).toBe("settings");
-    expect(window.location.pathname).toBe("/settings");
+    expect(result.current.route).toBe("admin-settings");
+    expect(window.location.pathname).toBe("/admin/settings");
   });
 });
 

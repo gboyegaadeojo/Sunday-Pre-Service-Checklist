@@ -1,4 +1,4 @@
-import { ADMIN_SECTIONS, AdminMenu, useMappingAttention } from "../../components/admin/AdminTabs";
+import { AdminShortcuts, useMappingAttention } from "../../components/admin/AdminLayout";
 import { RouteLink } from "../../components/app/RouteLink";
 import { notPublishedNote } from "../../components/checklist/DepartmentScope";
 import { ProgressSummary } from "../../components/progress/ProgressSummary";
@@ -10,10 +10,9 @@ import { formatServiceDate, formatTime } from "../../lib/format";
 import type { Navigate } from "../../lib/router";
 import { useProgress } from "../../lib/useProgress";
 
-// The Admin area's landing page (design.md §7): the current service at a glance (the same three figures as
+// Administrative Settings' landing page (design.md §7): the current service at a glance (the same three figures as
 // Progress, each department's status, and the service's status), with a link to Progress, where the details,
-// reset and undo live. On phones and tablets it also lists the Admin sections with a line about each, which the
-// tab strip has no room for; from 1024px the sidebar menu shows them.
+// reset and undo live; then a shortcut to each section with a line about it.
 export function OverviewPage({ onAccessChanged, onNavigate }: { onAccessChanged: () => void; onNavigate: Navigate }) {
   const { data, loadError, refresh } = useProgress({ onAccessChanged });
   const attention = useMappingAttention("admin-overview");
@@ -84,16 +83,11 @@ export function OverviewPage({ onAccessChanged, onNavigate }: { onAccessChanged:
         </>
       )}
 
-      <section aria-labelledby="sections-heading" className="pt-2 lg:hidden">
-        <h2 id="sections-heading" className="mb-2 text-meta font-semibold tracking-wide text-fg-muted uppercase">
-          Admin sections
+      <section aria-labelledby="shortcuts-heading" className="pt-2">
+        <h2 id="shortcuts-heading" className="mb-2 text-sm font-semibold">
+          Shortcuts
         </h2>
-        <AdminMenu
-          route="admin-overview"
-          onNavigate={onNavigate}
-          attention={attention}
-          sections={ADMIN_SECTIONS.filter((s) => s.route !== "admin-overview")}
-        />
+        <AdminShortcuts onNavigate={onNavigate} attention={attention} />
       </section>
     </main>
   );

@@ -7,7 +7,7 @@ import { SetupNotice } from "./components/app/SetupNotice";
 import { Card } from "./components/ui/Card";
 import { ErrorState, LoadingState } from "./components/ui/States";
 import { BrandingContext, NO_BRANDING, documentTitle } from "./lib/branding";
-import { AdminLayout } from "./components/admin/AdminTabs";
+import { AdminLayout } from "./components/admin/AdminLayout";
 import { useRoute } from "./lib/router";
 import { ActivityPage } from "./pages/ActivityPage";
 import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
@@ -165,9 +165,9 @@ export function App() {
       case "admin-mapping":
       case "admin-activity":
       case "admin-history":
-      case "settings":
-        // The Admin link and the Settings menu item are hidden for non-admins; this covers a typed or
-        // bookmarked URL. The server refuses too.
+      case "admin-settings":
+        // Administrative Settings is only in an Admin's menu; this covers a typed or bookmarked URL. The server
+        // refuses too.
         if (!user.isAdmin) {
           return (
             <main className="mx-auto flex max-w-app justify-center px-4 py-12 md:py-20">
@@ -186,11 +186,11 @@ export function App() {
             </main>
           );
         }
-        // Settings is opened from the user menu, so it has no Admin tabs.
-        if (route === "settings") return <SettingsPage onAccessChanged={onAccessChanged} onBrandingChanged={loadBranding} />;
         return (
           <AdminLayout route={route} onNavigate={navigate}>
-            {route === "admin-overview" ? (
+            {route === "admin-settings" ? (
+              <SettingsPage onAccessChanged={onAccessChanged} onBrandingChanged={loadBranding} />
+            ) : route === "admin-overview" ? (
               <OverviewPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />

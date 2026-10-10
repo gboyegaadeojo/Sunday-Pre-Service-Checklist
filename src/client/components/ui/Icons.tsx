@@ -94,3 +94,16 @@ export const HistoryIcon = ({ className }: { className?: string }) => (
     <path d="M10 6.5V10l2.5 1.5" />
   </Outline>
 );
+
+export const ChurchSettingsIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <circle cx="10" cy="10" r="2.5" />
+    <path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4" />
+  </Outline>
+);
+
+export const SignOutIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="M8 3.5H4.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1H8M12.5 6.5 16 10l-3.5 3.5M16 10H7.5" />
+  </Outline>
+);

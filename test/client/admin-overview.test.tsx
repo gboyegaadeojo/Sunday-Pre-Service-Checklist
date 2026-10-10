@@ -3,7 +3,7 @@
 // sections as a menu with an icon and a line about each.
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ADMIN_SECTIONS } from "../../src/client/components/admin/AdminTabs";
+import { ADMIN_SECTIONS } from "../../src/client/components/admin/AdminLayout";
 import { OverviewPage } from "../../src/client/pages/admin/OverviewPage";
 import type { ChecklistResponse } from "../../src/shared/types";
 
@@ -60,17 +60,17 @@ describe("Admin Overview", () => {
     expect(screen.getByRole("link", { name: /Open Progress/ }).getAttribute("href")).toBe("/progress");
   });
 
-  it("lists the Admin sections with an icon and one line each, and Team mapping's count", async () => {
+  it("has a shortcut to each section with an icon and one line each, and Team mapping's count", async () => {
     render(<OverviewPage onAccessChanged={() => {}} onNavigate={() => {}} />);
-    const menu = await screen.findByRole("region", { name: "Admin sections" });
+    const menu = await screen.findByRole("region", { name: "Shortcuts" });
     const links = within(menu).getAllByRole("link");
     expect(links.map((l) => l.getAttribute("href"))).toEqual([
-      "/admin/checklist",
-      "/admin/lists",
-      "/admin/mapping",
-      "/admin/users",
       "/admin/activity",
       "/admin/history",
+      "/admin/checklist",
+      "/admin/mapping",
+      "/admin/settings",
+      "/admin/users",
     ]);
     for (const s of ADMIN_SECTIONS.filter((x) => x.route !== "admin-overview")) {
       expect(within(menu).getByText(s.description)).toBeTruthy();

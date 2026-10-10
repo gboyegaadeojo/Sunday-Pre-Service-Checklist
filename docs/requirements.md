@@ -1,12 +1,20 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.19 · **Date:** October 2026  
+> **Version:** 1.20 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.19
+## 0. Changes in Version 1.20
+
+| # | Change | Why |
+|---|--------|-----|
+| C31 | **Administrative Settings is opened from the menu under an Admin's name** instead of an Admin tab in the header, which now shows only Checklist and Progress. It has its own sections (Overview, Checklist Management, Team mapping, Users & Permissions, Activity, History, Church settings), a sidebar on wide screens, a section selector on phones and a breadcrumb. Nobody but Admins sees it, and the server still refuses everyone else. Reset and undo stay on the Progress page for Admins and Directors. | Administration is occasional work for a few people; the header stays focused on what everyone uses on Sunday. |
+| C32 | **Church settings is a section of Administrative Settings** (US-11a), replacing the separate Settings item in the name menu (C26). The old address still works. | One place for everything church-wide; the name menu keeps personal items. |
+| C33 | **Appearance: Dark, Light or System** (US-08a), chosen by each person on My Preferences (in the name menu) and remembered on that device. **Dark is the default**; System follows the device's light or dark setting. "Themes" is no longer out of scope; custom branding colours still are. | Dark suits the booth, but some volunteers prepare at home or in daylight, where a light theme is easier to read. |
+
+## Changes in Version 1.19
 
 | # | Change | Why |
 |---|--------|-----|
@@ -304,6 +312,17 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 ---
 
+**US-08a — Each person chooses Dark, Light or System appearance** *(v1.20)*  
+*As a volunteer, I want to pick how the app looks on my device, so it's comfortable in the booth and in daylight.*
+
+**Acceptance Criteria:**
+- **My Preferences**, opened from the menu under the person's name, offers **Dark**, **Light** and **System**. A choice applies at once, with no Save button.
+- **Dark is the default** on any device that hasn't chosen. **System** follows the device's light or dark setting and changes with it, without a reload.
+- The choice is remembered on that device only (it's not sensitive and needs no server). It's applied before the page first draws, so there's no flash of the wrong theme.
+- Every screen follows it, and both themes meet WCAG 2.1 AA contrast, including status colours.
+
+---
+
 ### 3.3 Progress View
 
 ---
@@ -356,7 +375,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Admin can edit the **branding** shown in the header, on the sign-in screen, and in the browser tab: short name (logo mark), team name, and app name. Empty values are simply left out of the display.
 - Seeded starting values: America/Winnipeg, Sunday, "IFC", "IFC Production", "Pre-Service Checklist".
 - Changes take effect on the next page load. Only Admins can change settings; the server rejects anyone else.
-- Admins open Settings from the menu under their name in the header. Nobody else sees that menu item.
+- Admins open **Church settings** in Administrative Settings, from the menu under their name in the header (v1.20). Nobody else sees it.
 - The branding values are readable without signing in (the sign-in screen shows them); no other setting is exposed publicly.
 
 ---
@@ -522,7 +541,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Hidden-not-erased deletes; task text snapshots on check-off
 - Hidden items view with Restore (US-13a)
 - Append-only log of checklist edits, shown in the Admin activity view (US-13b)
-- Mobile-responsive UI with dark theme
+- Mobile-responsive UI with a dark theme by default, and Light or System per device (US-08a)
 - Admin: create/edit/delete task lists, categories, sections, and tasks
 - Progress view per service for everyone with access; reset/undo for Admins/Directors
 - Seed data: IFC Pre-Service Checklist pre-loaded at launch
@@ -539,7 +558,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Emergency access code for when Planning Center sign-in is down and a user has no session
 - Offline mode
 - Calendar integration beyond the current service
-- Custom branding / themes
+- Custom branding colours (Dark, Light and System appearance are in scope: US-08a)
 - **Google sign-in** as an alternative to Planning Center, linked to the same app account (US-03a). A new Google user gets no access until an Admin invites them (by email) or approves them; approval and roles stay in the app.
 - **A list for a specific service date** (e.g. Christmas): choosing which list a given date uses, instead of only switching the default. For Version 1, admins switch the default list before a special service and switch it back afterward (US-11).
 - **Planning Center links on copied lists:** when a list is copied, its team/position links come with it (copied, or matched by department name), so volunteers still get their department highlighted on the copy. In Version 1 a copy starts with no links.

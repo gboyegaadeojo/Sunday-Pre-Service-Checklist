@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 // URLs survive reloads and can be bookmarked. Unknown paths show the checklist. A query string (e.g.
 // ?list=5 for the checklist editor) is kept alongside the route.
 
-export type Route = "checklist" | "progress" | "admin-overview" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-mapping" | "admin-users" | "admin-activity" | "admin-history" | "settings";
+export type Route = "checklist" | "progress" | "admin-overview" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-mapping" | "admin-users" | "admin-activity" | "admin-history" | "admin-settings";
 
 /** Goes to a route, optionally with a query string such as "?list=5". */
 export type Navigate = (route: Route, search?: string) => void;
@@ -22,14 +22,14 @@ export const ROUTE_PATHS: Record<Route, string> = {
   "admin-activity": "/admin/activity",
   // ?service=ID opens one past service.
   "admin-history": "/admin/history",
-  // Admin-only, but opened from the user menu rather than the Admin tabs.
-  settings: "/settings",
+  // Church settings (US-11a): a section of Administrative Settings since requirements v1.20.
+  "admin-settings": "/admin/settings",
 };
 
 /** Older or shorter paths that still work. The address bar is switched to the canonical path. */
 const ALIASES: Record<string, Route> = {
   "/activity": "admin-activity",
-  "/admin/settings": "settings", // where Settings lived before it moved to the user menu
+  "/settings": "admin-settings", // where Church settings lived before it moved into Administrative Settings (v1.20)
 };
 
 export const isAdminRoute = (r: Route) => r.startsWith("admin-");
@@ -42,7 +42,7 @@ export function useRoute() {
   const [search, setSearch] = useState(() => window.location.search);
 
   useEffect(() => {
-    // Show the canonical address for an alias (e.g. /activity → /admin/activity, /admin/settings → /settings).
+    // Show the canonical address for an alias (e.g. /activity → /admin/activity, /settings → /admin/settings).
     if (window.location.pathname !== ROUTE_PATHS[route] && ALIASES[window.location.pathname]) {
       window.history.replaceState(null, "", ROUTE_PATHS[route]);
     }

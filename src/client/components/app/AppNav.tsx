@@ -1,14 +1,12 @@
 import type { CurrentUser } from "../../../shared/types";
-import { type Navigate, type Route, isAdminRoute } from "../../lib/router";
+import type { Navigate, Route } from "../../lib/router";
 import { RouteLink } from "./RouteLink";
 
 const LINKS: { route: Route; label: string; allowed: (u: CurrentUser) => boolean; active: (r: Route) => boolean }[] = [
   { route: "checklist", label: "Checklist", allowed: (u) => u.hasAccess, active: (r) => r === "checklist" },
   // Everyone with access sees progress (US-09, requirements v1.6).
   { route: "progress", label: "Progress", allowed: (u) => u.hasAccess, active: (r) => r === "progress" },
-  // Admin workspace (design.md §7): checklist editor, lists and activity log. Server enforces too.
-  // (Settings is in the user menu.)
-  { route: "admin-overview", label: "Admin", allowed: (u) => u.isAdmin, active: isAdminRoute },
+  // Administrative Settings is opened from the menu under an Admin's name, not from here (requirements v1.20).
 ];
 
 interface Props {

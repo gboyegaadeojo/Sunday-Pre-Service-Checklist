@@ -64,7 +64,7 @@ afterEach(() => {
 
 const renderPage = async () => {
   render(<UsersPage me={ME} onAccessChanged={onAccessChanged} onNavigate={onNavigate} />);
-  await screen.findByRole("heading", { name: "Users" });
+  await screen.findByRole("heading", { name: "Users & Permissions" });
 };
 const toggle = (role: "Admin" | "Director", name: string) => screen.getByRole("switch", { name: `${role}: ${name}` });
 

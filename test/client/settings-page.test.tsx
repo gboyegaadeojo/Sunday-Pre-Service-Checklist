@@ -46,7 +46,7 @@ afterEach(() => {
 
 const renderPage = async () => {
   render(<SettingsPage onAccessChanged={() => {}} onBrandingChanged={onBrandingChanged} />);
-  await screen.findByRole("heading", { name: "Settings" });
+  await screen.findByRole("heading", { name: "Church settings" });
 };
 const save = () => screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
 

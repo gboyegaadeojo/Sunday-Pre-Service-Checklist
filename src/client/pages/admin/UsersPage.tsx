@@ -79,7 +79,7 @@ export function UsersPage({ me, onAccessChanged, onNavigate }: Props) {
     <main className="mx-auto max-w-3xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
         <div className="min-w-0">
-          <h1 className="text-page font-semibold tracking-tight">Users</h1>
+          <h1 className="text-page font-semibold tracking-tight">Users &amp; Permissions</h1>
           <p className="text-meta text-fg-muted">
             Everyone who has signed in. Admins manage the checklist, lists, people and settings; Directors can reset and undo.
             Admins and Directors can always get in. Changes take effect the next time that person loads the app.
