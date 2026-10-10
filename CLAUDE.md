@@ -111,21 +111,24 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   | Progress view (`/progress`, data from `GET /api/checklist`) | everyone with access | `requireAccess` |
   | Reset and undo (`POST /api/services/:id/reset`, `/undo-reset`) | Admins and Directors | `requireStaff` |
   | Activity log (`/admin/activity`, `GET /api/services/:id|current/events`) | Admins only | `requireAdmin` |
-  | Checklist editor (`/admin/checklist`, `/api/admin/*`) | Admins only | `requireAdmin` on the whole router |
+  | Checklist editor and Hidden items (`/admin/checklist`, `/admin/checklist/hidden`, `/api/admin/*`) | Admins only | `requireAdmin` on the whole router |
 
   `GET /api/checklist` adds `service.reset` only for staff. The UI hides what a role can't use (`AppNav`, `ProgressPage`), and `test/client/stage4-roles.test.tsx` checks that it never offers what the server refuses.
 - **Reset and undo** (`db/resets.ts`):
   - Reset archives active check-offs under a new `resets` row, storing `archived_count`. It's refused when nothing is checked, so an extra reset can't take away the chance to undo the real one.
   - Undo restores only the latest reset, and only once. Tasks checked since the reset keep the newer check-off (D3).
   - Both confirm first in the UI (`ConfirmDialog`, native `<dialog>`).
-- **Admin workspace** (design.md §7): the header's **Admin** tab leads to sub-tabs (`AdminTabs`), currently Checklist and Activity. Only list sections that exist.
+- **Admin workspace** (design.md §7): the header's **Admin** tab leads to sub-tabs (`AdminTabs`), currently Checklist and Activity. Only list sections that exist. Hidden items is reached from the editor and keeps the Checklist tab active.
 - **Checklist editor** (Stage 5):
   - The server side is `routes/admin-structure.ts` and `db/admin-structure.ts`. Every write requires the item and its whole ancestry (up to the list) to be live (`LIVE_*` guards). New items get the next `sort_order`.
   - Hiding sets `deleted_at` and never erases. Hiding a department also deletes its `team_links` in the same transaction.
   - Names and task text are trimmed, must not be empty, and are limited to `NAME_MAX` and `TASK_TEXT_MAX` in `shared/types.ts`.
-  - The client is `lib/useAdminList.ts` (server first, then reload; never optimistic) and `components/admin/*` (`EditorContext`, one inline `TextEditor` open at a time, `ActionMenu` "⋯" per item, `ConfirmDialog` before any hide).
-  - Tests use their own list (ID 77) so the seed checklist stays untouched.
-- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist` and `/admin/activity`, with aliases `/admin` and `/activity`. The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
+  - The client is `lib/useAdminList.ts` on top of `lib/useServerFirst.ts` (server first, then reload; never optimistic; 404/409 reload quietly) and `components/admin/*` (`EditorContext`, one inline `TextEditor` open at a time, `ActionMenu` "⋯" per item, `ConfirmDialog` before any hide).
+  - **Restructuring (Stage 5b):** each item's "⋯" menu has Move up/Move down (disabled at the ends) and, for tasks and sections, "Move to…" (`MoveDialog`: department, then section). Reorder swaps `sort_order` with the nearest *live* sibling; moves go to the end of the destination and must stay in the same list. The moved item is briefly highlighted and its menu button refocused.
+  - **Hidden items (US-13a):** `pages/admin/HiddenItemsPage.tsx` lists rows with `deleted_at` set (`getHiddenItems`). Restore clears `deleted_at` and keeps ID and `sort_order`, so history and position come back. The server never restores into a hidden parent (409 `parent_hidden`); `withParents: true` restores the hidden ancestors in the same batch. Team links deleted by a hide are not recreated.
+  - Admin edits aren't logged yet: Stage 5c adds the append-only `checklist_events` log (US-13b), and every edit route must write to it then.
+  - Tests use their own list (ID 77) so the seed checklist stays untouched: call `setUpAdminFixture()` from `test/admin-fixture.ts`.
+- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist`, `/admin/checklist/hidden` and `/admin/activity`, with aliases `/admin` and `/activity`. The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
 - **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
 
 ## Rules from the requirements

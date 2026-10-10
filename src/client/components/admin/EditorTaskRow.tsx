@@ -1,10 +1,18 @@
 import { type AdminTask, TASK_TEXT_MAX } from "../../../shared/types";
 import { ActionMenu } from "../ui/ActionMenu";
-import { useEditor } from "./editor-context";
+import { type Position, RECENT_CLASS, itemKey, menuButtonId, reorderItems, useEditor } from "./editor-context";
 import { TextEditor } from "./TextEditor";
 
-export function EditorTaskRow({ task }: { task: AdminTask }) {
-  const { editing, setEditing, actions, requestHide } = useEditor();
+interface Props {
+  task: AdminTask;
+  categoryId: number;
+  sectionId: number;
+  position: Position;
+}
+
+export function EditorTaskRow({ task, categoryId, sectionId, position }: Props) {
+  const editor = useEditor();
+  const { editing, setEditing, actions, requestHide, requestMove, recent } = editor;
 
   if (editing?.kind === "edit-task" && editing.taskId === task.id) {
     return (
@@ -22,15 +30,20 @@ export function EditorTaskRow({ task }: { task: AdminTask }) {
   }
 
   return (
-    <li className="flex items-start gap-2 py-1 pr-1 pl-4">
+    <li
+      className={`flex items-start gap-2 py-1 pr-1 pl-4 transition-colors duration-700 ${recent === itemKey("task", task.id) ? RECENT_CLASS : ""}`}
+    >
       <span aria-hidden="true" className="flex h-11 w-4 shrink-0 items-center">
         <span className="size-1.5 rounded-full bg-idle" />
       </span>
       <span className="min-w-0 flex-1 py-2.5 text-task wrap-anywhere">{task.text}</span>
       <ActionMenu
+        id={menuButtonId("task", task.id)}
         label={`Actions for task: ${task.text}`}
         items={[
           { label: "Edit", onSelect: () => setEditing({ kind: "edit-task", taskId: task.id }) },
+          ...reorderItems(editor, "task", task.id, position),
+          { label: "Move to…", onSelect: () => requestMove({ kind: "task", id: task.id, name: task.text, categoryId, sectionId }) },
           {
             label: "Hide task",
             danger: true,

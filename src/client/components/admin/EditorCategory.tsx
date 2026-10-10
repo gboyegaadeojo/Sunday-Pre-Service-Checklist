@@ -4,18 +4,20 @@ import { ActionMenu } from "../ui/ActionMenu";
 import { Card } from "../ui/Card";
 import { Chevron } from "../ui/Chevron";
 import { AddButton } from "./AddButton";
-import { useEditor } from "./editor-context";
+import { type Position, RECENT_CLASS, itemKey, menuButtonId, reorderItems, useEditor } from "./editor-context";
 import { EditorSection } from "./EditorSection";
 import { TextEditor } from "./TextEditor";
 
 interface Props {
   category: AdminCategory;
+  position: Position;
   expanded: boolean;
   onToggle: () => void;
 }
 
-export function EditorCategory({ category, expanded, onToggle }: Props) {
-  const { editing, setEditing, actions, requestHide } = useEditor();
+export function EditorCategory({ category, position, expanded, onToggle }: Props) {
+  const editor = useEditor();
+  const { editing, setEditing, actions, requestHide, recent } = editor;
   const taskCount = category.sections.reduce((n, s) => n + s.tasks.length, 0);
   const renaming = editing?.kind === "rename-category" && editing.categoryId === category.id;
   const addingSection = editing?.kind === "add-section" && editing.categoryId === category.id;
@@ -41,7 +43,11 @@ export function EditorCategory({ category, expanded, onToggle }: Props) {
           />
         </div>
       ) : (
-        <div className="flex items-center gap-1 pr-1">
+        <div
+          className={`flex items-center gap-1 rounded-t-card pr-1 transition-colors duration-700 ${expanded ? "" : "rounded-b-card"} ${
+            recent === itemKey("category", category.id) ? RECENT_CLASS : ""
+          }`}
+        >
           <h2 className="min-w-0 flex-1">
             <button
               type="button"
@@ -60,6 +66,7 @@ export function EditorCategory({ category, expanded, onToggle }: Props) {
             </button>
           </h2>
           <ActionMenu
+            id={menuButtonId("category", category.id)}
             label={`Actions for department: ${category.name}`}
             items={[
               { label: "Rename", onSelect: () => setEditing({ kind: "rename-category", categoryId: category.id }) },
@@ -70,6 +77,7 @@ export function EditorCategory({ category, expanded, onToggle }: Props) {
                   setEditing({ kind: "add-section", categoryId: category.id });
                 },
               },
+              ...reorderItems(editor, "category", category.id, position),
               {
                 label: "Hide department",
                 danger: true,
@@ -87,7 +95,13 @@ export function EditorCategory({ category, expanded, onToggle }: Props) {
           )}
           <div className="divide-y divide-line/70">
             {category.sections.map((section, i) => (
-              <EditorSection key={section.id} section={section} number={i + 1} />
+              <EditorSection
+                key={section.id}
+                section={section}
+                categoryId={category.id}
+                number={i + 1}
+                position={{ first: i === 0, last: i === category.sections.length - 1 }}
+              />
             ))}
           </div>
           <div className="border-t border-line/70 px-2 py-2">

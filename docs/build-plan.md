@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.10 · **Date:** October 2026
+> **Based on:** requirements.md v1.11 · **Date:** October 2026
 > **Status:** Approved
 
 ---
@@ -120,6 +120,14 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 
 **Moves.** A move updates `tasks.section_id` or `sections.category_id` and gives the item the next `sort_order` at the end of its destination. Moves are only allowed to live destinations in the same list. Nothing in the code may assume which department owns a task; the seed is only a starting point.
 
+**Reorder.** Up/down swaps `sort_order` with the nearest *live* sibling, skipping hidden ones. New and moved items take `MAX(sort_order) + 1` over all siblings, hidden ones included, so every item in a parent keeps a distinct `sort_order`.
+
+**Restore (US-13a).** Restore clears `deleted_at`. The row keeps its ID, so its check-offs stay attached, and it keeps its `sort_order`, so it returns between its old neighbours unless they were reordered since. Hiding a department or section doesn't touch its children, so restoring it brings back everything that wasn't hidden on its own. An item is restored only into a live parent. "Restore with parents" clears the hidden ancestors and the item in one transaction. Team links deleted by a department hide are not recreated.
+
+**checklist_events** (Stage 5c, planned): append-only log of checklist edits (US-13b), built like `checkoff_events`.
+- Columns: `list_id`, `entity` (category/section/task), `entity_id`, `action` (add/rename/edit/hide/restore/move/reorder), `before_json`, `after_json` (e.g. old and new name or text, old and new parent and position), `user_pco_id`, `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`.
+- Written in the same `db.batch` transaction as the edit. Triggers abort `UPDATE` and `DELETE`. No foreign keys.
+
 **checkoff_events** — append-only activity log (migration `0004`): one row per check or uncheck attempt that reaches the check-off logic.
 - Columns: `service_id`, `task_id`, `action` (check/uncheck), `outcome` (applied / no_change / not_found / service_changed), `user_pco_id`, `user_name`, `session_id` (random, fixed at sign-in, kept when the cookie renews), `tab_id` (random per page load, sent as `X-Tab-Id`), `user_agent`, `created_at`.
 - Written in the same transaction as the check-off itself.
@@ -175,21 +183,38 @@ Each stage ends with something you can open at `http://localhost:5173` (via `npm
 - **Test in the browser:** use two browser profiles, one as Volunteer checking tasks and one as Director watching progress update. Confirm the Volunteer sees progress but no reset controls. Reset, then undo. Call the reset API as the Volunteer and confirm it's rejected.
 
 ### Stage 5 — Admin list management
-- Lists: create, edit, delete and set the default (US-11).
-- Service history (design.md §7) includes each past service's activity log from `checkoff_events`, read-only, unless Stage 4 already added the log view. Nothing in the admin area can edit or delete log entries.
-- Church settings screen (US-11a): time zone (validated IANA name), service weekday, and branding (short name, team name, app name). Admin-only on the server.
-- Categories, sections and tasks: add, rename or edit, reorder, and hidden delete with a confirmation prompt and warnings (US-12, US-12a, US-13).
+Built in parts, each approved and committed on its own. The server rejects everything in Stage 5 for non-admins, including Directors.
+
+**5a — Editor: add, rename/edit, hide** (done)
+- Categories, sections and tasks: add, rename or edit, and hidden delete with a confirmation prompt and warnings (US-12, US-12a, US-13).
+
+**5b — Restructuring and restore**
 - **Restructuring (requirements v1.8):**
   - Each task has a "Move to…" menu: choose a department, then a section. It can go to any live section in the list, including other departments.
   - Each section has "Move to…": choose a department, and it moves with all its tasks.
   - Departments, sections and tasks can all be reordered with up/down controls.
   - Everything works on a phone. Desktop drag-and-drop is optional and not planned for the first pass.
   - Moved items go to the end of their destination.
-- The server rejects all of these for non-admins, including Directors. It also rejects moves to deleted destinations or another list.
+  - The server rejects moves to hidden destinations or another list.
+- **Hidden items view (US-13a, requirements v1.11)** at `/admin/checklist/hidden`, linked from the editor: every hidden department, section and task, newest first, with where it was and when it was hidden. Restore brings it back in its old position. Restoring inside a hidden parent explains why and offers to restore the parent too.
 - **Test in the browser:**
-  - Edit a task that's already checked and confirm the progress history still shows the old text.
   - Move a checked task from Audio Engineer to Camera Operators during the current service. It stays checked and counts toward Camera Operators now, while its check-off record still says Audio Engineer.
   - Move a whole section to another department on a 375 px screen.
+  - Reorder a department, a section and a task with Move up/Move down.
+  - Hide a task, then restore it from Hidden items: it returns to the same place, still checked if it was.
+  - Hide a section, then hide its department. Restoring the section offers to restore the department too.
+
+**5c — Checklist edit log (US-13b, requirements v1.11)**
+- `checklist_events` (section 3), written in the same transaction as every add, rename, edit, hide, restore, move and reorder, including 5a's and 5b's.
+- The Admin Activity view gets a filter: check-offs, checklist edits, or both. Edits show the item and its before and after values.
+- **Test in the browser:** rename a task, move it and hide it, then see the three entries with old and new values. Confirm the log rejects `UPDATE` and `DELETE`.
+
+**5d — Lists, settings and service history**
+- Lists: create, edit, delete and set the default (US-11).
+- Church settings screen (US-11a): time zone (validated IANA name), service weekday, and branding (short name, team name, app name).
+- Service history (design.md §7) includes each past service's check-offs and activity log, read-only. Nothing in the admin area can edit or delete log entries.
+- **Test in the browser:**
+  - Edit a task that's already checked and confirm the service history still shows the old text.
   - Delete a category and confirm it disappears from the checklist but past data still displays.
 
 ### Stage 6 — Admin user management

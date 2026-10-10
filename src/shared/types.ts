@@ -97,7 +97,7 @@ export interface CheckoffResponse {
 export interface ApiErrorBody {
   error: string;
   /** Lets the client tell "signed out" (401) from "not on a media team" (403). */
-  code?: "signed_out" | "no_access" | "forbidden" | "service_changed" | "nothing_to_reset" | "nothing_to_undo";
+  code?: "signed_out" | "no_access" | "forbidden" | "service_changed" | "nothing_to_reset" | "nothing_to_undo" | "parent_hidden";
 }
 
 export interface CurrentUser {
@@ -170,4 +170,59 @@ export interface AdminListResponse {
 /** POST that creates an item. */
 export interface CreatedResponse {
   id: number;
+}
+
+/** Department, section or task: the three editable levels of a list. */
+export type StructureKind = "category" | "section" | "task";
+
+/** POST /api/admin/{categories|sections|tasks}/:id/reorder */
+export interface ReorderRequest {
+  direction: "up" | "down";
+}
+
+/** POST /api/admin/tasks/:id/move */
+export interface MoveTaskRequest {
+  sectionId: number;
+}
+
+/** POST /api/admin/sections/:id/move */
+export interface MoveSectionRequest {
+  categoryId: number;
+}
+
+/** POST /api/admin/{categories|sections|tasks}/:id/restore (US-13a) */
+export interface RestoreRequest {
+  /** Also restore the hidden department/section it sits in, in the same transaction. */
+  withParents?: boolean;
+}
+
+/** The department or section a hidden item sits in. It may be hidden too. */
+export interface HiddenParent {
+  id: number;
+  name: string;
+  hidden: boolean;
+}
+
+/** An item hidden on its own (its deleted_at is set). Items inside it come back with it. */
+export interface HiddenItem {
+  kind: StructureKind;
+  id: number;
+  /** Name, or the task's text. */
+  name: string;
+  hiddenAt: string;
+  /** For sections and tasks. */
+  category?: HiddenParent;
+  /** For tasks. */
+  section?: HiddenParent;
+  /** What restoring brings back with it (for departments and sections). */
+  sectionCount?: number;
+  taskCount?: number;
+}
+
+/** GET /api/admin/lists/:listId/hidden: hidden items, newest first. */
+export interface HiddenItemsResponse {
+  list: { id: number; name: string };
+  /** The church's IANA time zone (setting), for showing when items were hidden. */
+  timeZone: string;
+  items: HiddenItem[];
 }

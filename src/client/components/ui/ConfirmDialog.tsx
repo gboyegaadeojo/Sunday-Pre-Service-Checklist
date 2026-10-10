@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useId, useRef } from "react";
 import { Button } from "./Button";
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
   /** "danger" for destructive actions such as reset. */
   tone?: "primary" | "danger";
   busy?: boolean;
+  /** Keeps the confirm button disabled, e.g. until a choice is made. */
+  confirmDisabled?: boolean;
   error?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
@@ -18,7 +20,19 @@ interface Props {
  * Confirmation for consequential actions (design.md §7, §8). Built on the native <dialog>: modal,
  * focus-trapped, closes on Escape. Cancel gets focus first so an accidental Enter never confirms.
  */
-export function ConfirmDialog({ open, title, children, confirmLabel, tone = "primary", busy = false, error, onConfirm, onCancel }: Props) {
+export function ConfirmDialog({
+  open,
+  title,
+  children,
+  confirmLabel,
+  tone = "primary",
+  busy = false,
+  confirmDisabled = false,
+  error,
+  onConfirm,
+  onCancel,
+}: Props) {
+  const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
@@ -36,15 +50,15 @@ export function ConfirmDialog({ open, title, children, confirmLabel, tone = "pri
   return (
     <dialog
       ref={ref}
-      aria-labelledby="confirm-title"
+      aria-labelledby={titleId}
       onCancel={(e) => {
         e.preventDefault();
         if (!busy) onCancel();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-card border border-line bg-panel p-0 text-fg backdrop:bg-bg/80"
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-card border border-line bg-panel p-0 text-fg backdrop:bg-bg/80"
     >
       <div className="p-5">
-        <h2 id="confirm-title" className="text-lg font-semibold">
+        <h2 id={titleId} className="text-lg font-semibold">
           {title}
         </h2>
         <div className="mt-2 space-y-2 text-sm text-fg-muted">{children}</div>
@@ -57,7 +71,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel, tone = "pri
           <Button ref={cancelRef} onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button variant={tone} onClick={onConfirm} disabled={busy}>
+          <Button variant={tone} onClick={onConfirm} disabled={busy || confirmDisabled}>
             {busy ? "Working…" : confirmLabel}
           </Button>
         </div>

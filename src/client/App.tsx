@@ -8,6 +8,7 @@ import { AdminTabs } from "./components/admin/AdminTabs";
 import { useRoute } from "./lib/router";
 import { ActivityPage } from "./pages/ActivityPage";
 import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
+import { HiddenItemsPage } from "./pages/admin/HiddenItemsPage";
 import { ChecklistPage } from "./pages/ChecklistPage";
 import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
@@ -118,6 +119,7 @@ export function App() {
       case "progress":
         return <ProgressPage user={user} onAccessChanged={onAccessChanged} />;
       case "admin-checklist":
+      case "admin-hidden":
       case "admin-activity":
         // The Admin link is hidden for non-admins; this covers a typed or bookmarked URL. The server refuses too.
         if (!user.isAdmin) {
@@ -132,8 +134,10 @@ export function App() {
             <AdminTabs route={route} onNavigate={navigate} />
             {route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />
+            ) : route === "admin-hidden" ? (
+              <HiddenItemsPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : (
-              <ChecklistEditorPage onAccessChanged={onAccessChanged} />
+              <ChecklistEditorPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
             )}
           </>
         );

@@ -7,3 +7,9 @@ export const formatServiceDate = (date: string) =>
 /** "9:42 AM" for an ISO timestamp, shown in the church's time zone (a setting) so everyone sees the same time. */
 export const formatTime = (iso: string, timeZone: string) =>
   new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(iso));
+
+/** "Oct 4, 2026, 9:42 AM" for an ISO timestamp, in the church's time zone (a setting). */
+export const formatDateTime = (iso: string, timeZone: string) =>
+  new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone }).format(
+    new Date(iso),
+  );

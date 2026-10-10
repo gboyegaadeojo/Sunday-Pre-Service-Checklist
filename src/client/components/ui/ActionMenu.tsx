@@ -5,20 +5,24 @@ export interface ActionItem {
   onSelect: () => void;
   /** Destructive actions (e.g. Hide) are shown in the error colour and always confirm afterwards. */
   danger?: boolean;
+  /** Shown but not selectable, e.g. "Move up" on the first item. */
+  disabled?: boolean;
 }
 
 /**
  * A "⋯" button that opens a short list of actions for one item (design.md §8: accessible menus).
  * 44px target; closes on selection, outside tap or Escape, returning focus to the button.
+ * `id` names the button, so a page can put focus back on it after the item moves.
  */
-export function ActionMenu({ label, items }: { label: string; items: ActionItem[] }) {
+export function ActionMenu({ id, label, items }: { id: string; label: string; items: ActionItem[] }) {
   const { open, setOpen, close, rootRef, triggerRef } = usePopover();
-  const menuId = `menu-${label.replace(/\W+/g, "-").toLowerCase()}`;
+  const menuId = `${id}-items`;
 
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
         ref={triggerRef}
+        id={id}
         type="button"
         aria-label={label}
         aria-expanded={open}
@@ -36,11 +40,12 @@ export function ActionMenu({ label, items }: { label: string; items: ActionItem[
             <li key={item.label}>
               <button
                 type="button"
+                disabled={item.disabled}
                 onClick={() => {
                   close();
                   item.onSelect();
                 }}
-                className={`flex min-h-11 w-full items-center rounded-control px-3 text-left text-sm transition-colors hover:bg-hover ${
+                className={`flex min-h-11 w-full items-center rounded-control px-3 text-left text-sm transition-colors enabled:hover:bg-hover disabled:cursor-not-allowed disabled:opacity-40 ${
                   item.danger ? "text-danger" : "text-fg"
                 }`}
               >

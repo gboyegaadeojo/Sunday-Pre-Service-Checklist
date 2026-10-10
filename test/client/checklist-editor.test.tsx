@@ -52,7 +52,7 @@ afterEach(() => {
 });
 
 const renderEditor = async () => {
-  render(<ChecklistEditorPage onAccessChanged={() => {}} />);
+  render(<ChecklistEditorPage onAccessChanged={() => {}} onNavigate={() => {}} />);
   await screen.findByText("Audio");
 };
 const openMenu = (label: string) => fireEvent.click(screen.getByRole("button", { name: label }));

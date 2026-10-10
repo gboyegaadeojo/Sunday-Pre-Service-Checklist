@@ -1,12 +1,19 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.10 · **Date:** October 2026  
+> **Version:** 1.11 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.10
+## 0. Changes in Version 1.11
+
+| # | Change | Why |
+|---|--------|-----|
+| C19 | **New: Hidden items view with Restore** (new US-13a). Admins see everything hidden from the list and can bring it back with its history, in its old position where possible. Restoring something inside a hidden department or section explains why and offers to restore the parent too. | Hiding never erases, so a mistaken hide must be easy to undo without a developer. |
+| C20 | **New: append-only log of checklist edits** (new US-13b): every add, rename, edit, hide, restore, move and reorder, with who, when, and the before and after values. Admins see it in the Activity view, filtered to check-offs or checklist edits (US-07a). | A record of who changed the checklist and how, with the same protection as the check-off log. |
+
+## Changes in Version 1.10
 
 | # | Change | Why |
 |---|--------|-----|
@@ -199,6 +206,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Each log entry is written in the same transaction as the change it describes.
 - The log is append-only: entries can never be edited or deleted, by anyone, through the app or directly in the database.
 - Admins can view the log for the current service, newest first; past services' logs are part of service history. Directors and Volunteers cannot see it, and the server rejects their requests.
+- The Activity view also shows checklist edits (US-13b), with a filter to show check-offs, checklist edits, or both.
 
 ---
 
@@ -305,6 +313,30 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 ---
 
+**US-13a — Admin restores hidden items**  
+*As an admin, I want to bring back a department, section, or task that was hidden by mistake.*
+
+**Acceptance Criteria:**
+- A "Hidden items" view lists every hidden department, section, and task in the list, newest first, showing where each one was and when it was hidden.
+- Restore brings the item back as it was. It's the same item, so its check-off history stays attached, and it returns to its old position among its siblings where possible.
+- Restoring a department or section also brings back everything inside it that wasn't hidden on its own. Items hidden on their own stay hidden until restored separately.
+- Restoring a task or section whose department or section is still hidden explains that the parent must come back first, and offers to restore the parent too in the same step. The server never restores an item into a hidden parent.
+- Planning Center links removed when a department was hidden (US-12) are not restored; admins link the teams again.
+- Restored items are live immediately for the next volunteer who loads the checklist. Admins only; the server rejects anyone else.
+
+---
+
+**US-13b — Checklist edits are logged**  
+*As an admin, I want a permanent record of changes to the checklist, so I can see who changed what and what it was before.*
+
+**Acceptance Criteria:**
+- Every add, rename, edit, hide, restore, move, and reorder of a department, section, or task is logged with who, when, the sign-in session and browser tab, the item, and its before and after values (e.g. old and new text, old and new section).
+- Each entry is written in the same transaction as the change it describes.
+- The log is append-only: entries can never be edited or deleted, by anyone, through the app or directly in the database.
+- Admins see it in the Activity view (US-07a), filtered to check-offs, checklist edits, or both. Directors and Volunteers cannot see it, and the server rejects their requests.
+
+---
+
 **US-14 — Pre-service checklist is seeded on first launch**  
 *As an admin, I want the existing printed checklist already in the app when we go live.*
 
@@ -392,6 +424,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Append-only activity log of every check-off change; Admin-only activity view (US-07a)
 - Checklist and progress view refresh themselves about every 30 seconds while open
 - Hidden-not-erased deletes; task text snapshots on check-off
+- Hidden items view with Restore (US-13a)
+- Append-only log of checklist edits, shown in the Admin activity view (US-13b)
 - Mobile-responsive UI with dark theme
 - Admin: create/edit/delete task lists, categories, sections, and tasks
 - Progress view per service for everyone with access; reset/undo for Admins/Directors
@@ -441,6 +475,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q22 | Church-specific values | Nothing church-specific is hardcoded: structure, content, Planning Center names, service day, time zone and branding all come from the database and are admin-editable (US-11a). The seed is only starting data. |
 | Q23 | Auditing check-offs | Append-only activity log of every check, uncheck, reset, and undo (who, when, task, outcome, session, tab), written in the same transaction as the change. Admins only can view it. Never edited or deleted. |
 | Q24 | Seeing others' changes | The checklist and the progress view refresh about every 30 seconds while visible and on returning to the tab. No push notifications (out of scope). |
+| Q25 | Undoing a hide | A Hidden items view lists hidden departments, sections and tasks. Restore brings one back with its history, in its old position where possible. Restoring inside a hidden parent explains why and offers to restore the parent too (US-13a). |
+| Q26 | Auditing checklist edits | Append-only log of every add, rename, edit, hide, restore, move and reorder, with who, when, and before/after values. Admins see it in the Activity view with a filter for check-offs vs. checklist edits (US-13b). |
 
 ---
 
@@ -675,4 +711,4 @@ Planning Center data is cached briefly on the server (a few minutes per service)
 
 ---
 
-*End of Requirements — Version 1.10*
+*End of Requirements — Version 1.11*

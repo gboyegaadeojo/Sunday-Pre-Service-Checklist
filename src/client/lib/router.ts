@@ -3,12 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 // Minimal path router. The Worker serves index.html for any non-API path (SPA fallback), so these
 // URLs survive reloads and can be bookmarked. Unknown paths show the checklist.
 
-export type Route = "checklist" | "progress" | "admin-checklist" | "admin-activity";
+export type Route = "checklist" | "progress" | "admin-checklist" | "admin-hidden" | "admin-activity";
 
 export const ROUTE_PATHS: Record<Route, string> = {
   checklist: "/",
   progress: "/progress",
   "admin-checklist": "/admin/checklist",
+  "admin-hidden": "/admin/checklist/hidden",
   "admin-activity": "/admin/activity",
 };
 

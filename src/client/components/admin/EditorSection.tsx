@@ -2,12 +2,21 @@ import { type AdminSection, NAME_MAX, TASK_TEXT_MAX } from "../../../shared/type
 import { plural } from "../../lib/checklist";
 import { ActionMenu } from "../ui/ActionMenu";
 import { AddButton } from "./AddButton";
-import { useEditor } from "./editor-context";
+import { type Position, RECENT_CLASS, itemKey, menuButtonId, reorderItems, useEditor } from "./editor-context";
 import { EditorTaskRow } from "./EditorTaskRow";
 import { TextEditor } from "./TextEditor";
 
-export function EditorSection({ section, number }: { section: AdminSection; number: number }) {
-  const { editing, setEditing, actions, requestHide } = useEditor();
+interface Props {
+  section: AdminSection;
+  categoryId: number;
+  /** Display number, from its position (sections aren't numbered in the data). */
+  number: number;
+  position: Position;
+}
+
+export function EditorSection({ section, categoryId, number, position }: Props) {
+  const editor = useEditor();
+  const { editing, setEditing, actions, requestHide, requestMove, recent } = editor;
   const renaming = editing?.kind === "rename-section" && editing.sectionId === section.id;
   const addingTask = editing?.kind === "add-task" && editing.sectionId === section.id;
 
@@ -24,17 +33,22 @@ export function EditorSection({ section, number }: { section: AdminSection; numb
           />
         </div>
       ) : (
-        <div className="flex items-center gap-2 pr-1 pl-4">
+        <div
+          className={`flex items-center gap-2 pr-1 pl-4 transition-colors duration-700 ${recent === itemKey("section", section.id) ? RECENT_CLASS : ""}`}
+        >
           <h3 className="min-w-0 flex-1 py-2 text-base font-semibold wrap-anywhere">
             <span className="mr-1.5 text-meta font-normal text-fg-muted tabular-nums">{number}.</span>
             {section.name}
           </h3>
           <span className="shrink-0 text-meta text-fg-muted tabular-nums">{plural(section.tasks.length, "task")}</span>
           <ActionMenu
+            id={menuButtonId("section", section.id)}
             label={`Actions for section: ${section.name}`}
             items={[
               { label: "Rename", onSelect: () => setEditing({ kind: "rename-section", sectionId: section.id }) },
               { label: "Add task", onSelect: () => setEditing({ kind: "add-task", sectionId: section.id }) },
+              ...reorderItems(editor, "section", section.id, position),
+              { label: "Move to…", onSelect: () => requestMove({ kind: "section", id: section.id, name: section.name, categoryId }) },
               {
                 label: "Hide section",
                 danger: true,
@@ -53,8 +67,14 @@ export function EditorSection({ section, number }: { section: AdminSection; numb
 
       {section.tasks.length === 0 && !addingTask && <p className="py-1 pl-9 text-meta text-fg-muted">No tasks yet.</p>}
       <ul>
-        {section.tasks.map((task) => (
-          <EditorTaskRow key={task.id} task={task} />
+        {section.tasks.map((task, i) => (
+          <EditorTaskRow
+            key={task.id}
+            task={task}
+            categoryId={categoryId}
+            sectionId={section.id}
+            position={{ first: i === 0, last: i === section.tasks.length - 1 }}
+          />
         ))}
       </ul>
 
