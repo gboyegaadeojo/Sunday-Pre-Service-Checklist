@@ -334,6 +334,16 @@ Built in parts, each approved and committed on its own. The server rejects every
   - Mark Technical Director "sees all departments" and sign in as a fake Technical Director: all departments show, Technical Director first. Do the same as the Admin and the Director.
   - Switch Planning Center to "down" and check the banner, the manual pick and the never-verified message.
 
+### Stage 7b — Design review
+Every screen is built by now, with the fake sources, so this is the point to look at the app as a whole before real Planning Center and deployment. Numbered 7b so Stages 8 and 9 keep their numbers.
+- **Review every screen against `docs/design.md`** at **375px, 768px and desktop** widths: sign-in and the developer box, no access, checklist (scheduled, unscheduled, "Show all departments", fallback banner, no published service), Progress (as Volunteer and as Director/Admin, with reset and undo), the name menu and Settings, and each Admin section (Checklist, Hidden items, Lists, Users, Team mapping, Activity, History). Include loading, empty, error and confirmation states.
+- **Look for:**
+  - **Consistency:** the same components, spacing, wording and states for the same things across screens.
+  - **Accessibility:** WCAG 2.1 AA contrast, keyboard use and visible focus, screen-reader labels, tap targets of at least 44px, status never shown by colour alone.
+  - **Ease of use on Sunday morning:** in a dark booth, on a phone, in a hurry. How quickly a volunteer finds their department and the next open task, whether saving is obvious, and whether anything can be tapped by mistake.
+- **List the problems and propose fixes before changing anything.** Each problem gets the screen, the width, what's wrong, which part of `design.md` or the requirements it falls short of, how much it matters, and the proposed fix, with screenshots. The project owner chooses which fixes to make; they're then built, shown and committed like any other stage.
+- No new features here, and no change to the design direction, colours or typography without the project owner's say-so.
+
 ### Stage 8 — Real Planning Center
 - The Planning Center `ScheduleSource` uses the church-level token (read-only) for teams, positions, rosters and plans, with a 5-second timeout (US-04a, US-17).
 - Planning Center OAuth sign-in, as an `IdentityProvider`: the code exchange happens in the Worker, the volunteer's token is discarded after identifying them, and there are clear error messages when Planning Center is down (US-01, US-04b).

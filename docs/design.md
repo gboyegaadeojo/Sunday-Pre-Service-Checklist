@@ -2,15 +2,12 @@
 
 > **How this brief is applied (project owner, October 2026)**
 >
-> - All UI work follows this brief. Apply it stage by stage, following `docs/build-plan.md`. Build each screen (Director dashboard, Admin workspace, sign-in, reset/undo, Planning Center screens) to this brief when its stage comes up, not earlier.
+> - All UI work follows this brief. Apply it stage by stage, following `docs/build-plan.md`. Build each screen to this brief when its stage comes up, not earlier.
+> - **The requirements are in `docs/requirements.md` (currently v1.17). Where this brief and the requirements disagree, the requirements win.** This brief was brought in line with them in October 2026; later requirement changes apply even before the brief catches up.
 > - Build the reusable components and design tokens from section 10 as screens need them.
 > - If a stage doesn't have the data yet (progress counts, user name, completion times), leave that part of the UI out rather than showing made-up numbers. Add it in the stage that provides the data.
-> - The fake login and fake Planning Center in the approved build plan are allowed until Stages 8–9. "No mock data" means no made-up numbers or placeholder content in the UI.
-> - The requirements file is `docs/requirements.md`.
-> - Department names come from the checklist data. The seed's "Director (Switcher)" is the brief's "Director".
-> - **Requirements v1.7 adds a sixth department, Technical Director.** Wherever this brief says "five departments" (§3C, §6, §11, §12), read it as all departments in the checklist (currently six). Layouts must not assume a fixed count.
-> - **Requirements v1.6 overrides §6 on who sees the dashboard:** the progress dashboard is for everyone with access, Volunteers included. Reset and "Undo reset" stay Admin/Director-only, and list management and Planning Center mapping stay Admin-only.
-> - **Church settings (US-11a) are not part of the §7 Admin workspace.** Admins open them from the menu under their name in the header (§3A), above Sign out. Nobody else sees that item.
+> - The fake login and fake schedule source in the approved build plan are allowed until Stages 8–9. "No mock data" means no made-up numbers or placeholder content in the UI.
+> - **Nothing church-specific is fixed in the design.** Department names and how many there are, sections, tasks, the service day, the time zone and the branding all come from the app's data and settings, and Admins can change them. Names used as examples in this brief (e.g. "Presentation / Computer Graphics") are the current starting data, not part of the design.
 > - The sign-in screen shows exactly one sign-in option, "Sign in with Planning Center". Users never choose a role. Local development may add a separate, clearly labelled developer-only test-user control, which never exists in production builds.
 
 ## Role and Expectations
@@ -21,7 +18,7 @@ Review the existing application running locally and redesign its UI/UX to delive
 
 Think like a senior product leader. Prioritize usability, information architecture, operational reliability, accessibility, maintainability, and visual consistency over decorative design.
 
-Do not simply make the application look prettier. Improve how volunteers complete their pre-service tasks, how Directors monitor readiness, and how Admins manage the application.
+Do not simply make the application look prettier. Improve how volunteers complete their pre-service tasks, how the team follows readiness, and how Admins manage the application.
 
 ## 1. Start by Inspecting the Existing Application
 
@@ -99,11 +96,12 @@ The user should immediately understand:
 
 Create a compact, professional header containing:
 
-- IFC Production or IFC Pre-Service Checklist branding.
+- The church's branding: short name (logo mark), team name and app name, as set by Admins in Settings (US-11a). Leave out any value that isn't set; never fall back to built-in church names. On phones, show the logo mark only.
 - Current service date and service information.
 - User avatar and display name.
 - User role where appropriate.
-- Access to role-authorized functions.
+- Access to role-authorized functions: Checklist and Progress for everyone with access, Admin for Admins.
+- A menu under the user's name with **Settings (Admins only)** above **Sign out**. Settings is reached only from here, not from the Admin area (requirements v1.15).
 - A subtle connection or synchronization status when relevant.
 
 Do not waste excessive vertical space on the header.
@@ -112,7 +110,7 @@ Do not waste excessive vertical space on the header.
 
 Display a compact service overview with:
 
-- Service name and date.
+- Service name and date (the church's service day and time zone come from Settings; never assume a weekday).
 - Overall completed task count.
 - Total task count.
 - Remaining task count.
@@ -123,19 +121,13 @@ All values must come from actual application data.
 
 Do not hardcode progress numbers or use illustrative data in the production interface.
 
-If Planning Center has not published a service, display the required message explaining that the default checklist is ready for the upcoming Sunday.
+If the schedule source (Planning Center today) has not published a service, display the required message explaining that the default checklist is ready for the upcoming service day (US-05).
 
-If Planning Center schedule data is unavailable, show the specified fallback banner and allow eligible users to select their department manually.
+If schedule data is unavailable, show the specified fallback banner and allow eligible users to select their department manually (US-04a).
 
 ### C. Department navigation
 
-The five departments are:
-
-- Presentation / Computer Graphics
-- Audio Engineer
-- Camera Operators
-- Director
-- Miscellaneous
+Departments come from the checklist data. There can be any number of them; there are currently six (Presentation / Computer Graphics, Audio Engineer, Camera Operators, Director (Switcher), Miscellaneous and Technical Director). Admins add, rename, reorder and hide departments, so layouts must never assume a fixed count or fixed names.
 
 On desktop, use a persistent left sidebar or an equally effective department navigation pattern.
 
@@ -148,9 +140,11 @@ For each department, display:
 - Completion status.
 - A restrained visual indication of the selected department.
 
-Prioritize the volunteer's assigned department.
+Which departments show by default follows US-05 (requirements v1.14):
 
-If a volunteer is assigned to multiple departments, prioritize all applicable departments.
+- A **scheduled volunteer** sees only their own department, or all of theirs if they're scheduled in more than one. A **"Show all departments"** control adds the others after theirs, and they can check off tasks there too.
+- Volunteers who aren't scheduled, or whose position has no link, see all departments and choose theirs.
+- **Admins, Directors and Technical Directors** (a position an Admin marks "sees all departments") see all departments, their own first and highlighted.
 
 Keep other departments accessible without making them visually compete with the volunteer's own work.
 
@@ -251,13 +245,13 @@ On mobile, prioritize the task list and keep secondary information compact.
 
 Use a bottom navigation bar only if it improves navigation without consuming excessive space.
 
-## 6. Director Progress Dashboard
+## 6. Progress Dashboard
 
-Create a dedicated progress dashboard for Directors and Admins.
+Create a dedicated progress dashboard. **It is for everyone with access: Volunteers, Directors and Admins** (US-09, requirements v1.6). People who aren't on a media team can't see it.
 
 The dashboard must make it possible to determine department readiness without manually reviewing every task.
 
-Display all five departments with:
+Display every department in the checklist (whatever the user's checklist view shows) with:
 
 - Department name.
 - Completed task count.
@@ -269,7 +263,7 @@ Use green for completed departments, yellow for in-progress departments, and gre
 
 Always include labels and counts alongside status colors.
 
-Allow a Director to expand a department and inspect individual task completion, including the volunteer's name and completion time.
+Allow anyone viewing the dashboard to expand a department and inspect individual task completion, including the volunteer's name and completion time.
 
 Include:
 
@@ -277,42 +271,50 @@ Include:
 - Manual refresh button.
 - Automatic refresh approximately every 30 seconds.
 - Appropriate loading and error states.
-- Reset checklist action for authorized users.
-- Undo reset action when restoration is available.
+- Reset checklist action, for Admins and Directors only.
+- Undo reset action when restoration is available, for Admins and Directors only.
 
-Do not give Directors access to task-list management or Planning Center mapping.
+Volunteers never see the reset and undo controls. Directors never get list management, team mapping, user management, the activity log or Settings.
 
 Do not invent readiness thresholds or declare a service ready based solely on an arbitrary completion percentage.
 
 ## 7. Admin Workspace
 
-Create a separate, role-protected Admin area.
+Create a separate, role-protected Admin area, reached from the header's **Admin** tab, with its own tabs for each section. Only list sections that exist.
 
 Organize it into clear sections:
 
-### Overview
-Current service and department progress.
+### Checklist
+Edit the checklist's departments, sections, and tasks according to the existing data model and requirements: add, rename, edit, reorder, move between sections and departments, and hide (US-12, US-12a, US-13). Hidden items are listed separately and can be restored (US-13a). Hiding never erases anything.
 
-### Checklist Management
-Create, edit, reorder, and hide/delete task lists, categories, sections, and tasks according to the existing data model and requirements.
+### Lists
+Create, copy, rename, hide and restore task lists, and choose the default list (US-11).
 
-### Planning Center Mapping
-Configure the Service Type and link Planning Center teams or positions to checklist categories.
+### Team mapping
+Configure the schedule's Service Type and link teams or positions to checklist departments (US-15). **The schedule source is replaceable:** it is Planning Center today, and screens should say "Planning Center" where that's what the person is linking, without building the design around Planning Center itself (requirements C22).
 
 Clearly display:
 
 - Linked teams.
 - Linked positions.
-- Assigned checklist categories.
+- Assigned checklist departments.
 - Unlinked teams and positions.
-- Missing or deleted Planning Center records.
+- Missing or deleted records in the schedule source.
 - Position-level mappings that override team-level mappings.
+- Teams or positions marked "sees all departments".
 
-### Users and Permissions
-Search users and grant or revoke Admin and Director roles.
+### Users
+Search users and grant or revoke Admin and Director roles (US-03). There must always be at least one Admin (requirements v1.17): the last Admin's role can't be removed, and Admins confirm before removing their own.
 
-### Service History
-Access previous service records, task completion snapshots, and archived reset data as supported by the existing requirements.
+### Activity
+The append-only logs, read-only: check-offs, resets and undos for the current service (US-07a), checklist edits (US-13b), settings changes and role changes, with a filter.
+
+### History
+Previous services: what was done and what wasn't ("X of Y done" per department), tasks removed during the service, resets, and each service's activity log, as supported by the requirements (US-07, US-07b).
+
+**Settings is not part of the Admin area.** It lives in the menu under the user's name (§3A).
+
+Current service progress is on the Progress dashboard (§6), which Admins use like everyone else.
 
 Use confirmation dialogs for destructive or consequential actions.
 
@@ -340,7 +342,7 @@ Resetting a service must require explicit confirmation. Explain that the action 
 
 ## 9. Authentication, Permissions, and Fallback States
 
-Preserve the existing Planning Center authentication and authorization requirements.
+Preserve the existing authentication and authorization requirements. People sign in with Planning Center today; the app keeps its own user accounts, so the sign-in provider can change without losing people, roles or history (US-03a).
 
 The UI must support:
 
@@ -348,13 +350,13 @@ The UI must support:
 - Admin access.
 - Director access.
 - An explanation screen for users without linked media-team membership.
-- Existing sessions when Planning Center sign-in is temporarily unavailable.
-- Manual department selection when schedule lookup fails and fallback access is permitted.
+- Existing sessions when sign-in is temporarily unavailable (US-04b).
+- Manual department selection when schedule lookup fails and fallback access is permitted (US-04a).
 - An informative message when no service has been published.
 
 Clearly distinguish authentication failures from schedule lookup failures.
 
-Do not expose secrets, access tokens, or database credentials in the browser.
+Do not expose secrets, access tokens, database credentials, or sign-in provider IDs in the browser.
 
 Do not weaken server-side authorization to simplify the UI.
 
@@ -391,13 +393,13 @@ Keep business logic separate from presentation wherever practical.
 This is a redesign of the existing application, not permission to change the product requirements.
 
 - Preserve the existing application framework and working integrations.
-- Follow `docs/requirements.md`.
-- Preserve the five departments and all seeded checklist content.
-- Preserve Planning Center integration.
+- Follow `docs/requirements.md`; where this brief disagrees, the requirements win.
+- Preserve the seeded checklist content as starting data. Departments, sections and tasks are data that Admins edit; never hardcode them, their number, or their names.
+- Keep Planning Center behind the replaceable sign-in and schedule-source interfaces (requirements C22).
 - Preserve the current backend and database architecture.
 - Preserve role-based access controls.
 - Preserve service-specific task completion.
-- Preserve task history, snapshots, and reset/restore behavior.
+- Preserve task history, snapshots, service records, and reset/restore behavior.
 - Do not introduce paid services or subscriptions.
 - Do not add out-of-scope functionality.
 - Do not replace real data with mock data.
@@ -412,13 +414,13 @@ The redesign is complete when:
 
 1. The volunteer can identify their department and begin working immediately.
 2. Task progress updates accurately and saves reliably.
-3. All five departments and their seeded checklist content are preserved.
+3. The seeded checklist content is preserved as starting data, and layouts work with any number of departments, sections and tasks.
 4. The desktop layout uses available screen space effectively.
 5. Mobile and tablet layouts work without horizontal scrolling.
 6. Task controls meet the minimum touch-target requirement.
-7. Directors can monitor department progress and inspect task completion details.
-8. Admins can manage checklists, mappings, and roles.
-9. Directors cannot manage lists or mappings.
+7. Everyone with access can follow department progress and inspect task completion details; only Admins and Directors can reset and undo.
+8. Admins can manage the checklist, lists, team mapping, users and roles, and Settings, and can review activity and service history.
+9. Directors cannot manage the checklist, lists, mapping, users or Settings.
 10. Error, loading, empty, fallback, and reset states are properly designed.
 11. Accessibility and keyboard navigation are verified.
 12. Existing authentication, authorization, and data integrity remain intact.
@@ -431,7 +433,7 @@ Work directly in the existing codebase.
 
 First inspect the application and identify the relevant components and files. Then implement the redesign in manageable stages.
 
-Prioritize the volunteer checklist first, followed by the Director dashboard and Admin workspace.
+Prioritize the volunteer checklist first, followed by the Progress dashboard and Admin workspace.
 
 After implementation:
 
