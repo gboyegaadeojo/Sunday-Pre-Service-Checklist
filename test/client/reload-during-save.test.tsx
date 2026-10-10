@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChecklistResponse, CurrentUser, TaskCheckoff } from "../../src/shared/types";
 import { ChecklistPage } from "../../src/client/pages/ChecklistPage";
 
-const USER: CurrentUser = { id: "dev-volunteer", name: "Test Volunteer", avatarUrl: null, isAdmin: false, isDirector: false, hasAccess: true };
+const USER: CurrentUser = { id: 1, name: "Test Volunteer", avatarUrl: null, isAdmin: false, isDirector: false, hasAccess: true };
 const TASKS = ["Task one", "Task two", "Task three", "Task four"];
 
 /** A tiny in-memory server. Writes apply as soon as they arrive (like D1); responses can be held back. */

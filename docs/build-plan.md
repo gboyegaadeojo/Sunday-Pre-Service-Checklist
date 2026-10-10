@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.11 · **Date:** October 2026
+> **Based on:** requirements.md v1.12 · **Date:** October 2026
 > **Status:** Approved
 
 ---
@@ -19,9 +19,9 @@
 | Sessions | HMAC-signed cookie (HttpOnly, Secure, SameSite=Lax, 30-day sliding expiry) built with Web Crypto | No session library needed. Roles are re-read from D1 on every request (US-03). |
 | Time zone | `Intl.DateTimeFormat` with the church's time zone from settings (seeded `America/Winnipeg`) | Built into Workers and handles daylight saving (US-07, US-11a). |
 | Tests | **Vitest** with `@cloudflare/vitest-pool-workers` | Runs server tests inside the Workers runtime against a real local D1. Covers the risky logic: current service, access rules, team mapping and reset/undo. |
-| Planning Center | A `PlanningCenter` interface with two implementations: **Fake** (stages 1–7) and **Real** (stage 8) | Every Planning Center–dependent feature can be built and tested before real credentials exist. The fake can also simulate an outage. |
+| Sign-in and scheduling sources | Two interfaces (requirements C22): **`IdentityProvider`** for sign-in (Dev test users now, Planning Center OAuth in stage 8) and **`ScheduleSource`** for service types, teams, positions, membership and plans (**Fake** in stage 7, **Planning Center** in stage 8) | Planning Center becomes replaceable: nothing outside `src/worker/sources/` knows about it. Every source-dependent feature can be built and tested before real credentials exist, and the fake can simulate an outage. |
 
-**Planning Center cache:** this is stored in a D1 table, not the Workers Cache API. The Cache API does nothing on `*.workers.dev` addresses, and that's the default hostname (US-18).
+**Source cache:** short-lived schedule-source responses are stored in a D1 table, not the Workers Cache API. The Cache API does nothing on `*.workers.dev` addresses, and that's the default hostname (US-18).
 
 ---
 
@@ -44,7 +44,7 @@
 │   │   ├── routes/           # auth, dev-auth, checklist, progress, admin-lists, admin-users, admin-mapping
 │   │   ├── lib/              # session, time (church time zone), current-service, access, reset
 │   │   ├── db/               # typed query helpers
-│   │   └── pco/              # PlanningCenter interface, fake.ts, real.ts, cache.ts
+│   │   └── sources/          # IdentityProvider and ScheduleSource interfaces; dev/, fake/, planning-center/ implementations; cache.ts
 │   ├── client/
 │   │   ├── main.tsx, App.tsx
 │   │   ├── pages/            # SignIn, Checklist, Progress, NoAccess, admin/*
@@ -63,20 +63,32 @@
 
 ## 3. Database Tables
 
-All IDs are integers unless noted. Planning Center IDs are stored as text. Timestamps are ISO 8601 UTC. Service dates are `YYYY-MM-DD` in the church's time zone (a setting).
+All IDs are integers unless noted. IDs from outside sources (e.g. Planning Center) are stored as text, next to the source's name. Timestamps are ISO 8601 UTC. Service dates are `YYYY-MM-DD` in the church's time zone (a setting).
 
 ### Users and settings
 
-**users**
+**users** — the app's own accounts (US-03a)
 | Column | Notes |
 |--------|-------|
-| `pco_person_id` TEXT PK | Planning Center person ID (US-03) |
+| `id` INTEGER PK AUTOINCREMENT | Internal user ID: never changes, never reused. Everything else refers to this |
 | `display_name`, `avatar_url` | Refreshed at each sign-in |
 | `is_admin`, `is_director` | 0/1 flags (US-03) |
 | `team_verified_at` | Last time membership in a linked team was confirmed (US-02, US-04a: 90-day rule) |
 | `created_at`, `last_seen_at` | |
 
-**settings** — key/value table of church-specific values, all admin-editable (US-11a, US-15): `church_short_name`, `team_name`, `app_name` (branding, public via `GET /api/branding`), `time_zone` (IANA), `service_weekday` (0 = Sunday … 6 = Saturday), and the selected Planning Center Service Type. Starting values come from `0003_default_settings.sql`; code never supplies defaults.
+**user_identities** — sign-in accounts linked to a user (US-03a)
+| Column | Notes |
+|--------|-------|
+| `id` | |
+| `user_id` → users | |
+| `provider` | `planning_center` now, `dev` for local test users; later possibly `google` |
+| `subject` TEXT | The provider's ID for this person (e.g. Planning Center person ID) |
+| `email` | Nullable; for later invite/approval flows |
+| `created_at`, `last_used_at` | |
+
+A unique index on `(provider, subject)` links each sign-in account to exactly one user; a user may have several. Sign-in finds the identity, or creates the user and the identity together in one batch. A Planning Center person ID lives only here (used for schedule lookups) and never reaches the browser.
+
+**settings** — key/value table of church-specific values, all admin-editable (US-11a, US-15): `church_short_name`, `team_name`, `app_name` (branding, public via `GET /api/branding`), `time_zone` (IANA), `service_weekday` (0 = Sunday … 6 = Saturday), the schedule source (`schedule_source`, e.g. `planning_center`), and that source's selected service type. Starting values come from `0003_default_settings.sql`; code never supplies defaults.
 
 ### Checklist definition
 
@@ -97,7 +109,7 @@ Deletes set `deleted_at` instead of removing the row (US-12, US-13).
 |--------|-------|
 | `id` | |
 | `service_date` UNIQUE | Date in the church's time zone |
-| `pco_plan_id` | Null when no plan is published (Q3). Filled in if a plan appears later |
+| `plan_source`, `plan_external_id` | The schedule source's plan for this service. Null when no plan is published (Q3). Filled in if a plan appears later |
 | `list_id` → task_lists | List used for this service (the default list at creation time) |
 | `created_at` | |
 
@@ -110,8 +122,8 @@ Rows are created lazily the first time someone opens that service. No scheduled 
 | `task_text_snapshot` | Task text at the moment of check-off (US-06, C8) |
 | `category_id_snapshot` → categories, `category_name_snapshot` | Department the task was in when checked (US-13 history rule, C14). The ID groups past records reliably; the name shows the department as it was called then |
 | `section_id_snapshot` → sections, `section_name_snapshot` | Section the task was in when checked, likewise |
-| `checked_by_pco_id`, `checked_by_name`, `checked_at` | |
-| `unchecked_by_pco_id`, `unchecked_by_name`, `unchecked_at` | Null while checked |
+| `checked_by_user_id` → users, `checked_by_name`, `checked_at` | Internal user ID (US-03a), and the name as it was then |
+| `unchecked_by_user_id` → users, `unchecked_by_name`, `unchecked_at` | Null while checked |
 | `reset_id` → resets | Set when a reset archives this row |
 
 A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A partial unique index on `(service_id, task_id)` for active rows stops two people from double-checking the same task at the same moment.
@@ -125,33 +137,36 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 **Restore (US-13a).** Restore clears `deleted_at`. The row keeps its ID, so its check-offs stay attached, and it keeps its `sort_order`, so it returns between its old neighbours unless they were reordered since. Hiding a department or section doesn't touch its children, so restoring it brings back everything that wasn't hidden on its own. An item is restored only into a live parent. "Restore with parents" clears the hidden ancestors and the item in one transaction. Team links deleted by a department hide are not recreated.
 
 **checklist_events** (migration `0005`, Stage 5c): append-only log of checklist edits (US-13b), built like `checkoff_events`.
-- Columns: `list_id`, `entity` (category/section/task), `entity_id`, `entity_name` (its name or text after the change, so the entry reads correctly after later renames), `action` (add/rename/edit/hide/restore/move/reorder), `before_json`, `after_json`, `user_pco_id`, `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`.
+- Columns: `list_id`, `entity` (category/section/task), `entity_id`, `entity_name` (its name or text after the change, so the entry reads correctly after later renames), `action` (add/rename/edit/hide/restore/move/reorder), `before_json`, `after_json`, `user_id` (internal), `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`.
 - `before_json`/`after_json` hold only what changed: `name` or `text`; `place` (department, section and 1-based position among live siblings) for add, move and reorder; `teamLinks` removed by hiding a department.
 - Written in the same `db.batch` transaction as the edit. Triggers abort `UPDATE` and `DELETE`. No foreign keys.
 
 **checkoff_events** — append-only activity log (migration `0004`): one row per check or uncheck attempt that reaches the check-off logic.
-- Columns: `service_id`, `task_id`, `action` (check/uncheck), `outcome` (applied / no_change / not_found / service_changed), `user_pco_id`, `user_name`, `session_id` (random, fixed at sign-in, kept when the cookie renews), `tab_id` (random per page load, sent as `X-Tab-Id`), `user_agent`, `created_at`.
+- Columns: `service_id`, `task_id`, `action` (check/uncheck), `outcome` (applied / no_change / not_found / service_changed), `user_id` (internal), `user_name`, `session_id` (random, fixed at sign-in, kept when the cookie renews), `tab_id` (random per page load, sent as `X-Tab-Id`), `user_agent`, `created_at`.
 - Written in the same transaction as the check-off itself.
 - Triggers abort any `UPDATE` or `DELETE`, so entries are never edited or removed.
 - No foreign keys, so the log outlives anything it mentions.
 
-**resets** — `id`, `service_id`, `reset_by_pco_id`, `reset_by_name`, `reset_at`, `undone_by_pco_id`, `undone_by_name`, `undone_at`. Only the most recent, not-yet-undone reset for a service can be undone (US-07).
+**resets** — `id`, `service_id`, `reset_by_user_id`, `reset_by_name`, `reset_at`, `undone_by_user_id`, `undone_by_name`, `undone_at`. Only the most recent, not-yet-undone reset for a service can be undone (US-07).
 
-### Planning Center
+### Schedule source (Planning Center today)
+
+Column names are provider-neutral (requirements C22). `source` names where an outside ID comes from (`planning_center` today).
 
 **team_links** (US-15)
 | Column | Notes |
 |--------|-------|
 | `id` | |
-| `pco_team_id` | |
-| `pco_position_id` | Null means a team-level link |
+| `source` | e.g. `planning_center` |
+| `team_external_id` | |
+| `position_external_id` | Null means a team-level link |
 | `category_id` → categories | |
-| `pco_team_name`, `pco_position_name` | Last known names, used only for display and to show "missing" when Planning Center no longer returns the ID |
+| `team_name`, `position_name` | Last known names, used only for display and to show "missing" when the source no longer returns the ID |
 | `created_at` | |
 
-There's a unique index on `(pco_team_id, IFNULL(pco_position_id, ''))`, so each team or position maps to exactly one category. A category can still have many links.
+There's a unique index on `(source, team_external_id, IFNULL(position_external_id, ''))`, so each team or position maps to exactly one category. A category can still have many links.
 
-**pco_cache** — `key` PK, `json`, `expires_at`. Holds short-lived Planning Center responses, a few minutes per service (Architecture Note).
+**source_cache** — `key` PK, `json`, `expires_at`. Holds short-lived schedule-source responses, a few minutes per service (Architecture Note).
 
 ---
 
@@ -214,7 +229,16 @@ Built in parts, each approved and committed on its own. The server rejects every
 - The Admin Activity view gets a filter: All, Check-offs (current service, as before) or Checklist edits. Edits show the item, who, when, and the before and after values.
 - **Test in the browser:** rename a task, move it and hide it, then see the three entries with old and new values. Confirm the log rejects `UPDATE` and `DELETE`.
 
-**5c.1 — Reorder mode (small follow-up)**
+**5c.1 — App user IDs and provider-neutral schema (requirements v1.12: US-03a, C22)**
+- `users` gets an internal `id`; sign-in accounts move to `user_identities` (section 3). The session token's `sub` becomes the internal ID, so existing local sessions sign in again once.
+- Check-offs, resets, `checkoff_events` and `checklist_events` store `*_user_id` (internal) instead of `*_pco_id`. `CurrentUser.id` sent to the browser becomes the internal ID.
+- Test sign-in becomes the first `IdentityProvider` (`dev`, subject = test-user key). Sign-in goes through one function: find the identity, or create user and identity together. Roles are still never overwritten at sign-in.
+- Provider-neutral names for the not-yet-used Planning Center tables and columns: `team_links` (`source`, `team_external_id`, …), `services.plan_source`/`plan_external_id`, `source_cache`.
+- `src/worker/sources/` holds the `IdentityProvider` and `ScheduleSource` interfaces (types only until Stage 7). Planning Center wording in the UI stays where it describes today's setup (the sign-in button, "No service is published in Planning Center"). In Stage 8 the sign-in screen gets its button label from the server's provider list, and the schedule-source wording follows the configured source.
+- **Migration approach (to confirm):** nothing is deployed yet, so the recommended option rewrites `0001`, `0004` and `0005` in place and resets local databases once. That gives a clean schema, and the append-only logs are never rewritten. The alternative is a new `0006` that rebuilds the affected tables and keeps local data, but it has to drop and recreate the log triggers to copy the log rows.
+- **Test in the browser:** sign in as each test user and confirm roles, check-offs, reset/undo and both logs work as before. The Activity view shows the same names.
+
+**5c.2 — Reorder mode (small follow-up)**
 - A "Reorder" toggle in the editor shows up/down arrow buttons (44 px) on every department, section and task row, so several moves don't need the ⋯ menu each time. The ⋯ menu's Move up/Move down stay.
 - Same server endpoints as 5b, and reorders are logged as in 5c.
 - **Test in the browser:** at 375 px, turn on Reorder and move a task down three places with the arrows. Then turn it off.
@@ -231,12 +255,12 @@ Built in parts, each approved and committed on its own. The server rejects every
 - Users page: grant or revoke Admin and Director (US-03). Revoking takes effect on the user's next page load.
 - **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the reset controls appear.
 
-### Stage 7 — Team mapping and access, with the fake Planning Center
-- The Fake Planning Center provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its sample data, including the church's real position names (below), lives in a **dev-only data file** under `src/worker/dev/`. Production builds drop it, as with the test users, and the production-build test checks those names are absent. **Nothing is mapped automatically:** admins link every team or position in the mapping screen, with the fake data as with real data.
+### Stage 7 — Team mapping and access, with the fake schedule source
+- The fake `ScheduleSource` (standing in for Planning Center) provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its sample data, including the church's real position names (below), lives in a **dev-only data file** under `src/worker/dev/`. Production builds drop it, as with the test users, and the production-build test checks those names are absent. **Nothing is mapped automatically:** admins link every team or position in the mapping screen, with the fake data as with real data.
 - Admin mapping screen: pick a Service Type, then link teams or positions to categories. Unlinked items are marked, position links override team links, and items that have gone missing are flagged (US-15).
 - Access is based on linked-team membership and the `team_verified_at` stamp (US-02). Scheduled categories are highlighted first, and users who aren't scheduled see a note (US-05).
 - Manual department pick is remembered on the device for the day. Fallback banner and 90-day rule when Planning Center is "down" (US-04a). Current service now comes from Planning Center plans (US-07).
-- `pco_cache` is used here.
+- `source_cache` is used here.
 - **Expected mapping** of the church's real Planning Center positions to checklist departments (requirements v1.7). This is for the admins to set up in the app, never hardcoded:
 
   | Planning Center position | Checklist department |
@@ -253,14 +277,14 @@ Built in parts, each approved and committed on its own. The server rejects every
 - **Test in the browser:** link "Camera 2" to Camera Operators and sign in as a fake Camera 2 volunteer to see it highlighted. Switch Planning Center to "down" and check the banner, the manual pick and the never-verified message.
 
 ### Stage 8 — Real Planning Center
-- `RealPlanningCenter` uses the church-level token (read-only) for teams, positions, rosters and plans, with a 5-second timeout (US-04a, US-17).
-- Planning Center OAuth sign-in: the code exchange happens in the Worker, the volunteer's token is discarded after identifying them, and there are clear error messages when Planning Center is down (US-01, US-04b).
+- The Planning Center `ScheduleSource` uses the church-level token (read-only) for teams, positions, rosters and plans, with a 5-second timeout (US-04a, US-17).
+- Planning Center OAuth sign-in, as an `IdentityProvider`: the code exchange happens in the Worker, the volunteer's token is discarded after identifying them, and there are clear error messages when Planning Center is down (US-01, US-04b).
 - The sign-in button starts the real Planning Center flow. The developer-only test-user control stays local-only, and production builds already exclude it (Stage 2).
 - You'll need: an OAuth app and a church token registered at api.planningcenteronline.com (Q7), stored in `.dev.vars`.
 - **Test in the browser:** sign in with your real Planning Center account locally, link real teams and confirm your real schedule is highlighted.
 
 ### Stage 9 — Cloudflare deployment
-- Create the remote D1 database and run migrations. Set Worker secrets with `wrangler secret put` (US-16). Seed the first admin.
+- Create the remote D1 database and run migrations. Set Worker secrets with `wrangler secret put` (US-16). Seed the first admin: a `users` row with Admin set, plus a `user_identities` row linking their Planning Center person ID (US-03a).
 - Connect GitHub so pushes to `main` deploy automatically (US-18).
 - Write `docs/deployment.md` covering secrets and how to rotate them, seeding the first admin, the "sign in once during the week" advice (US-04b), D1 backup and point-in-time recovery, and the optional custom domain.
 - **Test in the browser:** open the `*.workers.dev` URL on a phone and run a full Sunday walkthrough.
@@ -277,3 +301,5 @@ Approved October 2026.
 | D2 | **Each Planning Center team or position links to only one category.** | Enforced by the unique index on `team_links`. A category can still have many links. Recorded in requirements US-15. |
 | D3 | **Newer check-off wins when a reset is undone.** | If a task was checked again after the reset, undo keeps the newer check-off and leaves the archived one archived. Recorded in requirements US-07. |
 | D4 | **React front end.** | It's built by Vite into static assets, so page loads don't use Worker requests or CPU time. |
+| D5 | **Users have internal app IDs; sign-in accounts are linked to them.** | `users.id` plus `user_identities`. Roles, check-offs, resets and both logs refer to the internal ID. Recorded in requirements US-03a. |
+| D6 | **Planning Center is a replaceable source.** | `IdentityProvider` and `ScheduleSource` interfaces under `src/worker/sources/`, and provider-neutral columns for outside IDs. Recorded in requirements C22. |

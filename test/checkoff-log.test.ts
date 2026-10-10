@@ -4,7 +4,7 @@ import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ChecklistResponse } from "../src/shared/types";
 import { createSessionToken } from "../src/worker/lib/session";
-import { request, signInAs } from "./helpers";
+import { request, signInAs, userIdOf } from "./helpers";
 
 let volunteer: string;
 
@@ -22,7 +22,7 @@ const marker = async () => (await env.DB.prepare("SELECT COALESCE(MAX(id), 0) AS
 const eventsSince = async (m: number) =>
   (
     await env.DB.prepare(
-      `SELECT service_id, task_id, action, outcome, user_pco_id, user_name, session_id, tab_id, created_at
+      `SELECT service_id, task_id, action, outcome, user_id, user_name, session_id, tab_id, created_at
          FROM checkoff_events WHERE id > ? ORDER BY id`,
     )
       .bind(m)
@@ -59,7 +59,7 @@ describe("checkoff_events log", () => {
       [service.id + 500, 3, "check", "service_changed"],
     ]);
     for (const e of events) {
-      expect(e).toMatchObject({ user_pco_id: "dev-volunteer", user_name: "Test Volunteer", session_id: sessionIdOf(volunteer), tab_id: "tab-a1" });
+      expect(e).toMatchObject({ user_id: await userIdOf("volunteer"), user_name: "Test Volunteer", session_id: sessionIdOf(volunteer), tab_id: "tab-a1" });
       expect(Date.parse(String(e.created_at))).not.toBeNaN();
     }
   });
@@ -77,7 +77,7 @@ describe("checkoff_events log", () => {
 
     const { service } = await getChecklist();
     const m = await marker();
-    const oldToken = await createSessionToken(env.SESSION_SECRET, "dev-volunteer", Math.floor(Date.now() / 1000) - 7200, "sid-kept");
+    const oldToken = await createSessionToken(env.SESSION_SECRET, await userIdOf("volunteer"), Math.floor(Date.now() / 1000) - 7200, "sid-kept");
     const res = await request(url(service.id, 1), { method: "PUT", headers: { Cookie: `session=${oldToken}` } });
     expect(res.headers.get("Set-Cookie")).toContain("session="); // renewed
     expect(sessionIdOf(res.headers.get("Set-Cookie")?.split(";")[0] ?? "")).toBe("sid-kept");

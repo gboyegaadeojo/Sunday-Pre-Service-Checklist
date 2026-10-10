@@ -31,7 +31,7 @@ export interface ServiceInfo {
   date: string;
   /** The service is today (in the church's time zone), not upcoming. */
   isToday: boolean;
-  /** A Planning Center plan exists for it (Stage 7). False shows the "No service is published" note (US-05). */
+  /** The schedule source has a plan for it (Stage 7). False shows the "No service is published" note (US-05). */
   published: boolean;
   /** The church's IANA time zone (setting), for showing check-off times. */
   timeZone: string;
@@ -101,7 +101,8 @@ export interface ApiErrorBody {
 }
 
 export interface CurrentUser {
-  id: string;
+  /** Internal app user ID (US-03a). Never a sign-in provider's ID. */
+  id: number;
   name: string;
   avatarUrl: string | null;
   isAdmin: boolean;

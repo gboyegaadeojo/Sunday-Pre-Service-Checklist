@@ -1,5 +1,5 @@
 // App session token (US-01): base64url(JSON payload) + "." + base64url(HMAC-SHA256 signature).
-// It identifies the user only; roles are re-read from D1 on every request (US-03).
+// It identifies the app user (internal ID, US-03a) only; roles are re-read from D1 on every request (US-03).
 
 export const SESSION_COOKIE = "session";
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -7,7 +7,7 @@ export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const SESSION_RENEW_AFTER_SECONDS = 60 * 60;
 
 export interface SessionPayload {
-  sub: string; // Planning Center person ID
+  sub: number; // internal app user ID (users.id), never a sign-in provider's ID
   sid: string; // random session ID, fixed at sign-in and kept on renewal (audit log)
   iat: number; // issued at, seconds
   exp: number; // expires at, seconds
@@ -32,7 +32,7 @@ const hmacKey = (secret: string) =>
 
 export async function createSessionToken(
   secret: string,
-  sub: string,
+  sub: number,
   now: number,
   sid: string = crypto.randomUUID(),
 ): Promise<string> {
@@ -55,7 +55,7 @@ export async function verifySessionToken(secret: string, token: string, now: num
     );
     if (!valid) return null;
     const payload = JSON.parse(new TextDecoder().decode(fromBase64Url(body))) as SessionPayload;
-    if (typeof payload.sub !== "string" || typeof payload.sid !== "string") return null;
+    if (!Number.isInteger(payload.sub) || typeof payload.sid !== "string") return null;
     if (typeof payload.exp !== "number" || payload.exp <= now) return null;
     return payload;
   } catch {

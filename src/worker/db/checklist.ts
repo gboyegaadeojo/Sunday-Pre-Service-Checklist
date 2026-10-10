@@ -33,7 +33,7 @@ export async function getServiceChecklist(db: D1Database, service: Service): Pro
       id: service.id,
       date: service.date,
       isToday: service.isToday,
-      published: service.pcoPlanId !== null,
+      published: service.planExternalId !== null,
       timeZone: service.timeZone,
     },
     list,

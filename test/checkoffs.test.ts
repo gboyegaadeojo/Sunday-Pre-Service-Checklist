@@ -2,7 +2,7 @@ import { env } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ChecklistResponse, ChecklistTask, CheckoffResponse } from "../src/shared/types";
 import { currentServiceDate } from "../src/worker/lib/service-day";
-import { request, signInAs, withCookie } from "./helpers";
+import { request, signInAs, userIdOf, withCookie } from "./helpers";
 
 // Seed facts used below: task 1 "Verify all server rack devices…" is in section 1 of category 1
 // (Presentation / Computer Graphics); category 2 is Audio Engineer.
@@ -97,7 +97,7 @@ describe("checking off tasks (US-06)", () => {
     await check(volunteer, service.id);
     const row = await env.DB.prepare(
       `SELECT task_text_snapshot, category_id_snapshot, category_name_snapshot, section_id_snapshot, section_name_snapshot,
-              checked_by_pco_id, checked_by_name FROM checkoffs`,
+              checked_by_user_id, checked_by_name FROM checkoffs`,
     ).first();
     expect(row).toEqual({
       task_text_snapshot: "Verify all server rack devices are powered on, including the Mac and supporting hardware",
@@ -105,7 +105,7 @@ describe("checking off tasks (US-06)", () => {
       category_name_snapshot: "Presentation / Computer Graphics",
       section_id_snapshot: 1,
       section_name_snapshot: "Power & Initial System Check",
-      checked_by_pco_id: "dev-volunteer",
+      checked_by_user_id: await userIdOf("volunteer"),
       checked_by_name: "Test Volunteer",
     });
   });
@@ -125,12 +125,12 @@ describe("checking off tasks (US-06)", () => {
     expect(await res.json()).toEqual({ checkoff: null });
     expect(findTask(await getChecklist(), 1).task.checkoff).toBeNull();
 
-    const unchecked = await env.DB.prepare("SELECT unchecked_by_pco_id, unchecked_by_name, unchecked_at FROM checkoffs").first<{
-      unchecked_by_pco_id: string;
+    const unchecked = await env.DB.prepare("SELECT unchecked_by_user_id, unchecked_by_name, unchecked_at FROM checkoffs").first<{
+      unchecked_by_user_id: number;
       unchecked_by_name: string;
       unchecked_at: string;
     }>();
-    expect(unchecked).toMatchObject({ unchecked_by_pco_id: "dev-admin", unchecked_by_name: "Test Admin" });
+    expect(unchecked).toMatchObject({ unchecked_by_user_id: await userIdOf("admin"), unchecked_by_name: "Test Admin" });
     expect(unchecked?.unchecked_at).toBeTruthy();
 
     await check(admin, service.id);

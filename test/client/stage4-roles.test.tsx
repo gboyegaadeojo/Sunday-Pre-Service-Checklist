@@ -8,7 +8,7 @@ import { AppNav } from "../../src/client/components/app/AppNav";
 import { ProgressPage } from "../../src/client/pages/ProgressPage";
 
 const user = (role: "volunteer" | "director" | "admin"): CurrentUser => ({
-  id: `dev-${role}`,
+  id: ["volunteer", "director", "admin"].indexOf(role) + 1,
   name: `Test ${role}`,
   avatarUrl: null,
   isAdmin: role === "admin",

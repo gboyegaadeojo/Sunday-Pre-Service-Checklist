@@ -46,7 +46,7 @@ export function setUpAdminFixture() {
         `INSERT INTO tasks (id, section_id, text, sort_order) VALUES (${T_ALPHA}, ${S_A}, 'Alpha', 1), (${T_BETA}, ${S_A}, 'Beta', 2), (${T_GAMMA}, ${S_B}, 'Gamma', 1)`,
       ),
       env.DB.prepare(
-        `INSERT INTO team_links (pco_team_id, pco_position_id, category_id, pco_team_name) VALUES ('t1', NULL, ${D1}, 'Team 1'), ('t2', 'p1', ${D1}, 'Team 2')`,
+        `INSERT INTO team_links (source, team_external_id, position_external_id, category_id, team_name) VALUES ('fake', 't1', NULL, ${D1}, 'Team 1'), ('fake', 't2', 'p1', ${D1}, 'Team 2')`,
       ),
     ]);
     [cookies.admin, cookies.director, cookies.volunteer] = await Promise.all([

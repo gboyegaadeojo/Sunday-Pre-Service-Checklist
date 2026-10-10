@@ -27,3 +27,15 @@ export async function signInAs(key: string): Promise<string> {
 }
 
 export const withCookie = (cookie: string): RequestInit => ({ headers: { Cookie: cookie } });
+
+/** The internal app user ID (US-03a) of a test user, who must have signed in at least once. */
+export async function userIdOf(key: string): Promise<number> {
+  const row = await env.DB.prepare("SELECT user_id FROM user_identities WHERE provider = 'dev' AND subject = ?")
+    .bind(key)
+    .first<{ user_id: number }>();
+  if (!row) throw new Error(`Test user ${key} has not signed in yet`);
+  return row.user_id;
+}
+
+/** SQL for a test user's internal ID, for use inside UPDATE … WHERE id = (…). */
+export const userIdSql = (key: string) => `(SELECT user_id FROM user_identities WHERE provider = 'dev' AND subject = '${key}')`;

@@ -11,7 +11,7 @@ CREATE TABLE checkoff_events (
   -- not_found: task not live in the service's list. service_changed: not the current service.
   outcome     TEXT NOT NULL CHECK (outcome IN ('applied', 'no_change', 'not_found', 'service_changed')),
   affected    INTEGER,  -- check-offs archived (reset) or restored (undo_reset)
-  user_pco_id TEXT NOT NULL,
+  user_id     INTEGER NOT NULL,  -- internal users.id (US-03a); no FK, so the log outlives anything
   user_name   TEXT NOT NULL,
   session_id  TEXT,  -- random ID fixed at sign-in, kept when the session cookie renews
   tab_id      TEXT,  -- random ID per page load, sent by the browser (X-Tab-Id header)

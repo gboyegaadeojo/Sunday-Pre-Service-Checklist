@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { DevSignInRequest, DevUsersResponse } from "../../shared/types";
-import { upsertSignedInUser } from "../db/users";
+import { signInWithIdentity } from "../db/users";
 import { FAKE_USERS } from "../dev/fake-users";
 import { startSession } from "../middleware/auth";
 import type { AppEnv } from "../types";
@@ -24,17 +24,16 @@ export const createDevAuthRoutes = () =>
       const fake = FAKE_USERS.find((u) => u.key === body?.key);
       if (!fake) return c.json({ error: "Unknown test user." }, 400);
 
-      await upsertSignedInUser(
+      // The test users are the "dev" sign-in provider (sources/identity.ts): same path as any real provider.
+      const userId = await signInWithIdentity(
         c.env.DB,
         {
-          id: fake.id,
-          name: fake.name,
-          avatarUrl: null,
+          identity: { provider: "dev", subject: fake.key, name: fake.name, avatarUrl: null, email: null },
           onMediaTeam: fake.onMediaTeam,
           initialRoles: { isAdmin: fake.isAdmin, isDirector: fake.isDirector },
         },
         new Date().toISOString(),
       );
-      await startSession(c, fake.id);
+      await startSession(c, userId);
       return c.body(null, 204);
     });

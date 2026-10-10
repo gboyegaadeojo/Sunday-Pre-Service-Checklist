@@ -61,11 +61,12 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - `0002_seed_ifc_checklist.sql` was generated from Section 6 of the requirements.
   - Migrations that have been applied must not be edited once deployed (Stage 9). Add a new migration instead.
 - **Auth** (`src/worker/middleware/auth.ts`, `src/worker/lib/session.ts`):
-  - The `session` cookie is an HMAC-signed token holding only the user's Planning Center person ID. It lasts 30 days, is re-issued once it's over an hour old, and is HttpOnly and SameSite=Lax. It's Secure whenever the request is https.
+  - The `session` cookie is an HMAC-signed token holding only the internal app user ID (`users.id`, never a sign-in provider's ID) and a session ID. It lasts 30 days, is re-issued once it's over an hour old, and is HttpOnly and SameSite=Lax. It's Secure whenever the request is https.
   - `loadSession` runs on all `/api/*` routes. It re-reads the user and their roles from D1 into `c.var.user` on every request (US-03).
   - Guard routes with `requireUser` (signed in) or `requireAccess` (signed in and allowed in, per `hasAccess` in `lib/access.ts`). Errors carry `code: "signed_out"` (401) or `"no_access"` (403).
-  - `upsertSignedInUser` never overwrites existing role flags. Roles change only in-app.
-- **Fake sign-in** (`/api/dev/*`, with the test users in `src/worker/dev/fake-users.ts`; IDs start with `dev-`) is local-only and has two locks:
+  - **App users (US-03a):** people are `users` rows with an internal `id` (AUTOINCREMENT, never reused). Sign-in accounts are linked in `user_identities` (`provider` + `subject`, unique), and every sign-in goes through `signInWithIdentity` (`db/users.ts`): it finds the linked user, or creates the user and the link in one batch. It never overwrites role flags; roles change only in-app.
+  - Roles, check-offs (`checked_by_user_id`/`unchecked_by_user_id`), resets (`reset_by_user_id`/`undone_by_user_id`) and both logs (`user_id`) refer to the internal ID, next to the person's name at the time. Never store a provider's ID (e.g. a Planning Center person ID) anywhere else, and never send one to the browser. Tests get a test user's ID with `userIdOf(key)` (`test/helpers.ts`).
+- **Fake sign-in** (`/api/dev/*`, with the test users in `src/worker/dev/fake-users.ts`; they are the `dev` sign-in provider with their key as the subject) is local-only and has two locks:
   1. **Build time.** It's mounted only inside `if (import.meta.env.DEV)` in `src/worker/index.ts`. `vite build` sets that to false and drops the code, which is why the routes are built by the `createDevAuthRoutes()` factory: no module-level side effects. The production bundle contains no test users at all. `test/production-build.test.ts` builds the app and proves this (the bundle has no test-user strings, and `/api/dev/*` returns 404 even with `DEV_AUTH=true`).
   2. **Run time, locally.** It answers only when `DEV_AUTH=true` is in `.dev.vars`.
 
@@ -133,7 +134,8 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - `GET /api/admin/lists/:id/edits` (Admin) feeds the Activity view, which merges it with the current service's check-off log behind an All / Check-offs / Checklist edits filter.
   - Tests use their own list (ID 77) so the seed checklist stays untouched: call `setUpAdminFixture()` from `test/admin-fixture.ts`.
 - **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist`, `/admin/checklist/hidden` and `/admin/activity`, with aliases `/admin` and `/activity`. The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
-- **Planned, not built yet** (see build plan): a `PlanningCenter` interface with fake and real implementations, and a D1-backed Planning Center cache. The Workers Cache API doesn't work on `*.workers.dev`.
+- **Replaceable sources (requirements C22):** Planning Center is reached only through the interfaces in `src/worker/sources/`: `IdentityProvider` (sign-in) and `ScheduleSource` (teams, positions, membership, plans). Code outside `sources/` must not know which provider is in use. Outside IDs are stored as a source name plus that source's ID (`team_links.source`/`team_external_id`/…, `services.plan_source`/`plan_external_id`, `source_cache`); never add Planning Center–named columns.
+- **Planned, not built yet** (see build plan): the fake and Planning Center implementations of those interfaces (Stages 7–8), using the D1 `source_cache`. The Workers Cache API doesn't work on `*.workers.dev`.
 
 ## Rules from the requirements
 

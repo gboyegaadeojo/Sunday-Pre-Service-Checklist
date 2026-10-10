@@ -12,7 +12,7 @@ CREATE TABLE checklist_events (
   action      TEXT NOT NULL CHECK (action IN ('add', 'rename', 'edit', 'hide', 'restore', 'move', 'reorder')),
   before_json TEXT CHECK (before_json IS NULL OR json_valid(before_json)),  -- only what changed, e.g. {"name": …}
   after_json  TEXT CHECK (after_json IS NULL OR json_valid(after_json)),
-  user_pco_id TEXT NOT NULL,
+  user_id     INTEGER NOT NULL,  -- internal users.id (US-03a); no FK, so the log outlives anything
   user_name   TEXT NOT NULL,
   session_id  TEXT,  -- random ID fixed at sign-in, kept when the session cookie renews
   tab_id      TEXT,  -- random ID per page load, sent by the browser (X-Tab-Id header)

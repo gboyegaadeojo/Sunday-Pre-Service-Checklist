@@ -2,37 +2,39 @@ import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { MeResponse } from "../src/shared/types";
 import { SESSION_TTL_SECONDS, createSessionToken, verifySessionToken } from "../src/worker/lib/session";
-import { request, sessionCookieFrom, signInAs, withCookie } from "./helpers";
+import { request, sessionCookieFrom, signInAs, userIdOf, userIdSql, withCookie } from "./helpers";
 
 const now = () => Math.floor(Date.now() / 1000);
 
+const deleteUsers = () => env.DB.batch([env.DB.prepare("DELETE FROM user_identities"), env.DB.prepare("DELETE FROM users")]);
+
 beforeEach(async () => {
-  await env.DB.prepare("DELETE FROM users").run();
+  await deleteUsers();
 });
 
 describe("session tokens", () => {
   const secret = "unit-test-key";
 
   it("round-trips a valid token", async () => {
-    const token = await createSessionToken(secret, "123", now());
-    expect(await verifySessionToken(secret, token, now())).toMatchObject({ sub: "123" });
+    const token = await createSessionToken(secret, 123, now());
+    expect(await verifySessionToken(secret, token, now())).toMatchObject({ sub: 123 });
   });
 
   it("rejects a token signed with another key", async () => {
-    const token = await createSessionToken("other-key", "123", now());
+    const token = await createSessionToken("other-key", 123, now());
     expect(await verifySessionToken(secret, token, now())).toBeNull();
   });
 
   it("rejects a tampered payload", async () => {
-    const token = await createSessionToken(secret, "123", now());
+    const token = await createSessionToken(secret, 123, now());
     const [, sig] = token.split(".");
-    const forged = btoa(JSON.stringify({ sub: "999", iat: now(), exp: now() + 999 })).replace(/=+$/, "");
+    const forged = btoa(JSON.stringify({ sub: 999, iat: now(), exp: now() + 999 })).replace(/=+$/, "");
     expect(await verifySessionToken(secret, `${forged}.${sig}`, now())).toBeNull();
   });
 
   it("rejects an expired token and garbage", async () => {
     const old = now() - SESSION_TTL_SECONDS - 10;
-    expect(await verifySessionToken(secret, await createSessionToken(secret, "123", old), now())).toBeNull();
+    expect(await verifySessionToken(secret, await createSessionToken(secret, 123, old), now())).toBeNull();
     expect(await verifySessionToken(secret, "not-a-token", now())).toBeNull();
     expect(await verifySessionToken(secret, "a.b.c", now())).toBeNull();
   });
@@ -77,10 +79,40 @@ describe("dev sign-in (Stage 2)", () => {
 
   it("keeps roles an admin changed when the user signs in again (US-03)", async () => {
     await signInAs("volunteer");
-    await env.DB.prepare("UPDATE users SET is_director = 1 WHERE pco_person_id = 'dev-volunteer'").run();
+    await env.DB.prepare(`UPDATE users SET is_director = 1 WHERE id = ${userIdSql("volunteer")}`).run();
     const cookie = await signInAs("volunteer");
     const { user } = await (await request("/api/auth/me", withCookie(cookie))).json<MeResponse>();
     expect(user.isDirector).toBe(true);
+  });
+});
+
+describe("app user IDs (US-03a)", () => {
+  it("gives each person one internal ID, with their sign-in account linked to it", async () => {
+    await signInAs("volunteer");
+    await signInAs("volunteer");
+    await signInAs("admin");
+    const { results } = await env.DB.prepare(
+      "SELECT u.id, u.display_name, i.provider, i.subject FROM users u JOIN user_identities i ON i.user_id = u.id ORDER BY u.id",
+    ).all();
+    expect(results).toEqual([
+      { id: expect.any(Number), display_name: "Test Volunteer", provider: "dev", subject: "volunteer" },
+      { id: expect.any(Number), display_name: "Test Admin", provider: "dev", subject: "admin" },
+    ]);
+  });
+
+  it("identifies the session and the browser's user by the internal ID only", async () => {
+    const cookie = await signInAs("volunteer");
+    const id = await userIdOf("volunteer");
+    const token = decodeURIComponent(cookie.slice("session=".length));
+    expect((await verifySessionToken(env.SESSION_SECRET, token, now()))?.sub).toBe(id);
+    expect((await (await request("/api/auth/me", withCookie(cookie))).json<MeResponse>()).user.id).toBe(id);
+  });
+
+  it("rejects a session token that names a sign-in account instead of an app user", async () => {
+    // Correctly signed, but the old shape: a sign-in account's ID as text rather than an app user ID.
+    const token = await createSessionToken(env.SESSION_SECRET, "volunteer" as unknown as number, now());
+    expect(await verifySessionToken(env.SESSION_SECRET, token, now())).toBeNull();
+    expect((await request("/api/auth/me", withCookie(`session=${token}`))).status).toBe(401);
   });
 });
 
@@ -104,14 +136,14 @@ describe("GET /api/auth/me", () => {
 
   it("re-reads roles from the database on every request (US-03)", async () => {
     const cookie = await signInAs("admin");
-    await env.DB.prepare("UPDATE users SET is_admin = 0 WHERE pco_person_id = 'dev-admin'").run();
+    await env.DB.prepare(`UPDATE users SET is_admin = 0 WHERE id = ${userIdSql("admin")}`).run();
     const { user } = await (await request("/api/auth/me", withCookie(cookie))).json<MeResponse>();
     expect(user.isAdmin).toBe(false);
   });
 
   it("treats a session for a deleted user as signed out and clears the cookie", async () => {
     const cookie = await signInAs("volunteer");
-    await env.DB.prepare("DELETE FROM users").run();
+    await deleteUsers();
     const res = await request("/api/auth/me", withCookie(cookie));
     expect(res.status).toBe(401);
     expect(res.headers.get("Set-Cookie")).toMatch(/^session=;.*Max-Age=0/);
@@ -128,7 +160,7 @@ describe("GET /api/auth/me", () => {
     const fresh = await request("/api/auth/me", withCookie(await signInAs("volunteer")));
     expect(sessionCookieFrom(fresh)).toBeNull();
 
-    const oldToken = await createSessionToken(env.SESSION_SECRET, "dev-volunteer", now() - 2 * 60 * 60);
+    const oldToken = await createSessionToken(env.SESSION_SECRET, await userIdOf("volunteer"), now() - 2 * 60 * 60);
     const res = await request("/api/auth/me", withCookie(`session=${oldToken}`));
     expect(res.status).toBe(200);
     expect(res.headers.get("Set-Cookie")).toContain(`Max-Age=${SESSION_TTL_SECONDS}`);
@@ -166,7 +198,7 @@ describe("checklist access (US-02, US-17)", () => {
 
   it("lets a non-member in once an admin makes them a Director (US-02)", async () => {
     const cookie = await signInAs("outsider");
-    await env.DB.prepare("UPDATE users SET is_director = 1 WHERE pco_person_id = 'dev-outsider'").run();
+    await env.DB.prepare(`UPDATE users SET is_director = 1 WHERE id = ${userIdSql("outsider")}`).run();
     expect((await request("/api/checklist", withCookie(cookie))).status).toBe(200);
   });
 });

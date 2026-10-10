@@ -6,7 +6,7 @@ import type { ChecklistResponse, CurrentUser, TaskCheckoff } from "../../src/sha
 import { CHECKLIST_REFRESH_MS } from "../../src/client/lib/useChecklist";
 import { ChecklistPage } from "../../src/client/pages/ChecklistPage";
 
-const USER: CurrentUser = { id: "dev-volunteer", name: "Test Volunteer", avatarUrl: null, isAdmin: false, isDirector: false, hasAccess: true };
+const USER: CurrentUser = { id: 1, name: "Test Volunteer", avatarUrl: null, isAdmin: false, isDirector: false, hasAccess: true };
 const TASKS = ["Task one", "Task two", "Task three"];
 
 let checked: Map<number, TaskCheckoff>;

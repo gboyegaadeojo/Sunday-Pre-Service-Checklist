@@ -32,7 +32,7 @@ const cookieOptions = (c: Context<AppEnv>) =>
   }) as const;
 
 /** Issues the session cookie. A new sign-in gets a new session ID; a renewal passes the existing one. */
-export async function startSession(c: Context<AppEnv>, userId: string, now = nowSeconds(), sessionId?: string) {
+export async function startSession(c: Context<AppEnv>, userId: number, now = nowSeconds(), sessionId?: string) {
   const token = await createSessionToken(sessionSecret(c), userId, now, sessionId);
   setCookie(c, SESSION_COOKIE, token, { ...cookieOptions(c), maxAge: SESSION_TTL_SECONDS });
 }

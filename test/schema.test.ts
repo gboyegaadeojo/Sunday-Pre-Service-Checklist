@@ -3,22 +3,56 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 // Schema guarantees that later stages rely on. Uses seed rows: task 1 is in section 1 of category 1.
 
+const USER = 9001; // an app user created here, so check-offs can refer to it (US-03a)
+
 beforeEach(async () => {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM checkoffs"),
     env.DB.prepare("DELETE FROM services"),
     env.DB.prepare("INSERT INTO services (id, service_date, list_id) VALUES (1, '2026-10-11', 1)"),
+    env.DB.prepare("INSERT OR IGNORE INTO users (id, display_name) VALUES (?, 'Test Volunteer')").bind(USER),
   ]);
 });
 
-const insertCheckoff = (snapshot: { categoryId?: number; categoryName?: string; sectionId?: number; sectionName?: string }) =>
+const insertCheckoff = (snapshot: {
+  categoryId?: number;
+  categoryName?: string;
+  sectionId?: number;
+  sectionName?: string;
+  userId?: number;
+}) =>
   env.DB.prepare(
     `INSERT INTO checkoffs (service_id, task_id, task_text_snapshot, category_id_snapshot, category_name_snapshot,
-                            section_id_snapshot, section_name_snapshot, checked_by_pco_id, checked_by_name)
-     VALUES (1, 1, 'Verify power', ?1, ?2, ?3, ?4, 'dev-volunteer', 'Test Volunteer')`,
+                            section_id_snapshot, section_name_snapshot, checked_by_user_id, checked_by_name)
+     VALUES (1, 1, 'Verify power', ?1, ?2, ?3, ?4, ?5, 'Test Volunteer')`,
   )
-    .bind(snapshot.categoryId ?? null, snapshot.categoryName ?? null, snapshot.sectionId ?? null, snapshot.sectionName ?? null)
+    .bind(
+      snapshot.categoryId ?? null,
+      snapshot.categoryName ?? null,
+      snapshot.sectionId ?? null,
+      snapshot.sectionName ?? null,
+      snapshot.userId ?? USER,
+    )
     .run();
+
+describe("app users (US-03a)", () => {
+  const full = { categoryId: 1, categoryName: "Presentation", sectionId: 1, sectionName: "Power" };
+
+  it("refers check-offs to an existing app user", async () => {
+    await expect(insertCheckoff({ ...full, userId: 999999 })).rejects.toThrow(/FOREIGN KEY/);
+    await expect(insertCheckoff(full)).resolves.toBeTruthy();
+  });
+
+  it("links each sign-in account to exactly one user; a user may link several", async () => {
+    const link = (userId: number, provider: string) =>
+      env.DB.prepare("INSERT INTO user_identities (user_id, provider, subject) VALUES (?, ?, 'p-1')").bind(userId, provider).run();
+    await env.DB.prepare("INSERT OR IGNORE INTO users (id, display_name) VALUES (9002, 'Someone else')").run();
+    await link(USER, "planning_center");
+    await expect(link(9002, "planning_center")).rejects.toThrow(/UNIQUE/);
+    await link(USER, "google");
+    await env.DB.prepare("DELETE FROM user_identities WHERE user_id IN (?, 9002)").bind(USER).run();
+  });
+});
 
 describe("checkoffs snapshots (US-06, US-13)", () => {
   it("requires the department and section snapshot", async () => {

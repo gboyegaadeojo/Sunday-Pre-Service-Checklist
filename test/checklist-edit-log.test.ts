@@ -4,7 +4,7 @@ import { env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ChecklistEditEvent, ChecklistEditsResponse, CreatedResponse } from "../src/shared/types";
 import { D1, D2, LIST, S_A, S_B, T_ALPHA, T_BETA, api, cookies, setUpAdminFixture } from "./admin-fixture";
-import { request } from "./helpers";
+import { request, userIdOf } from "./helpers";
 
 setUpAdminFixture();
 
@@ -44,7 +44,7 @@ describe("what is logged", () => {
       entity: "task",
       entity_id: T_ALPHA,
       action: "edit",
-      user_pco_id: "dev-admin",
+      user_id: await userIdOf("admin"),
       user_name: "Test Admin",
       tab_id: TAB,
       user_agent: "edit-log-test",

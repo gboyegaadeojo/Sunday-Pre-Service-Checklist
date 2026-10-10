@@ -49,7 +49,7 @@ export async function resetService(db: D1Database, serviceId: number, actor: Act
   }
 
   const [, archive] = await db.batch([
-    db.prepare("INSERT INTO resets (service_id, reset_by_pco_id, reset_by_name) VALUES (?, ?, ?)").bind(serviceId, actor.userId, actor.userName),
+    db.prepare("INSERT INTO resets (service_id, reset_by_user_id, reset_by_name) VALUES (?, ?, ?)").bind(serviceId, actor.userId, actor.userName),
     // The reset just inserted is the newest for this service (same transaction).
     db
       .prepare(
@@ -95,7 +95,7 @@ export async function undoLatestReset(db: D1Database, serviceId: number, actor: 
       .bind(serviceId, ...actorValues(actor)),
     db
       .prepare(
-        `UPDATE resets SET undone_by_pco_id = ?2, undone_by_name = ?3, undone_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+        `UPDATE resets SET undone_by_user_id = ?2, undone_by_name = ?3, undone_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
           WHERE id = ?1 AND undone_at IS NULL`,
       )
       .bind(latest.id, actor.userId, actor.userName),

@@ -5,7 +5,8 @@ export const ACTIVE = "unchecked_at IS NULL AND reset_id IS NULL";
 
 /** Who made a check/uncheck request, for the append-only checkoff_events log. */
 export interface Actor {
-  userId: string;
+  /** Internal app user ID (US-03a). */
+  userId: number;
   userName: string;
   sessionId: string | null;
   tabId: string | null;
@@ -16,7 +17,7 @@ export type CheckoffOutcome = "applied" | "no_change" | "not_found" | "service_c
 export type CheckoffAction = "check" | "uncheck" | "reset" | "undo_reset";
 
 /** Columns of checkoff_events filled for every entry; `affected` is added where it applies. */
-export const EVENT_COLUMNS = "service_id, task_id, action, outcome, user_pco_id, user_name, session_id, tab_id, user_agent";
+export const EVENT_COLUMNS = "service_id, task_id, action, outcome, user_id, user_name, session_id, tab_id, user_agent";
 
 export const actorValues = (a: Actor) => [a.userId, a.userName, a.sessionId, a.tabId, a.userAgent] as const;
 
@@ -46,7 +47,7 @@ export async function checkTask(
       .prepare(
         `INSERT OR IGNORE INTO checkoffs
            (service_id, task_id, task_text_snapshot, category_id_snapshot, category_name_snapshot,
-            section_id_snapshot, section_name_snapshot, checked_by_pco_id, checked_by_name)
+            section_id_snapshot, section_name_snapshot, checked_by_user_id, checked_by_name)
          SELECT ?1, t.id, t.text, c.id, c.name, s.id, s.name, ?3, ?4
            FROM tasks t
            JOIN sections s ON s.id = t.section_id
@@ -77,7 +78,7 @@ export async function uncheckTask(db: D1Database, args: { serviceId: number; tas
     db
       .prepare(
         `UPDATE checkoffs
-            SET unchecked_by_pco_id = ?3, unchecked_by_name = ?4,
+            SET unchecked_by_user_id = ?3, unchecked_by_name = ?4,
                 unchecked_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
           WHERE service_id = ?1 AND task_id = ?2 AND ${ACTIVE}`,
       )

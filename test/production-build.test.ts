@@ -27,7 +27,7 @@ describe("production build", () => {
   it("Worker bundle contains no fake sign-in code or test users", () => {
     expect(bundleSource).not.toContain("/api/dev");
     for (const u of FAKE_USERS) {
-      expect(bundleSource).not.toContain(u.id);
+      expect(bundleSource).not.toContain(u.description);
       expect(bundleSource).not.toContain(u.name);
     }
   });

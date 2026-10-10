@@ -1,5 +1,12 @@
+// App users (US-03a). Each person has an internal ID that never changes; sign-in accounts (Planning Center,
+// local test users, later possibly Google) are linked to it in user_identities. Roles and every record of
+// who did what refer to users.id, so changing sign-in providers never loses people, roles or history.
+
+import type { ExternalIdentity } from "../sources/identity";
+
 export interface User {
-  id: string; // Planning Center person ID
+  /** Internal app user ID. */
+  id: number;
   name: string;
   avatarUrl: string | null;
   isAdmin: boolean;
@@ -8,7 +15,7 @@ export interface User {
 }
 
 interface UserRow {
-  pco_person_id: string;
+  id: number;
   display_name: string;
   avatar_url: string | null;
   is_admin: number;
@@ -17,7 +24,7 @@ interface UserRow {
 }
 
 const toUser = (r: UserRow): User => ({
-  id: r.pco_person_id,
+  id: r.id,
   name: r.display_name,
   avatarUrl: r.avatar_url,
   isAdmin: r.is_admin === 1,
@@ -25,52 +32,62 @@ const toUser = (r: UserRow): User => ({
   teamVerifiedAt: r.team_verified_at,
 });
 
-export async function getUser(db: D1Database, id: string): Promise<User | null> {
+export async function getUser(db: D1Database, id: number): Promise<User | null> {
   const row = await db
-    .prepare(
-      `SELECT pco_person_id, display_name, avatar_url, is_admin, is_director, team_verified_at
-         FROM users WHERE pco_person_id = ?`,
-    )
+    .prepare("SELECT id, display_name, avatar_url, is_admin, is_director, team_verified_at FROM users WHERE id = ?")
     .bind(id)
     .first<UserRow>();
   return row ? toUser(row) : null;
 }
 
-export interface SignInIdentity {
-  id: string;
-  name: string;
-  avatarUrl: string | null;
+export interface SignIn {
+  identity: ExternalIdentity;
   /** Result of the media-team membership check at sign-in (US-02). */
   onMediaTeam: boolean;
-  /** Role flags applied only when the user row is first created; later changes are made in-app (US-03). */
+  /** Role flags applied only when the user is first created; later changes are made in-app (US-03). */
   initialRoles?: { isAdmin: boolean; isDirector: boolean };
 }
 
-/** Create or refresh the user at sign-in. Existing role flags are never overwritten here. */
-export async function upsertSignedInUser(db: D1Database, identity: SignInIdentity, nowIso: string): Promise<void> {
-  const verifiedAt = identity.onMediaTeam ? nowIso : null;
-  await db
-    .prepare(
-      `INSERT INTO users (pco_person_id, display_name, avatar_url, is_admin, is_director, team_verified_at, last_seen_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-       ON CONFLICT (pco_person_id) DO UPDATE SET
-         display_name = excluded.display_name,
-         avatar_url = excluded.avatar_url,
-         team_verified_at = excluded.team_verified_at,
-         last_seen_at = excluded.last_seen_at`,
-    )
-    .bind(
-      identity.id,
-      identity.name,
-      identity.avatarUrl,
-      identity.initialRoles?.isAdmin ? 1 : 0,
-      identity.initialRoles?.isDirector ? 1 : 0,
-      verifiedAt,
-      nowIso,
-    )
-    .run();
+/**
+ * Signs in through a linked account: finds the user it belongs to, or creates the user and the link
+ * together, all in one transaction. Refreshes name, avatar and team verification; never changes roles.
+ * Returns the internal user ID.
+ */
+export async function signInWithIdentity(db: D1Database, { identity, onMediaTeam, initialRoles }: SignIn, nowIso: string): Promise<number> {
+  const { provider, subject, name, avatarUrl, email } = identity;
+  const verifiedAt = onMediaTeam ? nowIso : null;
+  const linkedUser = "(SELECT user_id FROM user_identities WHERE provider = ?1 AND subject = ?2)";
+  const results = await db.batch([
+    // A new user only if this account isn't linked yet…
+    db
+      .prepare(
+        `INSERT INTO users (display_name, avatar_url, is_admin, is_director, team_verified_at, last_seen_at)
+         SELECT ?3, ?4, ?5, ?6, ?7, ?8 WHERE ${linkedUser} IS NULL`,
+      )
+      .bind(provider, subject, name, avatarUrl, initialRoles?.isAdmin ? 1 : 0, initialRoles?.isDirector ? 1 : 0, verifiedAt, nowIso),
+    // …linked to it right away (changes() is the INSERT above, same transaction).
+    db
+      .prepare(
+        `INSERT INTO user_identities (user_id, provider, subject, email, last_used_at)
+         SELECT last_insert_rowid(), ?1, ?2, ?3, ?4 WHERE changes() = 1`,
+      )
+      .bind(provider, subject, email, nowIso),
+    db
+      .prepare(
+        `UPDATE users SET display_name = ?3, avatar_url = ?4, team_verified_at = ?5, last_seen_at = ?6
+          WHERE id = ${linkedUser}`,
+      )
+      .bind(provider, subject, name, avatarUrl, verifiedAt, nowIso),
+    db
+      .prepare("UPDATE user_identities SET last_used_at = ?3, email = COALESCE(?4, email) WHERE provider = ?1 AND subject = ?2")
+      .bind(provider, subject, nowIso, email),
+    db.prepare(`SELECT ${linkedUser} AS user_id`).bind(provider, subject),
+  ]);
+  const userId = (results[4].results[0] as { user_id: number | null } | undefined)?.user_id;
+  if (typeof userId !== "number") throw new Error("Sign-in did not produce a user.");
+  return userId;
 }
 
-export async function touchUser(db: D1Database, id: string, nowIso: string): Promise<void> {
-  await db.prepare("UPDATE users SET last_seen_at = ? WHERE pco_person_id = ?").bind(nowIso, id).run();
+export async function touchUser(db: D1Database, id: number, nowIso: string): Promise<void> {
+  await db.prepare("UPDATE users SET last_seen_at = ? WHERE id = ?").bind(nowIso, id).run();
 }

@@ -1,12 +1,20 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.11 · **Date:** October 2026  
+> **Version:** 1.12 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.11
+## 0. Changes in Version 1.12
+
+| # | Change | Why |
+|---|--------|-----|
+| C21 | **New: every user has an app account with its own internal ID** (new US-03a). Sign-in accounts (Planning Center today) are *linked* to it. Roles, check-offs, resets and both activity logs refer to the internal ID, never to a Planning Center ID. | The church may stop using Planning Center. People, roles and history must survive a change of sign-in provider. |
+| C22 | **Planning Center is a replaceable source** (Architecture Note, US-15): sign-in and teams/schedules each sit behind an interface, and the database stores outside references in provider-neutral columns. | The app must keep working, and be adaptable, without Planning Center. |
+| — | Added to "Later": Google sign-in with admin invite or approval; a "choose your position" screen as the normal way to pick a checklist when no scheduling system is used. | Recorded now so the design leaves room for them. Not built. |
+
+## Changes in Version 1.11
 
 | # | Change | Why |
 |---|--------|-----|
@@ -126,6 +134,19 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - An admin can grant or revoke Admin and Director flags for other users from within the app.
 - Roles are checked on the server on every request, so revoking access takes effect on the user's next page load.
 - Admin-only UI is hidden from non-admins, and admin actions are rejected by the server for non-admins even if called directly.
+
+---
+
+**US-03a — Each person has one app account, whatever they sign in with**  
+*As the project owner, I need people, roles and history to belong to the app, so changing sign-in providers never loses them.*
+
+**Acceptance Criteria:**
+- The app creates a user record with its own internal ID the first time someone signs in. The ID never changes and is never reused.
+- Sign-in accounts are linked to that user: today a Planning Center person ID, later possibly others (e.g. Google). Each sign-in account links to exactly one app user; a user may have several.
+- Admin and Director flags (US-03), check-offs and uncheck records (US-06), resets and undos (US-07), and both activity logs (US-07a, US-13b) refer to the internal user ID, alongside the person's name as it was at the time.
+- The session identifies the internal user, not the sign-in account.
+- A Planning Center person ID is used only to sign in and to look up teams and schedules. It is never sent to the browser.
+- Removing or replacing a sign-in provider never orphans a user's roles or history.
 
 ---
 
@@ -360,6 +381,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Teams or positions with no link are clearly marked as unlinked.
 - If a team or position is renamed in Planning Center, the link still works (links use Planning Center IDs, not names).
 - If a linked team or position is deleted in Planning Center, the admin screen flags it as missing.
+- Links are stored with their source (Planning Center today) and that source's IDs, in provider-neutral columns, so another scheduling source could be added without changing the rest of the app (C22).
 
 ---
 
@@ -444,6 +466,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Offline mode
 - Calendar integration beyond the current service
 - Custom branding / themes
+- **Google sign-in** as an alternative to Planning Center, linked to the same app account (US-03a). A new Google user gets no access until an Admin invites them (by email) or approves them; approval and roles stay in the app.
+- **"Choose your position" screen** as the normal way to pick a checklist when no scheduling system is used: the user picks their position(s) for the service and sees those departments first. The US-04a fallback (manual department pick, remembered for the day) is the starting point.
 
 ---
 
@@ -477,6 +501,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q24 | Seeing others' changes | The checklist and the progress view refresh about every 30 seconds while visible and on returning to the tab. No push notifications (out of scope). |
 | Q25 | Undoing a hide | A Hidden items view lists hidden departments, sections and tasks. Restore brings one back with its history, in its old position where possible. Restoring inside a hidden parent explains why and offers to restore the parent too (US-13a). |
 | Q26 | Auditing checklist edits | Append-only log of every add, rename, edit, hide, restore, move and reorder, with who, when, and before/after values. Admins see it in the Activity view with a filter for check-offs vs. checklist edits (US-13b). |
+| Q27 | How users are identified | By an internal app user ID. Sign-in accounts (Planning Center now, others later) are linked to it; roles, check-offs, resets and logs refer to the internal ID (US-03a). |
+| Q28 | Dependence on Planning Center | Planning Center is one replaceable source for sign-in and for teams/schedules, each behind an interface. Outside references are stored in provider-neutral columns (C22). |
 
 ---
 
@@ -709,6 +735,12 @@ Planning Center sign-in requires a server-side component to hold the OAuth clien
 
 Planning Center data is cached briefly on the server (a few minutes per service) to keep the app fast and avoid Planning Center rate limits.
 
+**Replaceable sources (C22).** Planning Center plays two separate roles, and each sits behind its own interface in the Worker:
+- **Sign-in** (`IdentityProvider`): sends the user to the provider and returns who they are (the provider's ID for them, name, avatar). The app then finds or creates the app user linked to that account (US-03a). Planning Center is one provider; local test sign-in is another; Google could be added later.
+- **Teams and schedules** (`ScheduleSource`): service types, teams and positions, team membership, plans and who is scheduled. Planning Center is one source; a fake source is used for development and tests.
+
+Nothing outside these modules knows it is talking to Planning Center. The database stores outside references as a source name plus that source's ID, so removing Planning Center leaves users, roles, checklists and history intact.
+
 ---
 
-*End of Requirements — Version 1.11*
+*End of Requirements — Version 1.12*

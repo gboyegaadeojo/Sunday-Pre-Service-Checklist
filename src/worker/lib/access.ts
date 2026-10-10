@@ -3,7 +3,7 @@ import type { User } from "../db/users";
 
 /**
  * US-02: Admins and Directors always have access; otherwise the user must have been verified
- * as a member of a linked media team. Stage 7 adds the real Planning Center check and the
+ * as a member of a linked media team. Stage 7 adds the membership check through the schedule source (sources/schedule.ts) and the
  * 90-day fallback window (US-04a).
  */
 export const hasAccess = (user: User) => user.isAdmin || user.isDirector || user.teamVerifiedAt !== null;

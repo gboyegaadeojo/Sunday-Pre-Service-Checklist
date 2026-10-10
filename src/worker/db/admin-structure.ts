@@ -65,7 +65,7 @@ const LOG_SQL: Record<StructureKind, { alias: string; from: string; name: string
  */
 const logSql = (kind: StructureKind, action: EditAction, o: { where: string; before?: string; after?: string; name?: string }) =>
   `INSERT INTO checklist_events
-     (list_id, entity, entity_id, entity_name, action, before_json, after_json, user_pco_id, user_name, session_id, tab_id, user_agent)
+     (list_id, entity, entity_id, entity_name, action, before_json, after_json, user_id, user_name, session_id, tab_id, user_agent)
    SELECT c.list_id, '${kind}', ${LOG_SQL[kind].alias}.id, ${o.name ?? LOG_SQL[kind].name}, '${action}',
           ${o.before ?? "NULL"}, ${o.after ?? "NULL"}, ?21, ?22, ?23, ?24, ?25
      FROM ${LOG_SQL[kind].from} WHERE ${o.where}`;
@@ -229,7 +229,7 @@ export const editTask = (db: D1Database, actor: Actor, id: number, text: string)
 async function hideItem(db: D1Database, kind: StructureKind, actor: Actor, id: number): Promise<boolean> {
   const a = LOG_SQL[kind].alias;
   const removedLinks =
-    "(SELECT json_group_array(pco_team_name || COALESCE(' › ' || pco_position_name, '')) FROM team_links WHERE category_id = c.id)";
+    "(SELECT json_group_array(team_name || COALESCE(' › ' || position_name, '')) FROM team_links WHERE category_id = c.id)";
   const statements = [
     bindWithActor(
       db.prepare(
