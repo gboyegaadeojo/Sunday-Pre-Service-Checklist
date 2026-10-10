@@ -395,8 +395,10 @@ export interface ServiceSummary {
   date: string;
   /** The list the service used, by its current name (it may since have been hidden). */
   list: { id: number; name: string; hidden: boolean };
-  /** Tasks still checked when the service ended (archived and unchecked ones not counted). */
+  /** Tasks checked at the end. With a record: only tasks still on the checklist then (the X of "X of Y"). */
   checkedCount: number;
+  /** Tasks on the checklist at the end of the service (the Y), or null when it has no record (US-07b). */
+  totalCount: number | null;
   resetCount: number;
 }
 
@@ -407,12 +409,21 @@ export interface HistoryResponse {
   truncated: boolean;
 }
 
-/** A check-off as recorded: the text, department and section are the snapshots from check-off time (US-06, US-13). */
+/** Who checked a task and when, and the text it had then (the check-off snapshot, US-06). */
+export interface HistoryCheckoff {
+  by: string;
+  at: string;
+  text: string;
+}
+
+/**
+ * A task as it was at the end of the service (with a record), or as checked (without one). checkoff is null
+ * when it wasn't checked; without a record every listed task was checked.
+ */
 export interface HistoryTask {
   taskId: number;
   text: string;
-  by: string;
-  at: string;
+  checkoff: HistoryCheckoff | null;
 }
 
 export interface HistorySection {
@@ -427,14 +438,30 @@ export interface HistoryCategory {
   sections: HistorySection[];
 }
 
+/** A task taken off the checklist during the service (hidden, or its section or department hidden). Not counted. */
+export interface RemovedTask extends HistoryTask {
+  department: string;
+  section: string;
+  /** When it was removed; null for a checked task that had already gone when the record started. */
+  removedAt: string | null;
+}
+
 /**
- * GET /api/admin/history/:serviceId: what was checked, grouped by department and section as they were at
- * check-off time, plus every reset. The app doesn't record which tasks a past service's checklist held, so
- * there are no "X of Y" totals.
+ * GET /api/admin/history/:serviceId.
+ * - With a record (US-07b): every task on the checklist at the end of the service, where it was then, checked
+ *   or not, plus the tasks removed during the service.
+ * - Without one (services from before the record existed): only the tasks still checked at the end, grouped by
+ *   the department and section they were in when checked.
  */
 export interface ServiceHistoryResponse {
-  service: ServiceSummary & { timeZone: string; isCurrent: boolean };
+  service: ServiceSummary & {
+    timeZone: string;
+    isCurrent: boolean;
+    /** null: no record. partial: it started after the service did (the service current when this shipped). */
+    record: { from: string; partial: boolean } | null;
+  };
   categories: HistoryCategory[];
+  removed: RemovedTask[];
   /** Every reset of the service, oldest first. */
   resets: Omit<ResetInfo, "canUndo">[];
 }

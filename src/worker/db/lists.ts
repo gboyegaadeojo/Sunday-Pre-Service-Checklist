@@ -6,6 +6,7 @@
 import type { AdminListSummary, ListsResponse } from "../../shared/types";
 import { NOW, bindWithActor } from "./admin-structure";
 import type { Actor } from "./checkoffs";
+import { restartRecordStatements } from "./service-record";
 import { getCalendarSettings, getCurrentService } from "./services";
 
 /** INSERT … SELECT of one log row for the list matched by `where` (alias l). Actor binds as ?21–?25. */
@@ -248,6 +249,8 @@ export async function setDefaultList(
           WHERE id = ?2 AND ${switchable} AND changes() = 1`,
       )
       .bind(id, applyToServiceId),
+    // The service's checklist record starts over from the new list (US-07b), only if it switched.
+    ...(applyToServiceId === null ? [] : restartRecordStatements(db, applyToServiceId)),
   ]);
   if ((results[2].meta.changes ?? 0) > 0) return { ok: true, serviceSwitched: (results[3].meta.changes ?? 0) > 0 };
   const row = await db.prepare("SELECT is_default FROM task_lists WHERE id = ? AND deleted_at IS NULL").bind(id).first<{ is_default: number }>();

@@ -1,4 +1,5 @@
 import { InvalidSettingError, assertTimeZone, currentServiceDate, parseWeekday } from "../../shared/service-day";
+import { startRecordStatements } from "./service-record";
 import { getSettings } from "./settings";
 
 export interface Service {
@@ -23,7 +24,8 @@ export async function getCalendarSettings(db: D1Database): Promise<{ timeZone: s
 }
 
 /**
- * The current service (US-07), created on first use with the default list at that moment.
+ * The current service (US-07), created on first use with the default list at that moment. The first time a
+ * service is seen, the record of its checklist starts too (US-07b, db/service-record.ts).
  * Returns null when no service exists yet for the date and there is no default list to create it from.
  * Stage 7 adds plans from the schedule source (sources/schedule.ts); until then the date comes from the service-weekday setting.
  */
@@ -38,9 +40,12 @@ export async function getCurrentService(db: D1Database, now: Date): Promise<Serv
          SELECT ?1, id FROM task_lists WHERE is_default = 1 AND deleted_at IS NULL`,
       )
       .bind(date),
-    db.prepare("SELECT id, service_date, list_id, plan_external_id FROM services WHERE service_date = ?1").bind(date),
+    db.prepare("SELECT id, service_date, list_id, plan_external_id, tasks_recorded_from FROM services WHERE service_date = ?1").bind(date),
   ]);
-  const row = select.results[0] as { id: number; service_date: string; list_id: number; plan_external_id: string | null } | undefined;
+  const row = select.results[0] as
+    | { id: number; service_date: string; list_id: number; plan_external_id: string | null; tasks_recorded_from: string | null }
+    | undefined;
   if (!row) return null;
+  if (row.tasks_recorded_from === null) await db.batch(startRecordStatements(db, row.id));
   return { id: row.id, date: row.service_date, listId: row.list_id, planExternalId: row.plan_external_id, isToday, timeZone };
 }

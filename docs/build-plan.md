@@ -37,7 +37,8 @@
 │   ├── 0001_schema.sql
 │   ├── 0002_seed_ifc_checklist.sql   # Section 6 of requirements (US-14)
 │   ├── 0003_default_settings.sql     # starting branding, time zone, service weekday (US-11a)
-│   └── 0004–0006                     # check-off log, checklist edit log, settings log (append-only)
+│   ├── 0004–0006                     # check-off log, checklist edit log, settings log (append-only)
+│   └── 0007_service_tasks.sql        # the record of each service's checklist (US-07b)
 ├── src/
 │   ├── worker/
 │   │   ├── index.ts          # Hono app: mounts routes and middleware
@@ -141,6 +142,8 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 - Columns: `list_id`, `entity` (category/section/task), `entity_id`, `entity_name` (its name or text after the change, so the entry reads correctly after later renames), `action` (add/rename/edit/hide/restore/move/reorder), `before_json`, `after_json`, `user_id` (internal), `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`.
 - `before_json`/`after_json` hold only what changed: `name` or `text`; `place` (department, section and 1-based position among live siblings) for add, move and reorder; `teamLinks` removed by hiding a department.
 - Written in the same `db.batch` transaction as the edit. Triggers abort `UPDATE` and `DELETE`. No foreign keys.
+
+**service_tasks** (migration `0007`, Stage 5d.4, US-07b): the record of each service's checklist. One row per service and task: `text`, `category_id`/`category_name`/`category_order`, `section_id`/`section_name`/`section_order`, `task_order` (as at the end of the service, or when removed), `added_at`, `removed_at` (hidden during the service; NULL = on the checklist). `services.tasks_recorded_from` says when recording started (NULL = no record: services from before `0007`). Triggers refuse inserts and updates once a service is more than a day past in UTC (a safety net; SQL can't know the church's time zone). Rows cascade-delete with their service or task, which only tests do.
 
 **settings_events** (migration `0006`, Stage 5d.2): append-only log of church settings changes (US-11a). Columns: `before_json`, `after_json` (only the fields that changed, e.g. `{"serviceWeekday": 0}`), `user_id` (internal), `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`. Same transaction and triggers as the other logs.
 
@@ -282,6 +285,12 @@ Built in parts, each approved and committed on its own. The server rejects every
   - Delete a category and confirm it disappears from the checklist but past data still displays.
   - Move a checked task to another section and confirm the past service still shows it where it was.
   - Confirm a Director has no History tab and gets 403 / "Admins only".
+
+**5d.4 — A record of each service's checklist (US-07b, requirements v1.16)**
+- **When:** the record starts the first time a service loads (`getCurrentService`): every live task in its list. Every checklist edit (add, rename, edit, move, reorder, hide, restore) then reconciles the *current* service's record with the live list in the same `db.batch`, after the edit and its log entry: new and changed tasks are upserted (only rows that changed are written), and tasks no longer live are marked `removed_at`; a restored task comes back. Switching the current service's list (5d.1) starts the record over.
+- **Freeze:** after midnight in the church's time zone the service isn't current, so no edit reaches its record; nothing runs at midnight (no Cron Trigger). "During the service" means the whole time the service is current, so Saturday prep counts.
+- **History:** "X of Y done" overall and per department, every task where it was at the end, checked or not ("checked as '…'" when its text changed afterwards); tasks removed during the service listed apart and not counted. Services without a record keep the 5d.3 view. The service current when this ships records from that moment and is marked as such.
+- **Test in the browser:** check a task, add a task, hide another, then end the service (local SQL: set its date in the past) and confirm history shows X of Y, the unchecked tasks and the removed one; edit the list afterwards and confirm the past service doesn't change.
 
 ### Stage 6 — Admin user management
 - Users page: grant or revoke Admin and Director (US-03). Revoking takes effect on the user's next page load.

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ActivityResponse, HistoryResponse, ServiceHistoryResponse, ServiceSummary } from "../../../shared/types";
+import type { ActivityResponse, HistoryCategory, HistoryResponse, HistoryTask, ServiceHistoryResponse, ServiceSummary } from "../../../shared/types";
 import { getJson, isAuthError } from "../../api";
 import { RouteLink } from "../../components/app/RouteLink";
 import { Card } from "../../components/ui/Card";
 import { CheckIcon } from "../../components/ui/Icons";
+import { ProgressBar } from "../../components/ui/ProgressBar";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
 import { ACTION, OUTCOME, describeCheckoff, formatWhen, short } from "../../lib/activity";
 import { formatDateTime, formatServiceDate, formatTime } from "../../lib/format";
@@ -40,8 +41,9 @@ function useLoad<T>(load: () => Promise<T>, onAccessChanged: () => void) {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-// Service history (Stage 5d.3, design.md §7, US-07): past services, each read-only with what was checked (as
-// recorded at check-off time, so later edits and hides don't change it), its resets and its activity log.
+// Service history (Stage 5d.3, design.md §7, US-07): past services, each read-only with its checklist, its resets and
+// its activity log. Services with a record of their checklist (US-07b) show "X of Y done" and what wasn't checked;
+// older ones show only what was checked, as recorded at check-off time. Later edits and hides change neither.
 export function HistoryPage({ search, onAccessChanged, onNavigate }: Props) {
   const param = new URLSearchParams(search).get("service");
   return param && /^\d+$/.test(param) ? (
@@ -105,7 +107,10 @@ function ServiceList({ onAccessChanged, onNavigate }: Omit<Props, "search">) {
 }
 
 const summaryCounts = (s: ServiceSummary) =>
-  [`${plural(s.checkedCount, "task")} checked`,s.resetCount > 0 ? `reset ${s.resetCount === 1 ? "once" : `${s.resetCount} times`}` : ""]
+  [
+    s.totalCount === null ? `${plural(s.checkedCount, "task")} checked` : `${s.checkedCount} of ${s.totalCount} done`,
+    s.resetCount > 0 ? `reset ${s.resetCount === 1 ? "once" : `${s.resetCount} times`}` : "",
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -149,7 +154,7 @@ function ServiceRecord({ serviceId, onAccessChanged, onNavigate }: Omit<Props, "
     );
   }
 
-  const [{ service, categories, resets }, log] = state.data;
+  const [{ service, categories, removed, resets }, log] = state.data;
   const { timeZone } = service;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
 
@@ -161,49 +166,80 @@ function ServiceRecord({ serviceId, onAccessChanged, onNavigate }: Omit<Props, "
         <p className="text-meta text-fg-muted wrap-anywhere">
           <ListName list={service.list} /> · {summaryCounts(service)}
         </p>
+        {service.totalCount !== null && (
+          <ProgressBar progress={{ done: service.checkedCount, total: service.totalCount }} label="Overall progress" className="max-w-sm" />
+        )}
         {service.isCurrent && (
           <p className="text-meta text-warning">This is the current service, so this record can still change.</p>
         )}
       </header>
 
-      <section aria-labelledby="checked-heading" className="space-y-3">
-        <div>
-          <h2 id="checked-heading" className="font-semibold">
-            Checked tasks
-          </h2>
-          <p className="text-meta text-fg-muted">
-            Tasks still checked at the end, under the department and section they were in when checked. The app doesn't keep
-            a copy of the whole checklist for past services, so unchecked tasks aren't listed.
-          </p>
-        </div>
-        {categories.length === 0 ? (
-          <EmptyState title="Nothing was checked off." />
-        ) : (
-          categories.map((c) => (
-            <Card key={c.id} className="overflow-hidden">
-              <h3 className="border-b border-line px-4 py-3 font-semibold wrap-anywhere">{c.name}</h3>
-              {c.sections.map((s) => (
-                <div key={s.id} className="border-b border-line last:border-b-0">
-                  <h4 className="px-4 pt-3 pb-1 text-meta font-semibold tracking-wide text-fg-muted uppercase wrap-anywhere">{s.name}</h4>
-                  <ul className="pb-2">
-                    {s.tasks.map((t) => (
-                      <li key={t.taskId} className="flex gap-3 px-4 py-1.5">
-                        <CheckIcon className="mt-0.5 size-4 shrink-0 text-success" />
-                        <span className="min-w-0">
-                          <span className="block text-task wrap-anywhere">{t.text}</span>
-                          <span className="block text-meta text-fg-muted">
-                            {t.by} · {formatTime(t.at, timeZone)}
-                          </span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+      {service.record ? (
+        <section aria-labelledby="checklist-heading" className="space-y-3">
+          <div>
+            <h2 id="checklist-heading" className="font-semibold">
+              Checklist
+            </h2>
+            <p className="text-meta text-fg-muted">Every task on the checklist when the service ended, where it was then.</p>
+            {service.record.partial && (
+              <p className="mt-1 text-meta text-warning">
+                The record started at {formatDateTime(service.record.from, timeZone)}, partway through this service, so tasks
+                hidden before then aren't counted.
+              </p>
+            )}
+          </div>
+          {categories.length === 0 ? (
+            <EmptyState title="The checklist was empty." />
+          ) : (
+            categories.map((c) => <DepartmentRecord key={c.id} category={c} timeZone={timeZone} withTotals />)
+          )}
+        </section>
+      ) : (
+        <section aria-labelledby="checked-heading" className="space-y-3">
+          <div>
+            <h2 id="checked-heading" className="font-semibold">
+              Checked tasks
+            </h2>
+            <p className="text-meta text-fg-muted">
+              Tasks still checked at the end, under the department and section they were in when checked. This service is
+              from before the app kept a record of each service's checklist, so unchecked tasks and totals aren't available.
+            </p>
+          </div>
+          {categories.length === 0 ? (
+            <EmptyState title="Nothing was checked off." />
+          ) : (
+            categories.map((c) => <DepartmentRecord key={c.id} category={c} timeZone={timeZone} withTotals={false} />)
+          )}
+        </section>
+      )}
+
+      {removed.length > 0 && (
+        <section aria-labelledby="removed-heading" className="space-y-3">
+          <div>
+            <h2 id="removed-heading" className="font-semibold">
+              Removed during the service
+            </h2>
+            <p className="text-meta text-fg-muted">Hidden from the checklist before the service ended, so not counted above.</p>
+          </div>
+          <Card className="overflow-hidden">
+            <ul className="divide-y divide-line">
+              {removed.map((t) => (
+                <li key={t.taskId} className="flex gap-3 px-4 py-2.5">
+                  <TaskMark checked={t.checkoff !== null} />
+                  <span className="min-w-0">
+                    <span className="block text-task wrap-anywhere">{t.text}</span>
+                    <span className="block text-meta text-fg-muted wrap-anywhere">
+                      {t.department} › {t.section}
+                      {t.removedAt && <> · removed {formatDateTime(t.removedAt, timeZone)}</>}
+                    </span>
+                    <CheckoffLine task={t} timeZone={timeZone} />
+                  </span>
+                </li>
               ))}
-            </Card>
-          ))
-        )}
-      </section>
+            </ul>
+          </Card>
+        </section>
+      )}
 
       {resets.length > 0 && (
         <section aria-labelledby="resets-heading" className="space-y-3">
@@ -266,5 +302,65 @@ function ServiceRecord({ serviceId, onAccessChanged, onNavigate }: Omit<Props, "
         {log.truncated && <p className="text-meta text-fg-muted">Showing the latest 500 entries.</p>}
       </section>
     </main>
+  );
+}
+
+/** One department: its sections and tasks, with "X of Y done" when every task is listed (a record). */
+function DepartmentRecord({ category, timeZone, withTotals }: { category: HistoryCategory; timeZone: string; withTotals: boolean }) {
+  const tasks = category.sections.flatMap((s) => s.tasks);
+  const done = tasks.filter((t) => t.checkoff).length;
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-b border-line px-4 py-3">
+        <h3 className="font-semibold wrap-anywhere">{category.name}</h3>
+        {withTotals && (
+          <span className="text-meta text-fg-muted">
+            {done} of {tasks.length} done
+          </span>
+        )}
+      </div>
+      {category.sections.map((s) => (
+        <div key={s.id} className="border-b border-line last:border-b-0">
+          <h4 className="px-4 pt-3 pb-1 text-meta font-semibold tracking-wide text-fg-muted uppercase wrap-anywhere">{s.name}</h4>
+          <ul className="pb-2">
+            {s.tasks.map((t) => (
+              <li key={t.taskId} className="flex gap-3 px-4 py-1.5">
+                <TaskMark checked={t.checkoff !== null} />
+                <span className="min-w-0">
+                  <span className={`block text-task wrap-anywhere ${t.checkoff ? "" : "text-fg-muted"}`}>{t.text}</span>
+                  <CheckoffLine task={t} timeZone={timeZone} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
+/** A tick for a checked task, an empty box for one that wasn't, with words for screen readers. */
+function TaskMark({ checked }: { checked: boolean }) {
+  return checked ? (
+    <span className="mt-0.5 shrink-0 text-success">
+      <CheckIcon className="size-4" />
+      <span className="sr-only">Checked:</span>
+    </span>
+  ) : (
+    <span className="mt-0.5 size-4 shrink-0 rounded-sm border border-idle">
+      <span className="sr-only">Not checked:</span>
+    </span>
+  );
+}
+
+/** "Test Volunteer · 9:42 AM", or "Not checked"; plus the text it was checked under, if that changed later. */
+function CheckoffLine({ task, timeZone }: { task: HistoryTask; timeZone: string }) {
+  const { checkoff } = task;
+  if (!checkoff) return <span className="block text-meta text-fg-muted">Not checked</span>;
+  return (
+    <span className="block text-meta text-fg-muted wrap-anywhere">
+      {checkoff.by} · {formatTime(checkoff.at, timeZone)}
+      {checkoff.text !== task.text && <> · checked as “{checkoff.text}”</>}
+    </span>
   );
 }

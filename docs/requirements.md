@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.15 · **Date:** October 2026  
+> **Version:** 1.16 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.15
+## 0. Changes in Version 1.16
+
+| # | Change | Why |
+|---|--------|-----|
+| C27 | **New: each service keeps a record of its checklist** (new US-07b): every task on it while the service was current, including tasks added, moved, renamed or hidden during it, frozen when the service ends. Service history shows "X of Y done" overall and per department, the tasks that weren't checked, and the tasks removed during the service. | Past services could only show what was checked; the record shows what was missed, matching what volunteers saw. |
+
+## Changes in Version 1.15
 
 | # | Change | Why |
 |---|--------|-----|
@@ -253,6 +259,20 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 ---
 
+**US-07b — Each service keeps a record of its checklist**
+*As an admin, I want to see what was and wasn't done at a past service, so we can spot what keeps getting missed.*
+
+**Acceptance Criteria:**
+- While a service is current, the app records every task on its checklist: the tasks there when the service starts, plus any added, moved, renamed or hidden during it. Each change to the record happens in the same transaction as the checklist edit that caused it.
+- The record stops changing when the service ends, at midnight after the service date in the church's time zone (US-11a). Later checklist edits never change a past service's record.
+- Service history shows, for a recorded service, "X of Y done" overall and per department, and every task on the checklist when the service ended, where it was then, checked or not. A checked task whose text changed afterwards also shows the text it was checked under.
+- Tasks hidden during the service are listed separately ("Removed during the service"), with when, and are not counted. A task restored before the service ended counts again.
+- If the current service switches to another list (allowed only before anything is checked, US-11), its record starts over from the new list.
+- Services from before this feature have no record: history shows their checked tasks only, without totals, and says why. For the service that was current when the feature arrived, the record starts at that moment, and history says so.
+- Only Admins can see service history; the server rejects anyone else.
+
+---
+
 **US-08 — Checklist works on phones and tablets**  
 *As a volunteer working in the booth or on the floor, I want the app to work well on my phone.*
 
@@ -472,6 +492,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - One service per service day; per-service check-off state; "current service" defined in the church's time zone (both admin-editable settings)
 - Manual reset (Admins/Directors only) with confirmation and undo
 - Append-only activity log of every check-off change; Admin-only activity view (US-07a)
+- A record of each service's checklist; service history with "X of Y done" and what wasn't checked (US-07b)
 - Checklist and progress view refresh themselves about every 30 seconds while open
 - Hidden-not-erased deletes; task text snapshots on check-off
 - Hidden items view with Restore (US-13a)
@@ -775,4 +796,4 @@ Nothing outside these modules knows it is talking to Planning Center. The databa
 
 ---
 
-*End of Requirements — Version 1.15*
+*End of Requirements — Version 1.16*

@@ -6,6 +6,8 @@
 // transaction. For changes to an existing row the log row is inserted first, reading the "before" values
 // in that transaction, and the change runs only if the log row was written (changes() = 1 refers to the
 // previous statement in the batch). So an edit and its log entry always happen together, or not at all.
+// Each batch then ends with the statements that bring the current service's checklist record up to date
+// (US-07b, db/service-record.ts), so the record matches what volunteers see.
 
 import type {
   AdminListResponse,
@@ -18,6 +20,7 @@ import type {
   StructureKind,
 } from "../../shared/types";
 import { type Actor, actorValues } from "./checkoffs";
+import { syncRecordStatements } from "./service-record";
 import { getSettings } from "./settings";
 import { type StructureRow, buildStructure, structureStatement } from "./structure";
 
@@ -191,6 +194,7 @@ async function addItem(db: D1Database, kind: StructureKind, actor: Actor, parent
       ),
       actor,
     ),
+    ...(await syncRecordStatements(db)),
   ]);
   return inserted.meta.changes > 0 ? inserted.meta.last_row_id : null;
 }
@@ -219,6 +223,7 @@ async function setText(db: D1Database, kind: StructureKind, actor: Actor, id: nu
       value,
     ),
     db.prepare(`UPDATE ${TABLE[kind]} SET ${column} = ?2 WHERE id = ?1 AND changes() = 1`).bind(id, value),
+    ...(await syncRecordStatements(db)),
   ]);
   return updated.meta.changes > 0;
 }
@@ -255,7 +260,7 @@ async function hideItem(db: D1Database, kind: StructureKind, actor: Actor, id: n
   ];
   // Only if the UPDATE above hid it (changes() is its row count, same transaction).
   if (kind === "category") statements.push(db.prepare("DELETE FROM team_links WHERE category_id = ?1 AND changes() > 0").bind(id));
-  const [, hidden] = await db.batch(statements);
+  const [, hidden] = await db.batch([...statements, ...(await syncRecordStatements(db))]);
   return hidden.meta.changes > 0;
 }
 
@@ -323,6 +328,7 @@ export async function reorder(
     db
       .prepare(`UPDATE ${table} SET sort_order = ?2 WHERE id = ?1 AND ${parent} = ?3 AND deleted_at IS NULL AND changes() = 1`)
       .bind(neighbour.id, item.sort_order, item.parent_id),
+    ...(await syncRecordStatements(db)),
   ]);
   return second.meta.changes === 1 ? "ok" : "conflict";
 }
@@ -379,6 +385,7 @@ async function moveItem(db: D1Database, actor: Actor, kind: "task" | "section", 
           WHERE id = ?1 AND changes() = 1`,
       )
       .bind(id, to),
+    ...(await syncRecordStatements(db)),
   ]);
   return moved.meta.changes > 0 ? "ok" : "not_found";
 }
@@ -447,8 +454,10 @@ export async function restore(
   const results = await db.batch([
     ...parents,
     ...restoreRow(kind, "?1", `${LOG_SQL[kind].alias}.${PARENT[kind]} IN (${LIVE_PARENTS[kind]})`),
+    ...(await syncRecordStatements(db)),
   ]);
-  if ((results.at(-1)?.meta.changes ?? 0) > 0) return "ok";
+  // The item's own UPDATE: the second of its restoreRow statements, after the parents'.
+  if ((results[parents.length + 1]?.meta.changes ?? 0) > 0) return "ok";
   // Not restored: either it sits in a hidden parent, or it isn't hidden (or doesn't exist) anymore.
   const stillHidden = await db.prepare(`SELECT 1 FROM ${table} WHERE id = ?1 AND deleted_at IS NOT NULL AND ${listLive}`).bind(id).first();
   return stillHidden ? "parent_hidden" : "not_found";
