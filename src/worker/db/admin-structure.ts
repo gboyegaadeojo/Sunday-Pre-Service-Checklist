@@ -11,6 +11,7 @@ import type {
   AdminListResponse,
   ChecklistEditsResponse,
   EditAction,
+  EditEntity,
   EditValues,
   HiddenItem,
   HiddenItemsResponse,
@@ -20,10 +21,10 @@ import { type Actor, actorValues } from "./checkoffs";
 import { getSettings } from "./settings";
 import { type StructureRow, buildStructure, structureStatement } from "./structure";
 
-const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+export const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
 
 // IDs of live items whose whole ancestry is live. Used as "id IN (…)" guards.
-const LIVE_LISTS = "SELECT id FROM task_lists WHERE deleted_at IS NULL";
+export const LIVE_LISTS = "SELECT id FROM task_lists WHERE deleted_at IS NULL";
 const LIVE_CATEGORIES = `SELECT id FROM categories WHERE deleted_at IS NULL AND list_id IN (${LIVE_LISTS})`;
 const LIVE_SECTIONS = `SELECT id FROM sections WHERE deleted_at IS NULL AND category_id IN (${LIVE_CATEGORIES})`;
 const LIVE_TASKS = `SELECT id FROM tasks WHERE deleted_at IS NULL AND section_id IN (${LIVE_SECTIONS})`;
@@ -71,7 +72,7 @@ const logSql = (kind: StructureKind, action: EditAction, o: { where: string; bef
      FROM ${LOG_SQL[kind].from} WHERE ${o.where}`;
 
 /** Binds a statement's own parameters as ?1… and the actor as ?21–?25. */
-const bindWithActor = (stmt: D1PreparedStatement, actor: Actor, ...params: unknown[]) =>
+export const bindWithActor = (stmt: D1PreparedStatement, actor: Actor, ...params: unknown[]) =>
   stmt.bind(...params, ...Array(20 - params.length).fill(null), ...actorValues(actor));
 
 // Reading -----------------------------------------------------------------------------------------
@@ -118,7 +119,9 @@ interface EditRow {
   id: number;
   created_at: string;
   action: EditAction;
-  entity: StructureKind;
+  entity: EditEntity;
+  list_id: number;
+  list_name: string | null;
   entity_id: number;
   entity_name: string;
   before_json: string | null;
@@ -128,28 +131,32 @@ interface EditRow {
   tab_id: string | null;
 }
 
-/** The latest checklist edits of a list (US-13b), newest first. Read-only: nothing edits or deletes log rows. */
-export async function getEdits(db: D1Database, listRef: number | "default"): Promise<ChecklistEditsResponse | null> {
-  const list = await findList(db, listRef);
-  if (!list) return null;
+/**
+ * The latest checklist edits (US-13b) across all lists, or of one list, newest first, each with its list's
+ * current name. Read-only: nothing edits or deletes log rows.
+ */
+export async function getEdits(db: D1Database, listId?: number): Promise<ChecklistEditsResponse> {
   const { time_zone: timeZone } = await getSettings(db, ["time_zone"]);
   if (!timeZone) throw new Error("The time_zone setting is missing.");
   const { results } = await db
     .prepare(
-      `SELECT id, created_at, action, entity, entity_id, entity_name, before_json, after_json, user_name, session_id, tab_id
-         FROM checklist_events WHERE list_id = ? ORDER BY id DESC LIMIT ?`,
+      `SELECT e.id, e.created_at, e.action, e.entity, e.list_id, l.name AS list_name, e.entity_id, e.entity_name,
+              e.before_json, e.after_json, e.user_name, e.session_id, e.tab_id
+         FROM checklist_events e LEFT JOIN task_lists l ON l.id = e.list_id
+        WHERE ?1 IS NULL OR e.list_id = ?1
+        ORDER BY e.id DESC LIMIT ?2`,
     )
-    .bind(list.id, EDITS_PAGE + 1)
+    .bind(listId ?? null, EDITS_PAGE + 1)
     .all<EditRow>();
   const parse = (json: string | null) => (json === null ? null : (JSON.parse(json) as EditValues));
   return {
-    list: { id: list.id, name: list.name },
     timeZone,
     events: results.slice(0, EDITS_PAGE).map((r) => ({
       id: r.id,
       at: r.created_at,
       action: r.action,
       kind: r.entity,
+      list: { id: r.list_id, name: r.list_name ?? `List #${r.list_id}` },
       itemId: r.entity_id,
       itemName: r.entity_name,
       before: parse(r.before_json),

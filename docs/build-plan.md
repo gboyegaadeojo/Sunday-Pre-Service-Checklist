@@ -1,6 +1,6 @@
 # Build Plan — Church Media Team Checklist App
 
-> **Based on:** requirements.md v1.12 · **Date:** October 2026
+> **Based on:** requirements.md v1.13 · **Date:** October 2026
 > **Status:** Approved
 
 ---
@@ -244,10 +244,22 @@ Built in parts, each approved and committed on its own. The server rejects every
 - Same server endpoints as 5b, and reorders are logged as in 5c.
 - **Test in the browser:** at 375 px, turn on Reorder and move a task down three places with the arrows. Then turn it off.
 
-**5d — Lists, settings and service history**
-- Lists: create, edit, delete and set the default (US-11).
-- Church settings screen (US-11a): time zone (validated IANA name), service weekday, and branding (short name, team name, app name).
-- Service history (design.md §7) includes each past service's check-offs and activity log, read-only. Nothing in the admin area can edit or delete log entries.
+**5d — Lists, settings and service history**, built, shown and committed one part at a time.
+
+**5d.1 — Task lists (US-11, requirements v1.13)**
+- Admin › Lists (`/admin/lists`): the default first, with which list the current service uses; New list (empty, or a copy of a live list); Rename or describe; Make default; Copy to a new list; Hide; Hidden lists with Restore.
+- The editor and Hidden items work on any list: `/admin/checklist?list=ID` (no `list` = the default list).
+- **Copy** is three set-based `INSERT … SELECT`s (departments, sections, tasks), matching parents by `sort_order`, so it stays within D1 Free's 50 queries per request whatever the list's size. The new list's ID is chosen first so every statement in the batch refers to it.
+- **Make default** clears the old default and sets the new one in one batch. With "Also use it for this service", the current service switches too, only while it has no check-offs at all.
+- **Hide** is refused for the default list and for the current service's list.
+- Every list change is logged in `checklist_events` (entity `list`, action `set_default` added). The Activity feed now covers all lists (`GET /api/admin/edits`) and names the list when there's more than one.
+- **Test in the browser:** copy the regular list to "Christmas Eve", edit the copy and confirm the original is unchanged; make it the default with "Also use it for this service"; check that the default list can't be hidden; hide and restore a list; see each change in Activity.
+
+**5d.2 — Church settings (US-11a)**
+- Settings screen: time zone (validated IANA name), service weekday, and branding (short name, team name, app name). Changes are logged.
+
+**5d.3 — Service history (design.md §7)**
+- Each past service's check-offs (by the department and section snapshots) and activity log, read-only. Nothing in the admin area can edit or delete log entries.
 - **Test in the browser:**
   - Edit a task that's already checked and confirm the service history still shows the old text.
   - Delete a category and confirm it disappears from the checklist but past data still displays.

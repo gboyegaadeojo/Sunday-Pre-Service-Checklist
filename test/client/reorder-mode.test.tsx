@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 const renderInReorderMode = async () => {
-  render(<ChecklistEditorPage onAccessChanged={() => {}} onNavigate={() => {}} />);
+  render(<ChecklistEditorPage listRef="default" onAccessChanged={() => {}} onNavigate={() => {}} />);
   await screen.findByText("Audio");
   fireEvent.click(screen.getByRole("button", { name: /^Audio/ })); // expand
   fireEvent.click(screen.getByRole("button", { name: "Reorder" }));

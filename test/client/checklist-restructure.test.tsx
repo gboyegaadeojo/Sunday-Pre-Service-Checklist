@@ -70,7 +70,7 @@ afterEach(() => {
 });
 
 const renderEditor = async () => {
-  render(<ChecklistEditorPage onAccessChanged={() => {}} onNavigate={() => {}} />);
+  render(<ChecklistEditorPage listRef="default" onAccessChanged={() => {}} onNavigate={() => {}} />);
   await screen.findByText("Audio");
   fireEvent.click(screen.getByRole("button", { name: /^Audio/ })); // expand
 };
@@ -131,7 +131,7 @@ describe("Move to…", () => {
 
 describe("Hidden items", () => {
   const renderHidden = async () => {
-    render(<HiddenItemsPage onAccessChanged={() => {}} onNavigate={() => {}} />);
+    render(<HiddenItemsPage listRef="default" onAccessChanged={() => {}} onNavigate={() => {}} />);
     await screen.findByText("Check batteries");
   };
 

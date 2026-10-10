@@ -1,15 +1,16 @@
 -- Append-only log of checklist edits (US-13b): every add, rename, edit, hide, restore, move and reorder of
--- a department (category), section or task, with who, when and the before/after values. Only applied
--- changes are logged, in the same transaction as the change. Rows are never edited or deleted: the
--- triggers below abort any UPDATE or DELETE. No foreign keys, so the log outlives anything it refers to.
+-- a task list, department (category), section or task, and every change of the default list (US-11), with
+-- who, when and the before/after values. Only applied changes are logged, in the same transaction as the
+-- change. Rows are never edited or deleted: the triggers below abort any UPDATE or DELETE. No foreign keys,
+-- so the log outlives anything it refers to.
 
 CREATE TABLE checklist_events (
   id          INTEGER PRIMARY KEY,
-  list_id     INTEGER NOT NULL,
-  entity      TEXT NOT NULL CHECK (entity IN ('category', 'section', 'task')),
+  list_id     INTEGER NOT NULL,  -- the list edited, or the list itself for entity 'list'
+  entity      TEXT NOT NULL CHECK (entity IN ('list', 'category', 'section', 'task')),
   entity_id   INTEGER NOT NULL,
   entity_name TEXT NOT NULL,  -- its name/text after the change, so the entry reads right after later renames
-  action      TEXT NOT NULL CHECK (action IN ('add', 'rename', 'edit', 'hide', 'restore', 'move', 'reorder')),
+  action      TEXT NOT NULL CHECK (action IN ('add', 'rename', 'edit', 'hide', 'restore', 'move', 'reorder', 'set_default')),
   before_json TEXT CHECK (before_json IS NULL OR json_valid(before_json)),  -- only what changed, e.g. {"name": …}
   after_json  TEXT CHECK (after_json IS NULL OR json_valid(after_json)),
   user_id     INTEGER NOT NULL,  -- internal users.id (US-03a); no FK, so the log outlives anything

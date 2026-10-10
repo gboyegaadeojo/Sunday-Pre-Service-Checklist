@@ -20,8 +20,8 @@ import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
-import type { Route } from "../../lib/router";
-import { useAdminList } from "../../lib/useAdminList";
+import type { Navigate } from "../../lib/router";
+import { type ListRef, useAdminList } from "../../lib/useAdminList";
 
 const HIDE_TITLE: Record<HideRequest["kind"], string> = { category: "department", section: "section", task: "task" };
 
@@ -32,14 +32,16 @@ const REORDER_START = "editor-reorder-start";
 const REORDER_DONE = "editor-reorder-done";
 
 interface Props {
+  /** The list to edit (?list=…), or the default list. */
+  listRef: ListRef;
   onAccessChanged: () => void;
-  onNavigate: (route: Route) => void;
+  onNavigate: Navigate;
 }
 
 // Admin checklist editor, Stage 5 (US-12, US-12a, US-13; design.md §7): add, rename/edit, hide, reorder
 // and move departments, sections and tasks. Changes are live for everyone once saved. Admin-only (server enforced).
-export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
-  const actions = useAdminList({ onAccessChanged });
+export function ChecklistEditorPage({ listRef, onAccessChanged, onNavigate }: Props) {
+  const actions = useAdminList({ listRef, onAccessChanged });
   const [editing, setEditing] = useState<Editing>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   const [hide, setHide] = useState<HideRequest | null>(null);
@@ -155,8 +157,12 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
           <div className="min-w-0">
             <h1 className="text-page font-semibold tracking-tight">Checklist</h1>
             <p className="text-meta text-fg-muted">
-              {list.name}
-              {list.isDefault && " · used for regular services"}
+              <span className="font-medium text-fg">{list.name}</span>
+              {list.isDefault ? " · the default list for new services" : " · not the default list"}
+              {" · "}
+              <RouteLink to="admin-lists" current={false} onNavigate={onNavigate} className="text-accent-soft underline-offset-2 hover:underline">
+                All lists
+              </RouteLink>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -168,6 +174,7 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
             )}
             <RouteLink
               to="admin-hidden"
+              search={`?list=${list.id}`}
               current={false}
               onNavigate={onNavigate}
               className="inline-flex min-h-11 items-center rounded-control border border-line bg-card px-4 text-sm font-medium text-fg transition-colors hover:bg-hover"

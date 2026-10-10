@@ -2,7 +2,6 @@ import { type Context, Hono } from "hono";
 import {
   type AdminListResponse,
   type ApiErrorBody,
-  type ChecklistEditsResponse,
   type CreatedResponse,
   type HiddenItemsResponse,
   NAME_MAX,
@@ -16,7 +15,6 @@ import {
   addTask,
   editTask,
   getAdminList,
-  getEdits,
   getHiddenItems,
   hideCategory,
   hideSection,
@@ -37,7 +35,6 @@ import type { AppEnv } from "../types";
 // Every applied change below is logged to checklist_events in the same transaction (db/admin-structure.ts).
 //   GET    /api/admin/lists/:listId                  structure ("default" or an ID)
 //   GET    /api/admin/lists/:listId/hidden           hidden items, newest first
-//   GET    /api/admin/lists/:listId/edits            the append-only checklist edit log, newest first (US-13b)
 //   POST   /api/admin/lists/:listId/categories      { name }  add a department at the end
 //   POST   /api/admin/categories/:id/sections        { name }  add a section at the end
 //   POST   /api/admin/sections/:id/tasks             { text }  add a task at the end
@@ -154,12 +151,6 @@ export const adminStructureRoutes = new Hono<AppEnv>()
     const hidden = ref === null ? null : await getHiddenItems(c.env.DB, ref);
     if (!hidden) return c.json<ApiErrorBody>({ error: "No checklist found." }, 404);
     return c.json<HiddenItemsResponse>(hidden);
-  })
-  .get("/lists/:id/edits", async (c) => {
-    const ref = listRef(c);
-    const edits = ref === null ? null : await getEdits(c.env.DB, ref);
-    if (!edits) return c.json<ApiErrorBody>({ error: "No checklist found." }, 404);
-    return c.json<ChecklistEditsResponse>(edits);
   })
   .post("/lists/:id/categories", textRoute("name", NAME_MAX, addCategory, true))
   .post("/categories/:id/sections", textRoute("name", NAME_MAX, addSection, true))

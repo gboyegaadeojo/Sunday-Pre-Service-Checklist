@@ -111,8 +111,8 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   |---|---|---|
   | Progress view (`/progress`, data from `GET /api/checklist`) | everyone with access | `requireAccess` |
   | Reset and undo (`POST /api/services/:id/reset`, `/undo-reset`) | Admins and Directors | `requireStaff` |
-  | Activity log (`/admin/activity`, `GET /api/services/:id|current/events`, `GET /api/admin/lists/:id/edits`) | Admins only | `requireAdmin` |
-  | Checklist editor and Hidden items (`/admin/checklist`, `/admin/checklist/hidden`, `/api/admin/*`) | Admins only | `requireAdmin` on the whole router |
+  | Activity log (`/admin/activity`, `GET /api/services/:id|current/events`, `GET /api/admin/edits`) | Admins only | `requireAdmin` |
+  | Checklist editor, Hidden items and Lists (`/admin/checklist`, `/admin/checklist/hidden`, `/admin/lists`, `/api/admin/*`) | Admins only | `requireAdmin` on each admin router |
 
   `GET /api/checklist` adds `service.reset` only for staff. The UI hides what a role can't use (`AppNav`, `ProgressPage`), and `test/client/stage4-roles.test.tsx` checks that it never offers what the server refuses.
 - **Reset and undo** (`db/resets.ts`):
@@ -128,13 +128,16 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - **Restructuring (Stage 5b):** each item's "⋯" menu has Move up/Move down (disabled at the ends) and, for tasks and sections, "Move to…" (`MoveDialog`: department, then section). Reorder swaps `sort_order` with the nearest *live* sibling; moves go to the end of the destination and must stay in the same list. The moved item is briefly highlighted and its menu button refocused.
   - **Reorder mode (5c.2):** the editor's Reorder toggle swaps each row's ⋯ menu for `ReorderButtons` (↑/↓, same endpoints) and hides the Add buttons; a sticky bar holds Done. Focus follows the moved item via `focusTarget` (an effect that retries after each render); one move at a time (`reorderBusy`).
   - **Hidden items (US-13a):** `pages/admin/HiddenItemsPage.tsx` lists rows with `deleted_at` set (`getHiddenItems`). Restore clears `deleted_at` and keeps ID and `sort_order`, so history and position come back. The server never restores into a hidden parent (409 `parent_hidden`); `withParents: true` restores the hidden ancestors in the same batch. Team links deleted by a hide are not recreated.
+- **Task lists** (Stage 5d.1, US-11; `db/lists.ts`, `routes/admin-lists.ts`, `pages/admin/ListsPage.tsx`):
+  - Create empty or as a copy (three set-based `INSERT … SELECT`s; never per-row statements: D1 Free allows 50 queries per request). Make default (one batch; optionally switches the current service only if it has no check-offs). Hide is refused for the default and the current service's list. Restore.
+  - List changes log to `checklist_events` with entity `list`; `GET /api/admin/edits` (optional `?list=`) is the edit feed across lists.
 - **Checklist edit log** (`checklist_events`, migration `0005`, Stage 5c, US-13b):
   - Every applied add, rename, edit, hide, restore, move and reorder is logged with the actor (`actorFor`), the item, its name/text after the change (`entity_name`), and `before_json`/`after_json` holding only what changed (`name`/`text`, `place` = department, section, 1-based position; `teamLinks` removed by a department hide). Refused edits change nothing and log nothing.
   - **Same transaction, log first:** in `db/admin-structure.ts` the log row is an `INSERT … SELECT` that carries the edit's guard and reads the before values; the edit itself then runs `WHERE … AND changes() = 1`. Adds are the exception: the row is inserted first and the log reads it via `last_insert_rowid()`. The actor binds as `?21–?25` (`bindWithActor`). Any new structure edit must follow this pattern.
   - Append-only like `checkoff_events` (triggers abort `UPDATE`/`DELETE`); tests read rows after a marker ID.
-  - `GET /api/admin/lists/:id/edits` (Admin) feeds the Activity view, which merges it with the current service's check-off log behind an All / Check-offs / Checklist edits filter.
+  - `GET /api/admin/edits` (Admin, all lists) feeds the Activity view, which merges it with the current service's check-off log behind an All / Check-offs / Checklist edits filter.
   - Tests use their own list (ID 77) so the seed checklist stays untouched: call `setUpAdminFixture()` from `test/admin-fixture.ts`.
-- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist`, `/admin/checklist/hidden` and `/admin/activity`, with aliases `/admin` and `/activity`. The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
+- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist`, `/admin/checklist/hidden`, `/admin/lists` and `/admin/activity`, plus a query string (`navigate(route, "?list=5")`, `RouteLink search=…`; the editor and Hidden items read `?list=` via `listRefFrom`, default list when absent), with aliases `/admin` and `/activity`. The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
 - **Replaceable sources (requirements C22):** Planning Center is reached only through the interfaces in `src/worker/sources/`: `IdentityProvider` (sign-in) and `ScheduleSource` (teams, positions, membership, plans). Code outside `sources/` must not know which provider is in use. Outside IDs are stored as a source name plus that source's ID (`team_links.source`/`team_external_id`/…, `services.plan_source`/`plan_external_id`, `source_cache`); never add Planning Center–named columns.
 - **Planned, not built yet** (see build plan): the fake and Planning Center implementations of those interfaces (Stages 7–8), using the D1 `source_cache`. The Workers Cache API doesn't work on `*.workers.dev`.
 

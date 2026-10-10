@@ -1,5 +1,5 @@
 import type { CurrentUser } from "../../../shared/types";
-import type { Route } from "../../lib/router";
+import type { Navigate, Route } from "../../lib/router";
 import { AppNav } from "./AppNav";
 import { Brand } from "./Brand";
 import { UserMenu } from "./UserMenu";
@@ -7,7 +7,7 @@ import { UserMenu } from "./UserMenu";
 interface Props {
   user: CurrentUser;
   route: Route;
-  onNavigate: (route: Route) => void;
+  onNavigate: Navigate;
   onSignOut: () => void;
   signingOut: boolean;
   signOutError: string | null;

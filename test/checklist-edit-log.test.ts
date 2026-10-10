@@ -22,16 +22,16 @@ const admin = (method: string, path: string, body?: unknown) =>
   });
 /** This test's entries, oldest first, as the API returns them. */
 const edits = async (): Promise<ChecklistEditEvent[]> => {
-  const res = (await (await admin("GET", "/lists/default/edits")).json()) as ChecklistEditsResponse;
+  const res = (await (await admin("GET", `/edits?list=${LIST}`)).json()) as ChecklistEditsResponse;
   return res.events.filter((e) => e.id > marker).reverse();
 };
 const summary = (e: ChecklistEditEvent) => [e.action, e.kind, e.itemName, e.before, e.after];
 
 describe("access", () => {
   it("is Admin only", async () => {
-    expect((await api(cookies.director, "GET", "/lists/default/edits")).status).toBe(403);
-    expect((await api(cookies.volunteer, "GET", "/lists/default/edits")).status).toBe(403);
-    expect((await request("/api/admin/lists/default/edits")).status).toBe(401);
+    expect((await api(cookies.director, "GET", `/edits?list=${LIST}`)).status).toBe(403);
+    expect((await api(cookies.volunteer, "GET", `/edits?list=${LIST}`)).status).toBe(403);
+    expect((await request(`/api/admin/edits?list=${LIST}`)).status).toBe(401);
   });
 });
 
@@ -141,7 +141,7 @@ describe("what is logged", () => {
   it("returns newest first", async () => {
     await admin("PATCH", `/tasks/${T_ALPHA}`, { text: "One" });
     await admin("PATCH", `/tasks/${T_ALPHA}`, { text: "Two" });
-    const res = (await (await admin("GET", "/lists/default/edits")).json()) as ChecklistEditsResponse;
+    const res = (await (await admin("GET", `/edits?list=${LIST}`)).json()) as ChecklistEditsResponse;
     expect(res.events.slice(0, 2).map((e) => e.itemName)).toEqual(["Two", "One"]);
     expect(res.timeZone).toBe("America/Winnipeg");
   });

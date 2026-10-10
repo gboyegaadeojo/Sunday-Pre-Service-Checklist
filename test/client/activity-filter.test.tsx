@@ -15,6 +15,7 @@ const edit = (id: number, at: string, e: Partial<ChecklistEditEvent>): Checklist
   itemName: "",
   before: null,
   after: null,
+  list: { id: 1, name: "Test list" },
   ...actor,
   ...e,
 });
@@ -27,7 +28,6 @@ const checkoffs: ActivityResponse = {
   truncated: false,
 };
 const edits: ChecklistEditsResponse = {
-  list: { id: 1, name: "Test list" },
   timeZone: "America/Winnipeg",
   events: [
     edit(3, "2026-10-11T15:03:00.000Z", {
@@ -80,5 +80,28 @@ describe("Activity", () => {
     expect(screen.getByText("Task “Clean the lenses”: Audio › Power On → Cameras › Setup")).toBeTruthy();
     expect(screen.getByText("Department: “Audio” → “Audio Engineer”")).toBeTruthy();
     expect(screen.getByText("Department “Lighting”. Removed Planning Center links: Production › Lights")).toBeTruthy();
+  });
+
+  it("describes list changes, and names the list of each edit when there are several (US-11)", async () => {
+    const other = { id: 2, name: "Christmas Eve" };
+    edits.events.push(
+      edit(10, "2026-10-11T16:00:00.000Z", { kind: "list", list: other, action: "add", itemName: "Christmas Eve", after: { copiedFrom: { id: 1, name: "Test list" } } }),
+      edit(11, "2026-10-11T16:01:00.000Z", {
+        kind: "list",
+        list: other,
+        action: "set_default",
+        itemName: "Christmas Eve",
+        before: { defaultList: { id: 1, name: "Test list" } },
+        after: { defaultList: other, serviceDate: "2026-10-11" },
+      }),
+    );
+    render(<ActivityPage onAccessChanged={() => {}} />);
+    await screen.findByText("Open ProPresenter");
+    expect(screen.getByText("List “Christmas Eve”, copied from “Test list”")).toBeTruthy();
+    expect(
+      screen.getByText("“Christmas Eve” is now the default list (was “Test list”). Sunday, October 11, 2026 switched to it too"),
+    ).toBeTruthy();
+    expect(screen.getAllByText("· in “Test list”").length).toBe(3); // the department/section/task edits
+    edits.events.splice(-2);
   });
 });

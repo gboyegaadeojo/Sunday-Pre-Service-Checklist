@@ -230,7 +230,10 @@ export interface HiddenItemsResponse {
 
 // Checklist edit log (Stage 5c, US-13b). Admin only.
 
-export type EditAction = "add" | "rename" | "edit" | "hide" | "restore" | "move" | "reorder";
+export type EditAction = "add" | "rename" | "edit" | "hide" | "restore" | "move" | "reorder" | "set_default";
+
+/** What an edit-log entry is about: a whole task list, or a department, section or task in one. */
+export type EditEntity = "list" | StructureKind;
 
 /** Where an item sat: its department and section (as named then), and its 1-based position among live siblings. */
 export interface EditPlace {
@@ -246,6 +249,14 @@ export interface EditValues {
   place?: EditPlace;
   /** Planning Center links removed by hiding a department ("Team › Position"). */
   teamLinks?: string[];
+  /** A list's description. */
+  description?: string | null;
+  /** A new list that started as a copy of this one. */
+  copiedFrom?: { id: number; name: string };
+  /** set_default: the default list before and after. */
+  defaultList?: { id: number; name: string } | null;
+  /** set_default: the current service (date) that switched to the new default too. */
+  serviceDate?: string | null;
 }
 
 /** One row of the append-only checklist edit log. */
@@ -253,7 +264,9 @@ export interface ChecklistEditEvent {
   id: number;
   at: string;
   action: EditAction;
-  kind: StructureKind;
+  kind: EditEntity;
+  /** The list the entry belongs to (for kind "list", the list itself), as named now. */
+  list: { id: number; name: string };
   itemId: number;
   /** Its name or text right after this change. */
   itemName: string;
@@ -264,11 +277,56 @@ export interface ChecklistEditEvent {
   tabId: string | null;
 }
 
-/** GET /api/admin/lists/:listId/edits: latest edits, newest first. */
+/** GET /api/admin/edits: latest edits across all lists, newest first. */
 export interface ChecklistEditsResponse {
-  list: { id: number; name: string };
   timeZone: string;
   events: ChecklistEditEvent[];
   /** True when older entries exist beyond the returned page. */
   truncated: boolean;
+}
+
+// Task lists (Stage 5d.1, US-11). Admin only.
+
+/** Longest list description the server accepts (trimmed). */
+export const DESCRIPTION_MAX = 300;
+
+export interface AdminListSummary {
+  id: number;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  /** Live departments and tasks. */
+  departmentCount: number;
+  taskCount: number;
+  createdAt: string;
+  /** Set when the list is hidden. */
+  hiddenAt: string | null;
+}
+
+/** GET /api/admin/lists */
+export interface ListsResponse {
+  lists: AdminListSummary[];
+  /** The current service and the list it uses (a service keeps the list it started with). */
+  currentService: { id: number; date: string; listId: number; hasCheckoffs: boolean } | null;
+  timeZone: string;
+}
+
+/** POST /api/admin/lists */
+export interface CreateListRequest {
+  name: string;
+  description?: string | null;
+  /** Copy the live departments, sections and tasks of this list. Omit for an empty list. */
+  copyFrom?: number;
+}
+
+/** PATCH /api/admin/lists/:id */
+export interface UpdateListRequest {
+  name: string;
+  description?: string | null;
+}
+
+/** POST /api/admin/lists/:id/default */
+export interface SetDefaultRequest {
+  /** Also switch the current service to this list. Allowed only while it has no check-offs. */
+  applyToCurrentService?: boolean;
 }

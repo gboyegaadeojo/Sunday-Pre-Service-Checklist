@@ -5,8 +5,8 @@ import type {
   ChecklistEditEvent,
   ChecklistEditsResponse,
   EditAction,
+  EditEntity,
   EditPlace,
-  StructureKind,
 } from "../../shared/types";
 import { getJson, isAuthError } from "../api";
 import { Button } from "../components/ui/Button";
@@ -35,9 +35,10 @@ const EDIT: Record<EditAction, { label: string; tone: string }> = {
   reorder: { label: "Reordered", tone: "text-accent-soft" },
   hide: { label: "Hid", tone: "text-danger" },
   restore: { label: "Restored", tone: "text-warning" },
+  set_default: { label: "Set default", tone: "text-accent-soft" },
 };
 
-const KIND: Record<StructureKind, string> = { category: "Department", section: "Section", task: "Task" };
+const KIND: Record<EditEntity, string> = { list: "List", category: "Department", section: "Section", task: "Task" };
 
 type Filter = "all" | "checkoffs" | "edits";
 const FILTERS: { value: Filter; label: string }[] = [
@@ -65,8 +66,33 @@ function describeCheckoff(e: ActivityEvent): string {
 /** "Audio Engineer › Power On" (the department and section as named at the time). */
 const where = (p?: EditPlace) => [p?.department?.name, p?.section?.name].filter(Boolean).join(" › ");
 
+/** What happened to a whole list (US-11), in words. */
+function describeListEdit(e: ChecklistEditEvent): string {
+  const item = `List “${e.itemName}”`;
+  const { before, after } = e;
+  switch (e.action) {
+    case "add":
+      return after?.copiedFrom ? `${item}, copied from “${after.copiedFrom.name}”` : item;
+    case "rename": {
+      const parts = [
+        before?.name !== after?.name ? `List: “${before?.name}” → “${after?.name}”` : item,
+        before?.description !== after?.description ? "description changed" : "",
+      ];
+      return parts.filter(Boolean).join(", ");
+    }
+    case "set_default": {
+      const was = before?.defaultList ? ` (was “${before.defaultList.name}”)` : "";
+      const service = after?.serviceDate ? `. ${formatServiceDate(after.serviceDate)} switched to it too` : "";
+      return `“${e.itemName}” is now the default list${was}${service}`;
+    }
+    default:
+      return item;
+  }
+}
+
 /** What changed, in words, from the log entry's before and after values. */
 function describeEdit(e: ChecklistEditEvent): string {
+  if (e.kind === "list") return describeListEdit(e);
   const item = `${KIND[e.kind]} “${e.itemName}”`;
   const { before, after } = e;
   switch (e.action) {
@@ -84,6 +110,8 @@ function describeEdit(e: ChecklistEditEvent): string {
       return before?.teamLinks?.length ? `${item}. Removed Planning Center links: ${before.teamLinks.join(", ")}` : item;
     case "restore":
       return where(after?.place) ? `${item} to ${where(after?.place)}` : item;
+    default:
+      return item;
   }
 }
 
@@ -107,7 +135,7 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
     try {
       const [checkoffs, edits] = await Promise.all([
         getJson<ActivityResponse>("/api/services/current/events"),
-        getJson<ChecklistEditsResponse>("/api/admin/lists/default/edits"),
+        getJson<ChecklistEditsResponse>("/api/admin/edits"),
       ]);
       setState({ status: "ready", checkoffs, edits });
     } catch (err) {
@@ -140,6 +168,8 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
     ...(filter === "edits" ? [] : state.checkoffs.events.map((event) => ({ type: "checkoff" as const, event }))),
     ...(filter === "checkoffs" ? [] : state.edits.events.map((event) => ({ type: "edit" as const, event }))),
   ].sort((a, b) => b.event.at.localeCompare(a.event.at));
+  // With more than one list in the feed, name the list of each department/section/task edit.
+  const manyLists = new Set(state.edits.events.map((e) => e.list.id)).size > 1;
   const truncated =
     (filter !== "edits" && state.checkoffs.truncated) || (filter !== "checkoffs" && state.edits.truncated);
 
@@ -202,6 +232,9 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                   </span>
                   <span className="min-w-0 wrap-anywhere">
                     {type === "checkoff" ? describeCheckoff(e as ActivityEvent) : describeEdit(e as ChecklistEditEvent)}
+                    {type === "edit" && manyLists && (e as ChecklistEditEvent).kind !== "list" && (
+                      <span className="text-fg-muted"> · in “{(e as ChecklistEditEvent).list.name}”</span>
+                    )}
                     {type === "checkoff" && (e as ActivityEvent).outcome !== "applied" && (
                       <span className="ml-2 inline-block rounded-control border border-line px-1.5 text-meta text-fg-muted">
                         {OUTCOME[(e as ActivityEvent).outcome as Exclude<ActivityEvent["outcome"], "applied">]}

@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.12 · **Date:** October 2026  
+> **Version:** 1.13 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.12
+## 0. Changes in Version 1.13
+
+| # | Change | Why |
+|---|--------|-----|
+| C23 | **Task lists in detail** (US-11): a new list can start empty or as a copy of another; lists can be hidden and restored, but never the default list or the one the current service uses; changing the default can also switch the current service while it has no check-offs; every list change is logged (US-13b). | Lets admins prepare special-service lists safely, and records who changed the default. |
+
+## Changes in Version 1.12
 
 | # | Change | Why |
 |---|--------|-----|
@@ -275,9 +281,12 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 *As an admin, I want to create named task lists for different scenarios.*
 
 **Acceptance Criteria:**
-- Admin can create a list with a name and optional description.
-- One list can be set as the default for regular services.
-- Lists appear in an admin management view.
+- Admin can create a list with a name and optional description, starting empty or as a copy of another live list (its departments, sections and tasks in order; hidden items and Planning Center links are not copied).
+- Admin can rename a list and change its description.
+- One list can be set as the default for regular services. New services use the default; a service keeps the list it started with. When changing the default, the admin may also switch the current service to it, but only while that service has no check-offs.
+- Lists appear in an admin management view, the default first, with which list the current service uses.
+- Admin can hide a list and restore it. The default list and the list the current service uses can't be hidden. A hidden list can't be edited or copied; past services that used it keep their records.
+- Every list change (create, rename, set default, hide, restore) is logged like other checklist edits (US-13b).
 
 ---
 
@@ -351,7 +360,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 *As an admin, I want a permanent record of changes to the checklist, so I can see who changed what and what it was before.*
 
 **Acceptance Criteria:**
-- Every add, rename, edit, hide, restore, move, and reorder of a department, section, or task is logged with who, when, the sign-in session and browser tab, the item, and its before and after values (e.g. old and new text, old and new section).
+- Every add, rename, edit, hide, restore, move, and reorder of a department, section, or task, and every change to a task list or the default list (US-11), is logged with who, when, the sign-in session and browser tab, the item, and its before and after values (e.g. old and new text, old and new section).
 - Each entry is written in the same transaction as the change it describes.
 - The log is append-only: entries can never be edited or deleted, by anyone, through the app or directly in the database.
 - Admins see it in the Activity view (US-07a), filtered to check-offs, checklist edits, or both. Directors and Volunteers cannot see it, and the server rejects their requests.
@@ -743,4 +752,4 @@ Nothing outside these modules knows it is talking to Planning Center. The databa
 
 ---
 
-*End of Requirements — Version 1.12*
+*End of Requirements — Version 1.13*

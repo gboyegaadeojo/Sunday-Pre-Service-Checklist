@@ -9,8 +9,8 @@ import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
 import { plural } from "../../lib/checklist";
 import { formatDateTime } from "../../lib/format";
-import type { Route } from "../../lib/router";
-import { useHiddenItems } from "../../lib/useAdminList";
+import type { Navigate } from "../../lib/router";
+import { type ListRef, useHiddenItems } from "../../lib/useAdminList";
 
 const KIND_LABEL: Record<StructureKind, string> = { category: "Department", section: "Section", task: "Task" };
 
@@ -36,14 +36,16 @@ const describeParents = (parents: Parent[]) =>
 const itemKey = (item: HiddenItem) => `${item.kind}-${item.id}`;
 
 interface Props {
+  /** The list whose hidden items to show (?list=…), or the default list. */
+  listRef: ListRef;
   onAccessChanged: () => void;
-  onNavigate: (route: Route) => void;
+  onNavigate: Navigate;
 }
 
 // Hidden items, Stage 5b (US-13a): everything hidden on its own from the list, newest first, with Restore.
 // Restoring brings the same item back in its old place, so its history stays attached. Admin-only (server enforced).
-export function HiddenItemsPage({ onAccessChanged, onNavigate }: Props) {
-  const hidden = useHiddenItems({ onAccessChanged });
+export function HiddenItemsPage({ listRef, onAccessChanged, onNavigate }: Props) {
+  const hidden = useHiddenItems({ listRef, onAccessChanged });
   const [restoring, setRestoring] = useState<string | null>(null);
   const [ask, setAsk] = useState<HiddenItem | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -82,6 +84,7 @@ export function HiddenItemsPage({ onAccessChanged, onNavigate }: Props) {
     <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">
       <RouteLink
         to="admin-checklist"
+        search={listRef === "default" ? "" : `?list=${listRef}`}
         current={false}
         onNavigate={onNavigate}
         className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-control px-2 text-sm text-accent-soft hover:bg-hover"

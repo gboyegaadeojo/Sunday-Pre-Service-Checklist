@@ -9,6 +9,8 @@ import { useRoute } from "./lib/router";
 import { ActivityPage } from "./pages/ActivityPage";
 import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
 import { HiddenItemsPage } from "./pages/admin/HiddenItemsPage";
+import { ListsPage } from "./pages/admin/ListsPage";
+import { listRefFrom } from "./lib/useAdminList";
 import { ChecklistPage } from "./pages/ChecklistPage";
 import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
@@ -30,7 +32,7 @@ export function App() {
   const [branding, setBranding] = useState<BrandingResponse | undefined>(undefined);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
-  const { route, navigate } = useRoute();
+  const { route, search, navigate } = useRoute();
 
   // Who is signed in, and with what access. Re-run whenever the server says the session or access changed.
   const loadSession = useCallback(async () => {
@@ -120,6 +122,7 @@ export function App() {
         return <ProgressPage user={user} onAccessChanged={onAccessChanged} />;
       case "admin-checklist":
       case "admin-hidden":
+      case "admin-lists":
       case "admin-activity":
         // The Admin link is hidden for non-admins; this covers a typed or bookmarked URL. The server refuses too.
         if (!user.isAdmin) {
@@ -134,10 +137,13 @@ export function App() {
             <AdminTabs route={route} onNavigate={navigate} />
             {route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />
+            ) : route === "admin-lists" ? (
+              <ListsPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : route === "admin-hidden" ? (
-              <HiddenItemsPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
+              // Keyed by the query, so switching lists starts fresh.
+              <HiddenItemsPage key={search} listRef={listRefFrom(search)} onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : (
-              <ChecklistEditorPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
+              <ChecklistEditorPage key={search} listRef={listRefFrom(search)} onAccessChanged={onAccessChanged} onNavigate={navigate} />
             )}
           </>
         );

@@ -1,5 +1,5 @@
 import type { CurrentUser } from "../../../shared/types";
-import { type Route, isAdminRoute } from "../../lib/router";
+import { type Navigate, type Route, isAdminRoute } from "../../lib/router";
 import { RouteLink } from "./RouteLink";
 
 const LINKS: { route: Route; label: string; allowed: (u: CurrentUser) => boolean; active: (r: Route) => boolean }[] = [
@@ -13,7 +13,7 @@ const LINKS: { route: Route; label: string; allowed: (u: CurrentUser) => boolean
 interface Props {
   user: CurrentUser;
   route: Route;
-  onNavigate: (route: Route) => void;
+  onNavigate: Navigate;
 }
 
 // Role-authorized sections in the header (design.md §3A).
