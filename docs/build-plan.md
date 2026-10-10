@@ -162,6 +162,7 @@ Column names are provider-neutral (requirements C22). `source` names where an ou
 | `position_external_id` | Null means a team-level link |
 | `category_id` → categories | |
 | `team_name`, `position_name` | Last known names, used only for display and to show "missing" when the source no longer returns the ID |
+| `sees_all` | 0/1. People scheduled in this team or position see every department by default, e.g. Technical Director (US-05, requirements C24). Added in Stage 7 |
 | `created_at` | |
 
 There's a unique index on `(source, team_external_id, IFNULL(position_external_id, ''))`, so each team or position maps to exactly one category. A category can still have many links.
@@ -271,7 +272,13 @@ Built in parts, each approved and committed on its own. The server rejects every
 ### Stage 7 — Team mapping and access, with the fake schedule source
 - The fake `ScheduleSource` (standing in for Planning Center) provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its sample data, including the church's real position names (below), lives in a **dev-only data file** under `src/worker/dev/`. Production builds drop it, as with the test users, and the production-build test checks those names are absent. **Nothing is mapped automatically:** admins link every team or position in the mapping screen, with the fake data as with real data.
 - Admin mapping screen: pick a Service Type, then link teams or positions to categories. Unlinked items are marked, position links override team links, and items that have gone missing are flagged (US-15).
-- Access is based on linked-team membership and the `team_verified_at` stamp (US-02). Scheduled categories are highlighted first, and users who aren't scheduled see a note (US-05).
+- Access is based on linked-team membership and the `team_verified_at` stamp (US-02).
+- **Which departments the checklist shows (US-05, requirements v1.14, C24):**
+  - A scheduled volunteer sees only their own department by default, or all of their departments if they're scheduled in more than one.
+  - A "Show all departments" control adds the other departments after theirs, and they can check off tasks there (e.g. covering for someone). It stays on for the day on that device until turned off.
+  - Volunteers who aren't scheduled, or whose position has no link, see all departments and choose theirs (remembered on the device for the day), with a note, as now.
+  - Admins, Directors, and people scheduled in a position marked "sees all departments" (`team_links.sees_all`, set by an Admin in the mapping screen; e.g. Technical Director) see all departments by default, their own first and highlighted.
+  - This is a view choice only. The check-off endpoints stay as they are and accept any live task in the current service from anyone with access. The progress view always shows every department.
 - Manual department pick is remembered on the device for the day. Fallback banner and 90-day rule when Planning Center is "down" (US-04a). Current service now comes from Planning Center plans (US-07).
 - `source_cache` is used here.
 - **Expected mapping** of the church's real Planning Center positions to checklist departments (requirements v1.7). This is for the admins to set up in the app, never hardcoded:
@@ -286,8 +293,12 @@ Built in parts, each approved and committed on its own. The server rejects every
   | Miscellaneous | Miscellaneous |
   | Technical Director | Technical Director |
 
-- **Technical Directors should also be given the app's Director role.** An Admin grants it on the Users page (Stage 6). The mapping above only gives them access and highlights their Technical Director checklist. The Director role adds reset/undo. Roles are never granted automatically from Planning Center (US-03).
-- **Test in the browser:** link "Camera 2" to Camera Operators and sign in as a fake Camera 2 volunteer to see it highlighted. Switch Planning Center to "down" and check the banner, the manual pick and the never-verified message.
+- **Technical Directors should also be given the app's Director role.** An Admin grants it on the Users page (Stage 6). The mapping above gives them access and highlights their Technical Director checklist, and marking the Technical Director position "sees all departments" shows them every department. The Director role adds reset/undo. Roles are never granted automatically from Planning Center (US-03).
+- **Test in the browser:**
+  - Link "Camera 2" to Camera Operators and sign in as a fake Camera 2 volunteer: only Camera Operators shows. Turn on "Show all departments", check off a task in another department, and see it in the progress view.
+  - Sign in as a volunteer scheduled in two positions and see both departments. Sign in as an unscheduled volunteer and see all departments with the choose-your-department note.
+  - Mark Technical Director "sees all departments" and sign in as a fake Technical Director: all departments show, Technical Director first. Do the same as the Admin and the Director.
+  - Switch Planning Center to "down" and check the banner, the manual pick and the never-verified message.
 
 ### Stage 8 — Real Planning Center
 - The Planning Center `ScheduleSource` uses the church-level token (read-only) for teams, positions, rosters and plans, with a 5-second timeout (US-04a, US-17).

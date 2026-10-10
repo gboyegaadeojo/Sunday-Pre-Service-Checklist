@@ -1,12 +1,19 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.13 · **Date:** October 2026  
+> **Version:** 1.14 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.13
+## 0. Changes in Version 1.14
+
+| # | Change | Why |
+|---|--------|-----|
+| C24 | **A scheduled volunteer sees only their own department(s) by default** (US-05). A "Show all departments" control shows the rest, where they can also check off tasks (e.g. covering for someone). Volunteers who aren't scheduled, or whose position has no link, see all departments and choose theirs, as before. Admins, Directors and Technical Directors (a position an Admin marks "sees all departments" in the team mapping, US-15) see all departments by default. | A shorter, focused checklist for most volunteers, without stopping anyone from helping another department. Built in Stage 7. |
+| — | Added to "Later": choosing a list for a specific service date, and carrying Planning Center links over to copied lists. For Version 1, admins switch the default list before a special service and switch it back afterward (US-11). | Recorded now; not built. |
+
+## Changes in Version 1.13
 
 | # | Change | Why |
 |---|--------|-----|
@@ -92,7 +99,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 | Role | Description |
 |------|-------------|
-| **Volunteer** | A member of a linked media team in Planning Center (see US-15). Sees all categories, with their own shown first. Checks off tasks. Sees the progress view. |
+| **Volunteer** | A member of a linked media team in Planning Center (see US-15). When scheduled, sees their own categories by default and can show all of them; otherwise sees all categories (US-05). Checks off tasks in any category. Sees the progress view. |
 | **Admin** | Manages task lists, categories, tasks, and team mappings. Sees full progress. Can grant/revoke Admin and Director roles. Can reset or restore a service checklist. Reviews the activity log (US-07a). Always has access, scheduled or not. |
 | **Director** | Sees the progress view. Can reset or restore a service checklist. No list-management or team-mapping permissions. Always has access, scheduled or not. |
 | **Not on a media team** | Signed in with Planning Center but not a member of any linked team and has no Admin/Director role. Sees an explanation page only. |
@@ -188,9 +195,11 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 
 **Acceptance Criteria:**
 - The app determines the **current service** (US-07) and looks up the user's team and position assignment for it in Planning Center Services.
-- Using the team mapping (US-15), the user's category is shown first and highlighted. Other categories are visible but collapsed or visually secondary.
-- If a volunteer is scheduled on multiple teams or positions, all of their categories are shown first.
-- If the user is a team member but not scheduled, or their team/position has no mapping, all categories are shown with none highlighted, and they can choose their department (remembered on that device for the day).
+- **Scheduled volunteer:** using the team mapping (US-15), the checklist shows only the user's own category by default. If they're scheduled on several teams or positions, all of their categories are shown.
+- A **"Show all departments"** control shows the other categories, after the user's own, and the user can check off tasks there too (e.g. covering for someone). It stays on for the rest of the day on that device until they turn it off. The control only changes what's shown: the server accepts a check-off on any task in the current service from anyone with access (US-06), so hiding other departments never blocks help.
+- **Not scheduled, or no link:** if the user is a team member but not scheduled, or their team/position has no mapping, all categories are shown with none highlighted, and they can choose their department (remembered on that device for the day).
+- **Admins, Directors and Technical Directors see all categories by default**, with their own scheduled categories (if any) shown first and highlighted. A Technical Director is anyone scheduled in a position an Admin has marked **"sees all departments"** in the team mapping (US-15). Which positions those are is data, never code.
+- The progress view (US-09) always covers every category, whatever the checklist shows.
 - If no service is published in Planning Center, the user sees the default checklist for the upcoming service day (US-07) with a note: "No service is published in Planning Center yet — your checklist is ready when you are."
 
 ---
@@ -385,6 +394,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - The admin screen loads that Service Type's teams and positions from Planning Center and shows them in a list.
 - Admin links each team, or an individual position within a team, to a category in the default list (e.g. team "Production" → position "Camera 2" → "Camera Operators").
 - A position-level link overrides its team-level link.
+- Admin can mark a team or position as **"sees all departments"** (e.g. Technical Director). People scheduled in it see every category by default (US-05).
 - One category can have many teams/positions linked to it, but each team or position links to only one category.
 - Only teams with at least one link count as "media teams" for access (US-02).
 - Teams or positions with no link are clearly marked as unlinked.
@@ -476,6 +486,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Calendar integration beyond the current service
 - Custom branding / themes
 - **Google sign-in** as an alternative to Planning Center, linked to the same app account (US-03a). A new Google user gets no access until an Admin invites them (by email) or approves them; approval and roles stay in the app.
+- **A list for a specific service date** (e.g. Christmas): choosing which list a given date uses, instead of only switching the default. For Version 1, admins switch the default list before a special service and switch it back afterward (US-11).
+- **Planning Center links on copied lists:** when a list is copied, its team/position links come with it (copied, or matched by department name), so volunteers still get their department highlighted on the copy. In Version 1 a copy starts with no links.
 - **"Choose your position" screen** as the normal way to pick a checklist when no scheduling system is used: the user picks their position(s) for the service and sees those departments first. The US-04a fallback (manual department pick, remembered for the day) is the starting point.
 
 ---
@@ -512,6 +524,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q26 | Auditing checklist edits | Append-only log of every add, rename, edit, hide, restore, move and reorder, with who, when, and before/after values. Admins see it in the Activity view with a filter for check-offs vs. checklist edits (US-13b). |
 | Q27 | How users are identified | By an internal app user ID. Sign-in accounts (Planning Center now, others later) are linked to it; roles, check-offs, resets and logs refer to the internal ID (US-03a). |
 | Q28 | Dependence on Planning Center | Planning Center is one replaceable source for sign-in and for teams/schedules, each behind an interface. Outside references are stored in provider-neutral columns (C22). |
+| Q29 | Which departments a volunteer sees | Scheduled volunteers see only their own department(s) by default, with "Show all departments" to see and check off the rest. Not scheduled or no link: all departments, and they choose theirs. Admins, Directors and positions marked "sees all departments" (e.g. Technical Director): all departments by default. A view choice only; the server never limits check-offs by department (US-05, C24). |
+| Q30 | Lists for special services | Version 1: admins switch the default list before the service and back afterward. Choosing a list per service date, and carrying links over to copied lists, are "Later" (US-11). |
 
 ---
 
