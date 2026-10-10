@@ -117,7 +117,8 @@ Create a compact, professional header containing:
 - User avatar and display name.
 - User role where appropriate.
 - Access to role-authorized functions: Checklist and Progress for everyone with access. Nothing else in the header (requirements v1.20).
-- A menu under the user's name: who they are (avatar, name, role), then **Administrative Settings (Admins only)**, then **Sign out**, set apart with an icon. It's a keyboard menu (arrow keys, Home/End, Escape returns focus) and stays within the viewport.
+- A menu under the user's name: who they are (avatar, name, role); **Appearance** (Dark / Light / System) as a compact row of three options with icons, for everyone; then **Administrative Settings (Admins only)**, with a count when something needs attention; then **Sign out**, set apart with an icon. When something needs an Admin's attention, a small dot sits on their avatar too. It's a keyboard menu (↑/↓ and Home/End move between items, the appearance row counting as one, ←/→ along the row, Escape returns focus) and stays within the viewport. Picking an appearance keeps the menu open. (Requirements v1.21; the sign-in screen has the same three options at the bottom.)
+- The logo and app name lead to the Checklist, the app's home page, for anyone with access ("IFC Media Production, go to checklist" for screen readers); on the sign-in and access screens they're plain branding.
 - A subtle connection or synchronization status when relevant.
 
 Do not waste excessive vertical space on the header.
@@ -300,7 +301,7 @@ Do not invent readiness thresholds or declare a service ready based solely on an
 
 Create a separate, role-protected Admin area, reached from **Administrative Settings** in an Admin's name menu (not a header tab), with its own navigation for each section. Only list sections that exist.
 
-As built (October 2026, requirements v1.20): **Administrative Settings** in an Admin's name menu opens an **Overview** with the current service at a glance (the same three figures as Progress, each department's status in one line, and the service's status), a link to Progress for task details, reset and undo, and a shortcut card for each section with a line about it. The section navigation is described under Church settings below.
+As built (October 2026, requirements v1.21): **Administrative Settings** in an Admin's name menu opens the **Admin home**: "Needs attention" first, listing only problems an Admin can fix, each linking to where to fix it (team mapping not set up, positions not linked, links to things gone from the schedule, new teams to review, the schedule source unreachable), or "Nothing needs your attention"; then a shortcut card for each section with a line about it; then one link, "See today's progress". No progress numbers here. The section navigation is described under Church settings below.
 
 Organize it into clear sections:
 
@@ -332,9 +333,9 @@ The append-only logs, read-only: check-offs, resets and undos for the current se
 ### History
 Previous services: what was done and what wasn't ("X of Y done" per department), tasks removed during the service, resets, and each service's activity log, as supported by the requirements (US-07, US-07b).
 
-**Church settings** (time zone, service day, branding; US-11a) is a section of Administrative Settings since requirements v1.20. As built: the sections are grouped (Service: Overview, Activity, History; Setup: Checklist Management, Team mapping, Church settings; People: Users & Permissions) in a compact sidebar from 1024px (one row per section, icon and label, a purple bar on the current one), a section selector on phones and tablets, and a breadcrumb (Home / Administrative Settings / section) over each page. Checklist Management covers the editor and Lists, with a switch between them. The Overview's shortcut cards carry a line about each section.
+**Church settings** (time zone, service day, branding; US-11a) is a section of Administrative Settings since requirements v1.20. As built: the sections are grouped (Service: Admin home, Activity, History; Setup: Checklist Management, Team mapping, Church settings; People: Users & Permissions) in a compact sidebar from 1024px (one row per section, icon and label, a purple bar on the current one), a section selector on phones and tablets, and a breadcrumb (Home / Administrative Settings / section) over each page. Checklist Management covers the editor and Lists, with a switch between them. The Admin home's shortcut cards carry a line about each section.
 
-Current service progress is on the Progress dashboard (§6), which Admins use like everyone else. The Overview shows only a compact summary of it and links there.
+Current service progress is on the Progress dashboard (§6), which Admins use like everyone else. The Admin home links there and shows no progress numbers.
 
 Use confirmation dialogs for destructive or consequential actions.
 
@@ -352,7 +353,7 @@ Use consistent interaction patterns across the application.
 - Clear empty states.
 - Useful error messages.
 - Accessible dropdowns and dialogs.
-- Visible keyboard focus.
+- Visible keyboard focus: one purple ring, shown only after keyboard use, never after a click or tap (the app tracks the last kind of input). A text box or dropdown being typed in shows a purple border instead, however it was reached.
 - Consistent hover, active, selected, disabled, and loading states.
 - Minimal, non-disruptive success feedback.
 

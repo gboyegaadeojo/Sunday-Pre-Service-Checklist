@@ -1,12 +1,20 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.20 · **Date:** October 2026  
+> **Version:** 1.21 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.20
+## 0. Changes in Version 1.21
+
+| # | Change | Why |
+|---|--------|-----|
+| C34 | **Appearance is chosen in the menu under the person's name** (Dark / Light / System, a compact row for every role) and **on the sign-in screen**, instead of a separate My Preferences page (US-08a). The old address leads to the checklist. | One tap from anywhere, including before signing in; a whole page for one setting was more than it needed. |
+| C35 | **The Admin home lists what needs an Admin's attention** (Administrative Settings' landing page, replacing the Overview): only problems an Admin can fix, each with a link to fix it: team mapping not set up, positions on media teams not linked, links to things gone from Planning Center, new teams to review, Planning Center unreachable. Otherwise "Nothing needs your attention". It has no progress numbers, just a link to Progress. When something needs attention, Admins see a dot on their avatar and a count next to Administrative Settings in the name menu. | Admins learn about problems before Sunday without hunting for them; progress already has its own page. |
+| C36 | **The logo and app name in the header lead to the Checklist**, the app's home page, for everyone with access. On the sign-in and access screens they're plain branding. | The usual way back home in an app. |
+
+## Changes in Version 1.20
 
 | # | Change | Why |
 |---|--------|-----|
@@ -316,7 +324,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 *As a volunteer, I want to pick how the app looks on my device, so it's comfortable in the booth and in daylight.*
 
 **Acceptance Criteria:**
-- **My Preferences**, opened from the menu under the person's name, offers **Dark**, **Light** and **System**. A choice applies at once, with no Save button.
+- The menu under the person's name offers **Dark**, **Light** and **System** as a compact row, for every role, and so does the sign-in screen (v1.21; there's no separate preferences page). A choice applies at once, with no Save button.
 - **Dark is the default** on any device that hasn't chosen. **System** follows the device's light or dark setting and changes with it, without a reload.
 - The choice is remembered on that device only (it's not sensitive and needs no server). It's applied before the page first draws, so there's no flash of the wrong theme.
 - Every screen follows it, and both themes meet WCAG 2.1 AA contrast, including status colours.

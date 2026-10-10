@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 // URLs survive reloads and can be bookmarked. Unknown paths show the checklist. A query string (e.g.
 // ?list=5 for the checklist editor) is kept alongside the route.
 
-export type Route = "checklist" | "progress" | "preferences" | "admin-overview" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-mapping" | "admin-users" | "admin-activity" | "admin-history" | "admin-settings";
+export type Route = "checklist" | "progress" | "admin-home" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-mapping" | "admin-users" | "admin-activity" | "admin-history" | "admin-settings";
 
 /** Goes to a route, optionally with a query string such as "?list=5". */
 export type Navigate = (route: Route, search?: string) => void;
@@ -12,10 +12,8 @@ export type Navigate = (route: Route, search?: string) => void;
 export const ROUTE_PATHS: Record<Route, string> = {
   checklist: "/",
   progress: "/progress",
-  // My Preferences (US-08a): personal, for everyone signed in, from the name menu.
-  preferences: "/preferences",
-  // The Admin area's landing page: the current service at a glance and the Admin sections (design.md §7).
-  "admin-overview": "/admin",
+  // Administrative Settings' landing page: what needs attention, and every section (design.md §7).
+  "admin-home": "/admin",
   "admin-checklist": "/admin/checklist",
   "admin-hidden": "/admin/checklist/hidden",
   "admin-lists": "/admin/lists",
@@ -31,6 +29,7 @@ export const ROUTE_PATHS: Record<Route, string> = {
 /** Older or shorter paths that still work. The address bar is switched to the canonical path. */
 const ALIASES: Record<string, Route> = {
   "/activity": "admin-activity",
+  "/preferences": "checklist", // My Preferences was removed: appearance is in the name menu (requirements v1.20)
   "/settings": "admin-settings", // where Church settings lived before it moved into Administrative Settings (v1.20)
 };
 

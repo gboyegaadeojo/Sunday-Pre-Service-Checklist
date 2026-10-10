@@ -113,8 +113,28 @@ body {
   }
 }
 
-/* One visible focus style everywhere (design.md §8). */
+/*
+ * Focus (design.md §8): one purple ring, for keyboard use only. Browsers also count a click into a field, or focus
+ * moved by code after a click or tap (a menu opening, a dialog), as "visible", so lib/inputModality.ts marks the last
+ * kind of input on <html> (data-input="keyboard" | "pointer") and the ring shows only after the keyboard.
+ */
 :focus-visible {
+  outline: none;
+}
+html[data-input="keyboard"] :focus-visible {
   outline: 2px solid var(--c-accent-soft);
   outline-offset: 2px;
+}
+/* For styles that should follow the same rule: kbd-focus:… on the element, kbd-focus-within:… on a wrapper. */
+@custom-variant kbd-focus (html[data-input="keyboard"] &:focus-visible);
+@custom-variant kbd-focus-within (html[data-input="keyboard"] &:has(:focus-visible));
+
+/*
+ * A field being typed in always shows where it is, however it was reached: a purple border instead of the ring.
+ * Unlayered, so it wins over the field's own border colour.
+ */
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--c-accent-soft);
 }

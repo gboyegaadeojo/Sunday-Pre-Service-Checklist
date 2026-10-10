@@ -11,17 +11,19 @@ interface Props {
   children: ReactNode;
   /** e.g. "menuitem" inside the account menu. */
   role?: string;
+  /** When the visible content doesn't name the destination, e.g. the header's branding. */
+  "aria-label"?: string;
 }
 
 /** A real link to an app route: in-app navigation on a plain click; new tab/window still work. */
-export function RouteLink({ to, current, onNavigate, search = "", className, children, role }: Props) {
+export function RouteLink({ to, current, onNavigate, search = "", className, children, role, "aria-label": ariaLabel }: Props) {
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
     onNavigate(to, search);
   };
   return (
-    <a href={ROUTE_PATHS[to] + search} onClick={onClick} aria-current={current ? "page" : undefined} className={className} role={role}>
+    <a href={ROUTE_PATHS[to] + search} onClick={onClick} aria-current={current ? "page" : undefined} className={className} role={role} aria-label={ariaLabel}>
       {children}
     </a>
   );

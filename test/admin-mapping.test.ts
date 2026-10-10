@@ -113,7 +113,22 @@ describe("setting up", () => {
     expect(m.serviceTypes.map((t) => t.name)).toEqual(["Sunday Service", "Special Events"]);
     expect(m).toMatchObject({ serviceTypeId: null, teams: [], missing: [], unlinked: [], list: { id: 1 } });
     expect(m.departments.map((d) => d.name)).toContain("Technical Director");
-    expect(await status()).toMatchObject({ unlinked: 0, missing: 0, newTeams: 0 });
+    expect(await status()).toMatchObject({ unlinked: 0, missing: 0, newTeams: 0, ready: false, connected: true });
+  });
+
+  // The Admin home's "Needs attention" (design.md §7): set up or not, and an unreachable source as a finding, not a failure.
+  it("reports whether team mapping is set up, and an unreachable source instead of failing", async () => {
+    await chooseSunday();
+    expect(await status()).toMatchObject({ ready: false }); // a Service Type, but nothing linked yet
+    expect((await link(null, "Audio Engineer")).status).toBe(204);
+    expect(await status()).toMatchObject({ ready: true });
+    expect("unreachable" in (await status())).toBe(false);
+
+    await adjustSchedule({ down: true });
+    await env.DB.prepare("DELETE FROM source_cache").run();
+    const res = await call(cookies.admin, "GET", "/status");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ unreachable: "Planning Center (sample data)", ready: true });
   });
 
   it("lists the chosen Service Type's teams and positions, none linked automatically", async () => {
@@ -264,13 +279,13 @@ describe("new teams (requirements v1.18)", () => {
     expect((await mapping()).newTeams.map((t) => t.name)).toEqual(["Production", "Worship Band"]);
     await mapExpected();
     expect((await mapping()).newTeams.map((t) => t.name)).toEqual(["Worship Band"]);
-    expect(await status()).toEqual({ unlinked: 0, missing: 0, newTeams: 1 });
+    expect(await status()).toMatchObject({ unlinked: 0, missing: 0, newTeams: 1 });
 
     expect((await review("team-worship-band", true)).status).toBe(204);
     const m = await mapping();
     expect(m.newTeams).toEqual([]);
     expect(m.teams.find((t) => t.name === "Worship Band")).toMatchObject({ notMediaTeam: true, isMediaTeam: false });
-    expect(await status()).toEqual({ unlinked: 0, missing: 0, newTeams: 0 });
+    expect(await status()).toMatchObject({ unlinked: 0, missing: 0, newTeams: 0 });
     expect((await events()).at(-1)).toMatchObject({ action: "not_media", target: "Worship Band", before: { notMediaTeam: false }, after: { notMediaTeam: true } });
 
     // Set once: marking again changes and logs nothing; undo brings the note back.
@@ -285,7 +300,7 @@ describe("new teams (requirements v1.18)", () => {
     await chooseSunday();
     await mapExpected();
     expect((await review("team-worship-band", true)).status).toBe(204);
-    expect(await status()).toEqual({ unlinked: 0, missing: 0, newTeams: 0 });
+    expect(await status()).toMatchObject({ unlinked: 0, missing: 0, newTeams: 0 });
 
     await adjustSchedule({
       addedTeams: [{ serviceTypeExternalId: "st-sunday", externalId: "team-lighting", name: "Lighting", positions: [{ externalId: "pos-lights", name: "Lights" }] }],
@@ -295,11 +310,11 @@ describe("new teams (requirements v1.18)", () => {
     expect(m.newTeams).toEqual([{ externalId: "team-lighting", name: "Lighting" }]);
     expect(m.teams.find((t) => t.name === "Lighting")).toMatchObject({ isMediaTeam: false, notMediaTeam: false });
     expect(m.unlinked).toEqual([]); // informational, not a missing link
-    expect(await status()).toEqual({ unlinked: 0, missing: 0, newTeams: 1 });
+    expect(await status()).toMatchObject({ unlinked: 0, missing: 0, newTeams: 1 });
 
     // Linking it makes it a media team, so it's no longer new.
     expect((await link("pos-lights", "Miscellaneous", false, "team-lighting")).status).toBe(204);
-    expect(await status()).toEqual({ unlinked: 0, missing: 0, newTeams: 0 });
+    expect(await status()).toMatchObject({ unlinked: 0, missing: 0, newTeams: 0 });
   });
 
   it("won't mark a team with links, or link a marked team", async () => {

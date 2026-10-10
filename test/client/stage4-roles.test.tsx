@@ -85,49 +85,56 @@ describe("header navigation", () => {
   });
 });
 
-// The menu under the person's name (requirements v1.20): who they are, My Preferences for everyone, Administrative
-// Settings for Admins only, then Sign out, set apart. A keyboard menu: focus moves in on opening, arrows move, Escape closes and returns focus.
+// The menu under the person's name (requirements v1.20): who they are, Appearance for everyone (test/client/theme),
+// Administrative Settings for Admins only (with a count when something needs attention), then Sign out, set apart.
 describe("user menu", () => {
-  const openMenu = (role: "volunteer" | "director" | "admin", onNavigate = vi.fn()) => {
-    render(<UserMenu user={user(role)} route="checklist" onNavigate={onNavigate} onSignOut={() => {}} signingOut={false} signOutError={null} />);
-    fireEvent.click(screen.getByRole("button", { name: `Account: Test ${role}` }));
+  const openMenu = (role: "volunteer" | "director" | "admin", onNavigate = vi.fn(), attentionCount = 0) => {
+    render(
+      <UserMenu
+        user={user(role)}
+        route="checklist"
+        onNavigate={onNavigate}
+        onSignOut={() => {}}
+        signingOut={false}
+        signOutError={null}
+        attentionCount={attentionCount}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^Account: Test ${role}`) }));
     return onNavigate;
   };
 
   it.each(["volunteer", "director"] as const)("never offers Administrative Settings to a %s", (role) => {
-    openMenu(role);
+    openMenu(role, vi.fn(), 3); // a count is never shown to anyone but Admins
     const menu = screen.getByRole("menu");
     expect(within(menu).getByText(`Test ${role}`)).toBeTruthy(); // who they are
-    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["My Preferences", "Sign out"]);
-    expect(within(menu).getByRole("menuitem", { name: "My Preferences" }).getAttribute("href")).toBe("/preferences");
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Sign out"]);
+    expect(within(menu).getAllByRole("menuitemradio")).toHaveLength(3); // Appearance is for everyone
+    expect(screen.getByRole("button", { name: `Account: Test ${role}` })).toBeTruthy(); // no attention dot
   });
 
   it("offers an Admin Administrative Settings above Sign out, and closes after choosing it", () => {
     const onNavigate = openMenu("admin");
-    const [prefs, admin, signOut] = within(screen.getByRole("menu")).getAllByRole("menuitem");
-    expect(prefs.textContent).toBe("My Preferences");
+    const [admin, signOut] = within(screen.getByRole("menu")).getAllByRole("menuitem");
     expect(admin.textContent).toBe("Administrative Settings");
     expect(admin.getAttribute("href")).toBe("/admin");
     expect(signOut.textContent).toBe("Sign out");
     fireEvent.click(admin);
-    expect(onNavigate).toHaveBeenCalledWith("admin-overview", "");
+    expect(onNavigate).toHaveBeenCalledWith("admin-home", "");
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("works from the keyboard: focus moves in, arrows wrap, Escape closes and returns focus", async () => {
+  it("shows an Admin what needs attention: a dot on the avatar (named for screen readers) and a count in the menu", () => {
+    openMenu("admin", vi.fn(), 2);
+    expect(screen.getByRole("button", { name: "Account: Test admin, 2 things need your attention" })).toBeTruthy();
+    expect(within(screen.getByRole("menu")).getByRole("menuitem", { name: /Administrative Settings/ }).textContent).toBe(
+      "Administrative Settings2 need attention",
+    );
+  });
+
+  it("closes on Escape and returns focus to the button", async () => {
     openMenu("admin");
-    const [prefs, admin, signOut] = within(screen.getByRole("menu")).getAllByRole("menuitem");
-    await waitFor(() => expect(document.activeElement).toBe(prefs));
-    fireEvent.keyDown(prefs, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(admin);
-    fireEvent.keyDown(admin, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(signOut);
-    fireEvent.keyDown(signOut, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(prefs);
-    fireEvent.keyDown(prefs, { key: "End" });
-    expect(document.activeElement).toBe(signOut);
-    fireEvent.keyDown(signOut, { key: "Home" });
-    expect(document.activeElement).toBe(prefs);
+    await waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("menuitemradio"));
     fireEvent.keyDown(document, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Account: Test admin" }));

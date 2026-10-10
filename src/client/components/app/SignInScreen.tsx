@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { useThemePreference } from "../../lib/theme";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
-import { InfoIcon } from "../ui/Icons";
+import { InfoIcon, MonitorIcon, MoonIcon, SunIcon } from "../ui/Icons";
+import { SegmentedControl } from "../ui/SegmentedControl";
 import { Brand } from "./Brand";
 
 interface Props {
@@ -53,7 +55,28 @@ export function SignInScreen({ onSignIn, signingIn = false, error = null, notice
           )}
         </Card>
         {children}
+        <AppearanceChoice />
       </div>
     </main>
+  );
+}
+
+/** Dark / Light / System before signing in (US-08a); signed in, it's in the menu under the person's name. */
+function AppearanceChoice() {
+  const { preference, setPreference } = useThemePreference();
+  return (
+    <div className="mt-6">
+      <p className="mb-1.5 text-meta text-fg-muted">Appearance</p>
+      <SegmentedControl
+        label="Appearance"
+        value={preference}
+        onChange={setPreference}
+        options={[
+          { value: "dark", label: "Dark", icon: <MoonIcon className="size-4 shrink-0 text-fg-muted" /> },
+          { value: "light", label: "Light", icon: <SunIcon className="size-4 shrink-0 text-fg-muted" /> },
+          { value: "system", label: "System", icon: <MonitorIcon className="size-4 shrink-0 text-fg-muted" /> },
+        ]}
+      />
+    </div>
   );
 }

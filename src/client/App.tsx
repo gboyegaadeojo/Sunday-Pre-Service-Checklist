@@ -15,14 +15,13 @@ import { HiddenItemsPage } from "./pages/admin/HiddenItemsPage";
 import { HistoryPage } from "./pages/admin/HistoryPage";
 import { ListsPage } from "./pages/admin/ListsPage";
 import { MappingPage } from "./pages/admin/MappingPage";
-import { OverviewPage } from "./pages/admin/OverviewPage";
+import { AdminHomePage } from "./pages/admin/AdminHomePage";
 import { SettingsPage } from "./pages/admin/SettingsPage";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { listRefFrom } from "./lib/useAdminList";
 import { ChecklistPage } from "./pages/ChecklistPage";
 import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
-import { PreferencesPage } from "./pages/PreferencesPage";
 import { ProgressPage } from "./pages/ProgressPage";
 import { SignInPage } from "./pages/SignInPage";
 import type { AccessChangeReason } from "./lib/useChecklist";
@@ -139,8 +138,6 @@ export function App() {
   }
 
   function renderPage(user: CurrentUser, onAccessChanged: () => void) {
-    // Device-only, so it works for anyone signed in, including someone without access yet (US-08a).
-    if (route === "preferences") return <PreferencesPage />;
     if (!user.hasAccess) {
       return (
         <NoAccessPage
@@ -160,7 +157,7 @@ export function App() {
             <ProgressPage user={user} onAccessChanged={onAccessChanged} />
           </>
         );
-      case "admin-overview":
+      case "admin-home":
       case "admin-checklist":
       case "admin-hidden":
       case "admin-lists":
@@ -193,8 +190,8 @@ export function App() {
           <AdminLayout route={route} onNavigate={navigate}>
             {route === "admin-settings" ? (
               <SettingsPage onAccessChanged={onAccessChanged} onBrandingChanged={loadBranding} />
-            ) : route === "admin-overview" ? (
-              <OverviewPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
+            ) : route === "admin-home" ? (
+              <AdminHomePage onNavigate={navigate} />
             ) : route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />
             ) : route === "admin-history" ? (

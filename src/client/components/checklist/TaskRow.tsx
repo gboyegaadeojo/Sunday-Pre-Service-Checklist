@@ -19,7 +19,7 @@ export function TaskRow({ task, timeZone, saving, failed, onToggle }: Props) {
     <li>
       <label
         aria-busy={saving}
-        className="flex min-h-12 cursor-pointer items-start gap-3 px-4 py-3 transition-colors select-none hover:bg-hover has-[input:focus-visible]:outline-2 has-[input:focus-visible]:-outline-offset-2 has-[input:focus-visible]:outline-accent-soft"
+        className="flex min-h-12 cursor-pointer items-start gap-3 px-4 py-3 transition-colors select-none hover:bg-hover kbd-focus-within:outline-2 kbd-focus-within:-outline-offset-2 kbd-focus-within:outline-accent-soft"
       >
         <input type="checkbox" className="sr-only" checked={checked} onChange={onToggle} />
         <span aria-hidden="true" className="flex h-[1.375rem] w-6 shrink-0 items-center">

@@ -33,7 +33,7 @@ export function SegmentedControl<T extends string>({
         return (
           <label
             key={o.value}
-            className={`flex min-h-11 cursor-pointer flex-col gap-2 rounded-card border p-2 transition-colors has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-accent-soft ${
+            className={`flex min-h-11 cursor-pointer flex-col gap-2 rounded-card border p-2 transition-colors kbd-focus-within:outline-2 kbd-focus-within:outline-offset-2 kbd-focus-within:outline-accent-soft ${
               checked ? "border-accent bg-accent/10" : "border-line bg-card hover:bg-hover"
             }`}
           >

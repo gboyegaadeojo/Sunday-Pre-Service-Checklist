@@ -636,12 +636,22 @@ export interface SetTeamReviewRequest {
 }
 
 /** GET /api/admin/mapping/status: for the notice on the Admin tabs. */
+/**
+ * GET /api/admin/mapping/status: what needs an Admin's attention in team mapping (the Admin home's "Needs attention",
+ * the count in the name menu, the dot on the avatar).
+ */
 export interface MappingStatusResponse {
   /** Positions in media teams with no department, or 0 when no source or Service Type is set up. */
   unlinked: number;
   missing: number;
   /** Teams not reviewed yet (informational). */
   newTeams: number;
+  /** Team mapping is set up (a Service Type and at least one link): volunteers can get in (US-02, requirements v1.19). */
+  ready: boolean;
+  /** Present when the schedule source couldn't be reached just now: its name, e.g. "Planning Center" (US-04a). */
+  unreachable?: string;
+  /** False when no schedule source is connected at all (production before Stage 9): nothing an Admin can fix. */
+  connected: boolean;
 }
 
 export interface MappingEditValues {

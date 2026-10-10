@@ -1,6 +1,6 @@
 import { useCallback, useId, useState } from "react";
 import type { MappingLink, MappingPosition, MappingResponse, MappingTeam, SetLinkRequest } from "../../../shared/types";
-import { MAPPING_CHANGED } from "../../components/admin/AdminLayout";
+import { MAPPING_CHANGED } from "../../lib/adminAttention";
 import { SaveIndicator } from "../../components/checklist/SaveIndicator";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";

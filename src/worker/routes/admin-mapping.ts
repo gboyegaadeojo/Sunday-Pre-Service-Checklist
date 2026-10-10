@@ -21,6 +21,7 @@ import {
   setNotMediaTeam,
   setServiceType,
 } from "../db/mapping";
+import { isTeamMappingReady } from "../db/schedule-view";
 import { actorFor } from "../lib/actor";
 import { requireAdmin } from "../middleware/auth";
 import { ProviderUnavailableError } from "../sources/identity";
@@ -53,12 +54,19 @@ async function guardSource<T>(c: Context<AppEnv>, run: () => Promise<T>): Promis
 export const adminMappingRoutes = new Hono<AppEnv>()
   .use(requireAdmin)
   .get("/", (c) => guardSource(c, async () => c.json<MappingResponse>(await getMapping(c.env.DB, c.var.schedule))))
-  .get("/status", (c) =>
-    guardSource(c, async () => {
-      const mapping = await getMapping(c.env.DB, c.var.schedule);
-      return c.json<MappingStatusResponse>({ unlinked: mapping.unlinked.length, missing: mapping.missing.length, newTeams: mapping.newTeams.length });
-    }),
-  )
+  // Never fails for an unreachable source: that's one of the things it reports (the Admin home's "Needs attention").
+  .get("/status", async (c) => {
+    const source = c.var.schedule;
+    const ready = await isTeamMappingReady(c.env.DB, source);
+    const base = { unlinked: 0, missing: 0, newTeams: 0, ready, connected: source !== null };
+    try {
+      const mapping = await getMapping(c.env.DB, source);
+      return c.json<MappingStatusResponse>({ ...base, unlinked: mapping.unlinked.length, missing: mapping.missing.length, newTeams: mapping.newTeams.length });
+    } catch (err) {
+      if (!(err instanceof ProviderUnavailableError)) throw err;
+      return c.json<MappingStatusResponse>({ ...base, unreachable: source?.label ?? "the schedule source" });
+    }
+  })
   .get("/events", async (c) => c.json<MappingEditsResponse>(await getMappingEvents(c.env.DB)))
   .post("/refresh", (c) =>
     guardSource(c, async () => {

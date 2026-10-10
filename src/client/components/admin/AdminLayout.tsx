@@ -1,6 +1,5 @@
-import { Fragment, type ReactNode, useEffect, useState } from "react";
-import type { MappingStatusResponse } from "../../../shared/types";
-import { getJson } from "../../api";
+import { Fragment, type ReactNode } from "react";
+import { useMappingStatus } from "../../lib/adminAttention";
 import type { Navigate, Route } from "../../lib/router";
 import { usePopover } from "../../lib/usePopover";
 import { RouteLink } from "../app/RouteLink";
@@ -21,7 +20,7 @@ export const ADMIN_GROUPS: { label: string; sections: AdminSection[] }[] = [
   {
     label: "Service",
     sections: [
-      { route: "admin-overview", label: "Overview", description: "The current service's progress at a glance.", icon: OverviewIcon, active: (r) => r === "admin-overview" },
+      { route: "admin-home", label: "Admin home", description: "What needs your attention, and every section.", icon: OverviewIcon, active: (r) => r === "admin-home" },
       { route: "admin-activity", label: "Activity", description: "Check-offs, edits and changes, newest first.", icon: ActivityIcon, active: (r) => r === "admin-activity" },
       { route: "admin-history", label: "History", description: "Past services and what was done.", icon: HistoryIcon, active: (r) => r === "admin-history" },
     ],
@@ -62,34 +61,6 @@ export const ADMIN_GROUPS: { label: string; sections: AdminSection[] }[] = [
 ];
 
 export const ADMIN_SECTIONS: AdminSection[] = ADMIN_GROUPS.flatMap((g) => g.sections);
-
-/**
- * How many positions in media teams lead to no department, plus links gone from the schedule source (Stage 7a):
- * shown on Team mapping so Admins notice from anywhere in Administrative Settings, with a quiet "new" for teams nobody
- * has reviewed yet. Re-checked on each section change and after any mapping change (MAPPING_CHANGED); the server
- * caches the schedule. Quietly nothing if it can't be loaded: the mapping screen explains.
- */
-export function useMappingAttention(route: Route) {
-  const [count, setCount] = useState({ attention: 0, newTeams: 0 });
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-check whenever the Admin moves between sections
-  useEffect(() => {
-    let live = true;
-    const check = () =>
-      getJson<MappingStatusResponse>("/api/admin/mapping/status")
-        .then((s) => live && setCount({ attention: s.unlinked + s.missing, newTeams: s.newTeams }))
-        .catch(() => live && setCount({ attention: 0, newTeams: 0 }));
-    void check();
-    window.addEventListener(MAPPING_CHANGED, check);
-    return () => {
-      live = false;
-      window.removeEventListener(MAPPING_CHANGED, check);
-    };
-  }, [route]);
-  return count;
-}
-
-/** Dispatched on window by the mapping screen after a change, so the Team mapping count follows. */
-export const MAPPING_CHANGED = "mapping-changed";
 
 type Attention = { attention: number; newTeams: number };
 
@@ -201,8 +172,8 @@ function Breadcrumb({ route, onNavigate }: { route: Route; onNavigate: Navigate 
   const section = ADMIN_SECTIONS.find((s) => s.active(route));
   const crumbs: { label: string; to?: Route }[] = [
     { label: "Home", to: "checklist" },
-    route === "admin-overview" ? { label: "Administrative Settings" } : { label: "Administrative Settings", to: "admin-overview" },
-    ...(section && route !== "admin-overview" ? [{ label: section.label }] : []),
+    route === "admin-home" ? { label: "Administrative Settings" } : { label: "Administrative Settings", to: "admin-home" },
+    ...(section && route !== "admin-home" ? [{ label: section.label }] : []),
   ];
   return (
     <nav aria-label="Breadcrumb">
@@ -268,7 +239,7 @@ function ChecklistManagementSwitch({ route, onNavigate }: { route: Route; onNavi
 export function AdminShortcuts({ onNavigate, attention }: { onNavigate: Navigate; attention: Attention }) {
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
-      {ADMIN_SECTIONS.filter((s) => s.route !== "admin-overview").map((s) => {
+      {ADMIN_SECTIONS.filter((s) => s.route !== "admin-home").map((s) => {
         const Icon = s.icon;
         return (
           <li key={s.route}>
@@ -300,7 +271,9 @@ export function AdminShortcuts({ onNavigate, attention }: { onNavigate: Navigate
  * breadcrumb at one width, rather than each centring itself at its own.
  */
 export function AdminLayout({ route, onNavigate, children }: { route: Route; onNavigate: Navigate; children: ReactNode }) {
-  const attention = useMappingAttention(route);
+  // Re-asked on each section change; shared with the header and the Admin home (lib/adminAttention.ts).
+  const status = useMappingStatus(true, route);
+  const attention = { attention: (status?.unlinked ?? 0) + (status?.missing ?? 0), newTeams: status?.newTeams ?? 0 };
   const checklistManagement = route === "admin-checklist" || route === "admin-hidden" || route === "admin-lists";
   return (
     <>
