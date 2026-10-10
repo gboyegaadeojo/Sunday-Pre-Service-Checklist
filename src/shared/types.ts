@@ -226,3 +226,48 @@ export interface HiddenItemsResponse {
   timeZone: string;
   items: HiddenItem[];
 }
+
+// Checklist edit log (Stage 5c, US-13b). Admin only.
+
+export type EditAction = "add" | "rename" | "edit" | "hide" | "restore" | "move" | "reorder";
+
+/** Where an item sat: its department and section (as named then), and its 1-based position among live siblings. */
+export interface EditPlace {
+  department?: { id: number; name: string };
+  section?: { id: number; name: string };
+  position: number;
+}
+
+/** Only what changed. */
+export interface EditValues {
+  name?: string;
+  text?: string;
+  place?: EditPlace;
+  /** Planning Center links removed by hiding a department ("Team › Position"). */
+  teamLinks?: string[];
+}
+
+/** One row of the append-only checklist edit log. */
+export interface ChecklistEditEvent {
+  id: number;
+  at: string;
+  action: EditAction;
+  kind: StructureKind;
+  itemId: number;
+  /** Its name or text right after this change. */
+  itemName: string;
+  before: EditValues | null;
+  after: EditValues | null;
+  user: string;
+  sessionId: string | null;
+  tabId: string | null;
+}
+
+/** GET /api/admin/lists/:listId/edits: latest edits, newest first. */
+export interface ChecklistEditsResponse {
+  list: { id: number; name: string };
+  timeZone: string;
+  events: ChecklistEditEvent[];
+  /** True when older entries exist beyond the returned page. */
+  truncated: boolean;
+}

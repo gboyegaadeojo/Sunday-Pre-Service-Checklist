@@ -124,8 +124,9 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 
 **Restore (US-13a).** Restore clears `deleted_at`. The row keeps its ID, so its check-offs stay attached, and it keeps its `sort_order`, so it returns between its old neighbours unless they were reordered since. Hiding a department or section doesn't touch its children, so restoring it brings back everything that wasn't hidden on its own. An item is restored only into a live parent. "Restore with parents" clears the hidden ancestors and the item in one transaction. Team links deleted by a department hide are not recreated.
 
-**checklist_events** (Stage 5c, planned): append-only log of checklist edits (US-13b), built like `checkoff_events`.
-- Columns: `list_id`, `entity` (category/section/task), `entity_id`, `action` (add/rename/edit/hide/restore/move/reorder), `before_json`, `after_json` (e.g. old and new name or text, old and new parent and position), `user_pco_id`, `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`.
+**checklist_events** (migration `0005`, Stage 5c): append-only log of checklist edits (US-13b), built like `checkoff_events`.
+- Columns: `list_id`, `entity` (category/section/task), `entity_id`, `entity_name` (its name or text after the change, so the entry reads correctly after later renames), `action` (add/rename/edit/hide/restore/move/reorder), `before_json`, `after_json`, `user_pco_id`, `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`.
+- `before_json`/`after_json` hold only what changed: `name` or `text`; `place` (department, section and 1-based position among live siblings) for add, move and reorder; `teamLinks` removed by hiding a department.
 - Written in the same `db.batch` transaction as the edit. Triggers abort `UPDATE` and `DELETE`. No foreign keys.
 
 **checkoff_events** — append-only activity log (migration `0004`): one row per check or uncheck attempt that reaches the check-off logic.
@@ -206,8 +207,17 @@ Built in parts, each approved and committed on its own. The server rejects every
 
 **5c — Checklist edit log (US-13b, requirements v1.11)**
 - `checklist_events` (section 3), written in the same transaction as every add, rename, edit, hide, restore, move and reorder, including 5a's and 5b's.
-- The Admin Activity view gets a filter: check-offs, checklist edits, or both. Edits show the item and its before and after values.
+- Only changes that were applied are logged. A refused edit (hidden item, wrong list) changed nothing, so it has no before and after.
+- The log row is written first, inside the batch, and the edit runs only if it was written (`changes() = 1`). So the before values are read in the same transaction as the change, and one never happens without the other.
+- Restoring with parents logs one `restore` per item brought back. Hiding a department records the Planning Center links it removed, so they can be linked again.
+- `GET /api/admin/lists/:listId/edits` returns the latest edits, newest first (Admins only).
+- The Admin Activity view gets a filter: All, Check-offs (current service, as before) or Checklist edits. Edits show the item, who, when, and the before and after values.
 - **Test in the browser:** rename a task, move it and hide it, then see the three entries with old and new values. Confirm the log rejects `UPDATE` and `DELETE`.
+
+**5c.1 — Reorder mode (small follow-up)**
+- A "Reorder" toggle in the editor shows up/down arrow buttons (44 px) on every department, section and task row, so several moves don't need the ⋯ menu each time. The ⋯ menu's Move up/Move down stay.
+- Same server endpoints as 5b, and reorders are logged as in 5c.
+- **Test in the browser:** at 375 px, turn on Reorder and move a task down three places with the arrows. Then turn it off.
 
 **5d — Lists, settings and service history**
 - Lists: create, edit, delete and set the default (US-11).

@@ -1,8 +1,22 @@
-// Admin edits to a list's structure (US-12, US-12a, US-13). Nothing here erases a row: hiding sets
+// Admin edits to a list's structure (US-12, US-12a, US-13, US-13a). Nothing here erases a row: hiding sets
 // deleted_at, so past services keep their records (check-offs snapshot text, department and section).
 // Every write first requires the item and all its parents (up to the list) to be live.
+//
+// Every applied edit is logged to the append-only checklist_events table (US-13b), in the same db.batch
+// transaction. For changes to an existing row the log row is inserted first, reading the "before" values
+// in that transaction, and the change runs only if the log row was written (changes() = 1 refers to the
+// previous statement in the batch). So an edit and its log entry always happen together, or not at all.
 
-import type { AdminListResponse, HiddenItem, HiddenItemsResponse, StructureKind } from "../../shared/types";
+import type {
+  AdminListResponse,
+  ChecklistEditsResponse,
+  EditAction,
+  EditValues,
+  HiddenItem,
+  HiddenItemsResponse,
+  StructureKind,
+} from "../../shared/types";
+import { type Actor, actorValues } from "./checkoffs";
 import { getSettings } from "./settings";
 import { type StructureRow, buildStructure, structureStatement } from "./structure";
 
@@ -13,6 +27,54 @@ const LIVE_LISTS = "SELECT id FROM task_lists WHERE deleted_at IS NULL";
 const LIVE_CATEGORIES = `SELECT id FROM categories WHERE deleted_at IS NULL AND list_id IN (${LIVE_LISTS})`;
 const LIVE_SECTIONS = `SELECT id FROM sections WHERE deleted_at IS NULL AND category_id IN (${LIVE_CATEGORIES})`;
 const LIVE_TASKS = `SELECT id FROM tasks WHERE deleted_at IS NULL AND section_id IN (${LIVE_SECTIONS})`;
+
+const TABLE: Record<StructureKind, string> = { category: "categories", section: "sections", task: "tasks" };
+const PARENT: Record<StructureKind, string> = { category: "list_id", section: "category_id", task: "section_id" };
+const LIVE: Record<StructureKind, string> = { category: LIVE_CATEGORIES, section: LIVE_SECTIONS, task: LIVE_TASKS };
+/** Live parents (with their whole ancestry) for each kind. */
+const LIVE_PARENTS: Record<StructureKind, string> = { category: LIVE_LISTS, section: LIVE_CATEGORIES, task: LIVE_SECTIONS };
+
+// The edit log -------------------------------------------------------------------------------------
+
+/** 1-based position of row `a` among its live siblings (counting itself even while it's hidden). */
+const position = (kind: StructureKind, a: string) =>
+  `1 + (SELECT COUNT(*) FROM ${TABLE[kind]} y WHERE y.${PARENT[kind]} = ${a}.${PARENT[kind]} AND y.deleted_at IS NULL
+          AND y.id <> ${a}.id AND (y.sort_order < ${a}.sort_order OR (y.sort_order = ${a}.sort_order AND y.id < ${a}.id)))`;
+const DEPARTMENT = "json_object('id', c.id, 'name', c.name)";
+
+/** Per kind: the row's alias, a FROM joining it to its section/department (alias c), its label, and its place as JSON. */
+const LOG_SQL: Record<StructureKind, { alias: string; from: string; name: string; place: string }> = {
+  category: { alias: "c", from: "categories c", name: "c.name", place: `json_object('position', ${position("category", "c")})` },
+  section: {
+    alias: "s",
+    from: "sections s JOIN categories c ON c.id = s.category_id",
+    name: "s.name",
+    place: `json_object('department', ${DEPARTMENT}, 'position', ${position("section", "s")})`,
+  },
+  task: {
+    alias: "t",
+    from: "tasks t JOIN sections s ON s.id = t.section_id JOIN categories c ON c.id = s.category_id",
+    name: "t.text",
+    place: `json_object('department', ${DEPARTMENT}, 'section', json_object('id', s.id, 'name', s.name), 'position', ${position("task", "t")})`,
+  },
+};
+
+/**
+ * INSERT … SELECT of one log row for the item matched by `where` (no row matched: nothing logged).
+ * before/after are SQL expressions returning a JSON object, or NULL. The actor is bound as ?21–?25.
+ */
+const logSql = (kind: StructureKind, action: EditAction, o: { where: string; before?: string; after?: string; name?: string }) =>
+  `INSERT INTO checklist_events
+     (list_id, entity, entity_id, entity_name, action, before_json, after_json, user_pco_id, user_name, session_id, tab_id, user_agent)
+   SELECT c.list_id, '${kind}', ${LOG_SQL[kind].alias}.id, ${o.name ?? LOG_SQL[kind].name}, '${action}',
+          ${o.before ?? "NULL"}, ${o.after ?? "NULL"}, ?21, ?22, ?23, ?24, ?25
+     FROM ${LOG_SQL[kind].from} WHERE ${o.where}`;
+
+/** Binds a statement's own parameters as ?1… and the actor as ?21–?25. */
+const bindWithActor = (stmt: D1PreparedStatement, actor: Actor, ...params: unknown[]) =>
+  stmt.bind(...params, ...Array(20 - params.length).fill(null), ...actorValues(actor));
+
+// Reading -----------------------------------------------------------------------------------------
 
 /** A live list by ID, or the default list. */
 const findList = (db: D1Database, listRef: number | "default") =>
@@ -50,83 +112,151 @@ export async function getAdminList(db: D1Database, listRef: number | "default"):
   };
 }
 
-/** Adds an item at the end of its parent. Returns the new ID, or null if the parent isn't live. */
-async function insertLast(db: D1Database, sql: string, parentId: number, value: string): Promise<number | null> {
-  const result = await db.prepare(sql).bind(parentId, value).run();
-  return result.meta.changes > 0 ? result.meta.last_row_id : null;
+const EDITS_PAGE = 500;
+
+interface EditRow {
+  id: number;
+  created_at: string;
+  action: EditAction;
+  entity: StructureKind;
+  entity_id: number;
+  entity_name: string;
+  before_json: string | null;
+  after_json: string | null;
+  user_name: string;
+  session_id: string | null;
+  tab_id: string | null;
 }
 
-export const addCategory = (db: D1Database, listId: number, name: string) =>
-  insertLast(
-    db,
-    `INSERT INTO categories (list_id, name, sort_order)
-     SELECT ?1, ?2, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM categories WHERE list_id = ?1)
-      WHERE ?1 IN (${LIVE_LISTS})`,
-    listId,
-    name,
-  );
+/** The latest checklist edits of a list (US-13b), newest first. Read-only: nothing edits or deletes log rows. */
+export async function getEdits(db: D1Database, listRef: number | "default"): Promise<ChecklistEditsResponse | null> {
+  const list = await findList(db, listRef);
+  if (!list) return null;
+  const { time_zone: timeZone } = await getSettings(db, ["time_zone"]);
+  if (!timeZone) throw new Error("The time_zone setting is missing.");
+  const { results } = await db
+    .prepare(
+      `SELECT id, created_at, action, entity, entity_id, entity_name, before_json, after_json, user_name, session_id, tab_id
+         FROM checklist_events WHERE list_id = ? ORDER BY id DESC LIMIT ?`,
+    )
+    .bind(list.id, EDITS_PAGE + 1)
+    .all<EditRow>();
+  const parse = (json: string | null) => (json === null ? null : (JSON.parse(json) as EditValues));
+  return {
+    list: { id: list.id, name: list.name },
+    timeZone,
+    events: results.slice(0, EDITS_PAGE).map((r) => ({
+      id: r.id,
+      at: r.created_at,
+      action: r.action,
+      kind: r.entity,
+      itemId: r.entity_id,
+      itemName: r.entity_name,
+      before: parse(r.before_json),
+      after: parse(r.after_json),
+      user: r.user_name,
+      sessionId: r.session_id,
+      tabId: r.tab_id,
+    })),
+    truncated: results.length > EDITS_PAGE,
+  };
+}
 
-export const addSection = (db: D1Database, categoryId: number, name: string) =>
-  insertLast(
-    db,
-    `INSERT INTO sections (category_id, name, sort_order)
-     SELECT ?1, ?2, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sections WHERE category_id = ?1)
-      WHERE ?1 IN (${LIVE_CATEGORIES})`,
-    categoryId,
-    name,
-  );
+// Add, rename/edit, hide (Stage 5a) -----------------------------------------------------------------
 
-export const addTask = (db: D1Database, sectionId: number, text: string) =>
-  insertLast(
-    db,
-    `INSERT INTO tasks (section_id, text, sort_order)
-     SELECT ?1, ?2, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM tasks WHERE section_id = ?1)
-      WHERE ?1 IN (${LIVE_SECTIONS})`,
-    sectionId,
-    text,
-  );
+/** Adds an item at the end of its parent (?1) with name/text ?2, and logs it. Returns the new ID, or null if the parent isn't live. */
+async function addItem(db: D1Database, kind: StructureKind, actor: Actor, parentId: number, value: string): Promise<number | null> {
+  const column = kind === "task" ? "text" : "name";
+  const [inserted] = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO ${TABLE[kind]} (${PARENT[kind]}, ${column}, sort_order)
+         SELECT ?1, ?2, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM ${TABLE[kind]} WHERE ${PARENT[kind]} = ?1)
+          WHERE ?1 IN (${LIVE_PARENTS[kind]})`,
+      )
+      .bind(parentId, value),
+    bindWithActor(
+      db.prepare(
+        logSql(kind, "add", {
+          where: `${LOG_SQL[kind].alias}.id = last_insert_rowid() AND changes() = 1`,
+          after: `json_object('place', ${LOG_SQL[kind].place})`,
+        }),
+      ),
+      actor,
+    ),
+  ]);
+  return inserted.meta.changes > 0 ? inserted.meta.last_row_id : null;
+}
 
-/** Renames/edits a live item. Returns false if it isn't live. */
-async function update(db: D1Database, sql: string, id: number, value: string): Promise<boolean> {
-  return (await db.prepare(sql).bind(value, id).run()).meta.changes > 0;
+export const addCategory = (db: D1Database, actor: Actor, listId: number, name: string) => addItem(db, "category", actor, listId, name);
+export const addSection = (db: D1Database, actor: Actor, categoryId: number, name: string) =>
+  addItem(db, "section", actor, categoryId, name);
+export const addTask = (db: D1Database, actor: Actor, sectionId: number, text: string) => addItem(db, "task", actor, sectionId, text);
+
+/** Renames a live department/section or edits a live task's text, and logs old and new. False if it isn't live. */
+async function setText(db: D1Database, kind: StructureKind, actor: Actor, id: number, value: string): Promise<boolean> {
+  const column = kind === "task" ? "text" : "name";
+  const a = LOG_SQL[kind].alias;
+  const [, updated] = await db.batch([
+    bindWithActor(
+      db.prepare(
+        logSql(kind, kind === "task" ? "edit" : "rename", {
+          where: `${a}.id = ?1 AND ${a}.id IN (${LIVE[kind]})`,
+          name: "?2",
+          before: `json_object('${column}', ${a}.${column})`,
+          after: `json_object('${column}', ?2)`,
+        }),
+      ),
+      actor,
+      id,
+      value,
+    ),
+    db.prepare(`UPDATE ${TABLE[kind]} SET ${column} = ?2 WHERE id = ?1 AND changes() = 1`).bind(id, value),
+  ]);
+  return updated.meta.changes > 0;
 }
 
 // Editing a task's text keeps its check-offs linked; their task_text_snapshot keeps the old text (US-13).
-export const renameCategory = (db: D1Database, id: number, name: string) =>
-  update(db, `UPDATE categories SET name = ?1 WHERE id = ?2 AND id IN (${LIVE_CATEGORIES})`, id, name);
-export const renameSection = (db: D1Database, id: number, name: string) =>
-  update(db, `UPDATE sections SET name = ?1 WHERE id = ?2 AND id IN (${LIVE_SECTIONS})`, id, name);
-export const editTask = (db: D1Database, id: number, text: string) =>
-  update(db, `UPDATE tasks SET text = ?1 WHERE id = ?2 AND id IN (${LIVE_TASKS})`, id, text);
+export const renameCategory = (db: D1Database, actor: Actor, id: number, name: string) => setText(db, "category", actor, id, name);
+export const renameSection = (db: D1Database, actor: Actor, id: number, name: string) => setText(db, "section", actor, id, name);
+export const editTask = (db: D1Database, actor: Actor, id: number, text: string) => setText(db, "task", actor, id, text);
 
 /**
- * Hides a department (US-12): it and everything in it disappear from current and future checklists,
- * but stay in the database. Its Planning Center links are removed (the UI warns first).
+ * Hides a live item: it and everything in it disappear from current and future checklists, but stay in the
+ * database. Hiding a department also removes its Planning Center links (US-12; the UI warns first), and the
+ * log records which ones, so they can be linked again.
  */
-export async function hideCategory(db: D1Database, id: number): Promise<boolean> {
-  const [hidden] = await db.batch([
-    db.prepare(`UPDATE categories SET deleted_at = ${NOW} WHERE id = ?1 AND id IN (${LIVE_CATEGORIES})`).bind(id),
-    // Only if the UPDATE above hid it (changes() is its row count, same transaction).
-    db.prepare("DELETE FROM team_links WHERE category_id = ?1 AND changes() > 0").bind(id),
-  ]);
+async function hideItem(db: D1Database, kind: StructureKind, actor: Actor, id: number): Promise<boolean> {
+  const a = LOG_SQL[kind].alias;
+  const removedLinks =
+    "(SELECT json_group_array(pco_team_name || COALESCE(' › ' || pco_position_name, '')) FROM team_links WHERE category_id = c.id)";
+  const statements = [
+    bindWithActor(
+      db.prepare(
+        logSql(kind, "hide", {
+          where: `${a}.id = ?1 AND ${a}.id IN (${LIVE[kind]})`,
+          before:
+            kind === "category"
+              ? `CASE WHEN EXISTS (SELECT 1 FROM team_links WHERE category_id = c.id) THEN json_object('teamLinks', json(${removedLinks})) END`
+              : undefined,
+        }),
+      ),
+      actor,
+      id,
+    ),
+    db.prepare(`UPDATE ${TABLE[kind]} SET deleted_at = ${NOW} WHERE id = ?1 AND changes() = 1`).bind(id),
+  ];
+  // Only if the UPDATE above hid it (changes() is its row count, same transaction).
+  if (kind === "category") statements.push(db.prepare("DELETE FROM team_links WHERE category_id = ?1 AND changes() > 0").bind(id));
+  const [, hidden] = await db.batch(statements);
   return hidden.meta.changes > 0;
 }
 
-export const hideSection = async (db: D1Database, id: number) =>
-  (await db.prepare(`UPDATE sections SET deleted_at = ${NOW} WHERE id = ? AND id IN (${LIVE_SECTIONS})`).bind(id).run()).meta
-    .changes > 0;
-
-export const hideTask = async (db: D1Database, id: number) =>
-  (await db.prepare(`UPDATE tasks SET deleted_at = ${NOW} WHERE id = ? AND id IN (${LIVE_TASKS})`).bind(id).run()).meta.changes >
-  0;
+export const hideCategory = (db: D1Database, actor: Actor, id: number) => hideItem(db, "category", actor, id);
+export const hideSection = (db: D1Database, actor: Actor, id: number) => hideItem(db, "section", actor, id);
+export const hideTask = (db: D1Database, actor: Actor, id: number) => hideItem(db, "task", actor, id);
 
 // Restructuring and restore, Stage 5b (US-12, US-12a, US-13, US-13a) ------------------------------
-
-const TABLE: Record<StructureKind, string> = { category: "categories", section: "sections", task: "tasks" };
-const PARENT: Record<StructureKind, string> = { category: "list_id", section: "category_id", task: "section_id" };
-const LIVE: Record<StructureKind, string> = { category: LIVE_CATEGORIES, section: LIVE_SECTIONS, task: LIVE_TASKS };
-/** Live parents (with their whole ancestry) for each kind. */
-const LIVE_PARENTS: Record<StructureKind, string> = { category: LIVE_LISTS, section: LIVE_CATEGORIES, task: LIVE_SECTIONS };
 
 export type ReorderResult = "ok" | "not_found" | "edge" | "conflict";
 
@@ -134,7 +264,13 @@ export type ReorderResult = "ok" | "not_found" | "edge" | "conflict";
  * Swaps a live item with the nearest live sibling above or below it. Hidden siblings are skipped and keep
  * their sort_order, so a restored item returns near its old neighbours (build plan §3, Restore).
  */
-export async function reorder(db: D1Database, kind: StructureKind, id: number, direction: "up" | "down"): Promise<ReorderResult> {
+export async function reorder(
+  db: D1Database,
+  actor: Actor,
+  kind: StructureKind,
+  id: number,
+  direction: "up" | "down",
+): Promise<ReorderResult> {
   const table = TABLE[kind];
   const parent = PARENT[kind];
   const item = await db
@@ -155,13 +291,28 @@ export async function reorder(db: D1Database, kind: StructureKind, id: number, d
   if (!neighbour) return "edge";
 
   // Swap in one transaction, only if both are still where we read them (another admin may be editing too).
-  // The second UPDATE runs only if the first changed its row (changes() is the previous statement's count).
+  // The log row carries that check; each UPDATE runs only if the statement before it changed one row.
   const still = (ref: string, order: string) =>
-    `SELECT 1 FROM ${table} WHERE id = ${ref} AND sort_order = ${order} AND ${parent} = ?5 AND deleted_at IS NULL`;
-  const [, second] = await db.batch([
-    db
-      .prepare(`UPDATE ${table} SET sort_order = ?4 WHERE id = ?1 AND EXISTS (${still("?1", "?3")}) AND EXISTS (${still("?2", "?4")})`)
-      .bind(id, neighbour.id, item.sort_order, neighbour.sort_order, item.parent_id),
+    `EXISTS (SELECT 1 FROM ${table} WHERE id = ${ref} AND sort_order = ${order} AND ${parent} = ?5 AND deleted_at IS NULL)`;
+  const { alias: a, place } = LOG_SQL[kind];
+  const [, , second] = await db.batch([
+    bindWithActor(
+      db.prepare(
+        logSql(kind, "reorder", {
+          where: `${a}.id = ?1 AND ${still("?1", "?3")} AND ${still("?2", "?4")}`,
+          before: `json_object('place', ${place})`,
+          after: `json_object('place', json_set(${place}, '$.position', ${position(kind, a)} + ?6))`,
+        }),
+      ),
+      actor,
+      id,
+      neighbour.id,
+      item.sort_order,
+      neighbour.sort_order,
+      item.parent_id,
+      direction === "up" ? -1 : 1,
+    ),
+    db.prepare(`UPDATE ${table} SET sort_order = ?2 WHERE id = ?1 AND changes() = 1`).bind(id, neighbour.sort_order),
     db
       .prepare(`UPDATE ${table} SET sort_order = ?2 WHERE id = ?1 AND ${parent} = ?3 AND deleted_at IS NULL AND changes() = 1`)
       .bind(neighbour.id, item.sort_order, item.parent_id),
@@ -177,45 +328,63 @@ const listOfSection = (sectionId: string) =>
 const listOfCategory = (categoryId: string) => `(SELECT list_id FROM categories WHERE id = ${categoryId})`;
 
 /**
- * Moves a task to the end of another live section in the same list, in any department (US-13). Its
- * check-offs stay linked by task_id; their snapshots keep where it was when checked.
+ * Moves a live task or section (?1) from its current parent (?3) to the end of another live parent (?2) in
+ * the same list, and logs where it was and where it went.
  */
-export async function moveTask(db: D1Database, id: number, sectionId: number): Promise<MoveResult> {
+async function moveItem(db: D1Database, actor: Actor, kind: "task" | "section", id: number, to: number): Promise<MoveResult> {
+  const table = TABLE[kind];
+  const parent = PARENT[kind];
   const current = await db
-    .prepare(`SELECT section_id FROM tasks WHERE id = ? AND id IN (${LIVE_TASKS})`)
+    .prepare(`SELECT ${parent} AS parent_id FROM ${table} WHERE id = ? AND id IN (${LIVE[kind]})`)
     .bind(id)
-    .first<{ section_id: number }>();
+    .first<{ parent_id: number }>();
   if (!current) return "not_found";
-  if (current.section_id === sectionId) return "same_place";
-  const moved = await db
-    .prepare(
-      `UPDATE tasks SET section_id = ?2, sort_order = (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM tasks WHERE section_id = ?2)
-        WHERE id = ?1 AND section_id = ?3 AND deleted_at IS NULL
-          AND ?2 IN (${LIVE_SECTIONS}) AND ${listOfSection("?2")} = ${listOfSection("?3")}`,
-    )
-    .bind(id, sectionId, current.section_id)
-    .run();
+  if (current.parent_id === to) return "same_place";
+
+  const sameList = kind === "task" ? `${listOfSection("?2")} = ${listOfSection("?3")}` : `${listOfCategory("?2")} = ${listOfCategory("?3")}`;
+  // Where it will be: the destination's names, at the end of its live items.
+  const destination =
+    kind === "task"
+      ? `(SELECT json_object('department', json_object('id', dc.id, 'name', dc.name), 'section', json_object('id', ds.id, 'name', ds.name),
+                 'position', 1 + (SELECT COUNT(*) FROM tasks y WHERE y.section_id = ds.id AND y.deleted_at IS NULL))
+            FROM sections ds JOIN categories dc ON dc.id = ds.category_id WHERE ds.id = ?2)`
+      : `(SELECT json_object('department', json_object('id', dc.id, 'name', dc.name),
+                 'position', 1 + (SELECT COUNT(*) FROM sections y WHERE y.category_id = dc.id AND y.deleted_at IS NULL))
+            FROM categories dc WHERE dc.id = ?2)`;
+  const { alias: a, place } = LOG_SQL[kind];
+  const [, moved] = await db.batch([
+    bindWithActor(
+      db.prepare(
+        logSql(kind, "move", {
+          where: `${a}.id = ?1 AND ${a}.${parent} = ?3 AND ${a}.deleted_at IS NULL AND ?2 IN (${LIVE_PARENTS[kind]}) AND ${sameList}`,
+          before: `json_object('place', ${place})`,
+          after: `json_object('place', json(${destination}))`,
+        }),
+      ),
+      actor,
+      id,
+      to,
+      current.parent_id,
+    ),
+    db
+      .prepare(
+        `UPDATE ${table} SET ${parent} = ?2, sort_order = (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM ${table} WHERE ${parent} = ?2)
+          WHERE id = ?1 AND changes() = 1`,
+      )
+      .bind(id, to),
+  ]);
   return moved.meta.changes > 0 ? "ok" : "not_found";
 }
 
+/**
+ * Moves a task to the end of another live section in the same list, in any department (US-13). Its
+ * check-offs stay linked by task_id; their snapshots keep where it was when checked.
+ */
+export const moveTask = (db: D1Database, actor: Actor, id: number, sectionId: number) => moveItem(db, actor, "task", id, sectionId);
+
 /** Moves a section, with all its tasks, to the end of another live department in the same list (US-12a). */
-export async function moveSection(db: D1Database, id: number, categoryId: number): Promise<MoveResult> {
-  const current = await db
-    .prepare(`SELECT category_id FROM sections WHERE id = ? AND id IN (${LIVE_SECTIONS})`)
-    .bind(id)
-    .first<{ category_id: number }>();
-  if (!current) return "not_found";
-  if (current.category_id === categoryId) return "same_place";
-  const moved = await db
-    .prepare(
-      `UPDATE sections SET category_id = ?2, sort_order = (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM sections WHERE category_id = ?2)
-        WHERE id = ?1 AND category_id = ?3 AND deleted_at IS NULL
-          AND ?2 IN (${LIVE_CATEGORIES}) AND ${listOfCategory("?2")} = ${listOfCategory("?3")}`,
-    )
-    .bind(id, categoryId, current.category_id)
-    .run();
-  return moved.meta.changes > 0 ? "ok" : "not_found";
-}
+export const moveSection = (db: D1Database, actor: Actor, id: number, categoryId: number) =>
+  moveItem(db, actor, "section", id, categoryId);
 
 export type RestoreResult = "ok" | "not_found" | "parent_hidden";
 
@@ -238,24 +407,39 @@ const LIST_OF: Record<StructureKind, string> = {
 /**
  * Brings a hidden item back (US-13a). It keeps its ID, so its check-offs stay attached, and its sort_order,
  * so it returns to its old place. It's only restored into a live parent: withParents first restores the
- * hidden department/section it sits in, all in one transaction.
+ * hidden department/section it sits in, all in one transaction. Each item brought back is logged.
  */
-export async function restore(db: D1Database, kind: StructureKind, id: number, withParents: boolean): Promise<RestoreResult> {
+export async function restore(
+  db: D1Database,
+  actor: Actor,
+  kind: StructureKind,
+  id: number,
+  withParents: boolean,
+): Promise<RestoreResult> {
   const table = TABLE[kind];
   const itemHidden = `EXISTS (SELECT 1 FROM ${table} WHERE id = ?1 AND deleted_at IS NOT NULL)`;
   const listLive = `${LIST_OF[kind]} IN (${LIVE_LISTS})`;
-  const parents = withParents
-    ? ANCESTORS[kind].map((a) =>
-        db
-          .prepare(`UPDATE ${TABLE[a.kind]} SET deleted_at = NULL WHERE id = ${a.id} AND deleted_at IS NOT NULL AND ${itemHidden} AND ${listLive}`)
-          .bind(id),
-      )
-    : [];
+  // A logged restore of one row: the log row (if `guard` holds for it), then the change only if it was logged.
+  const restoreRow = (k: StructureKind, rowId: string, guard: string) => {
+    const a = LOG_SQL[k].alias;
+    return [
+      bindWithActor(
+        db.prepare(
+          logSql(k, "restore", {
+            where: `${a}.id = ${rowId} AND ${a}.deleted_at IS NOT NULL AND ${guard}`,
+            after: `json_object('place', ${LOG_SQL[k].place})`,
+          }),
+        ),
+        actor,
+        id,
+      ),
+      db.prepare(`UPDATE ${TABLE[k]} SET deleted_at = NULL WHERE id = ${rowId} AND changes() = 1`).bind(id),
+    ];
+  };
+  const parents = withParents ? ANCESTORS[kind].flatMap((p) => restoreRow(p.kind, p.id, `${itemHidden} AND ${listLive}`)) : [];
   const results = await db.batch([
     ...parents,
-    db
-      .prepare(`UPDATE ${table} SET deleted_at = NULL WHERE id = ?1 AND deleted_at IS NOT NULL AND ${PARENT[kind]} IN (${LIVE_PARENTS[kind]})`)
-      .bind(id),
+    ...restoreRow(kind, "?1", `${LOG_SQL[kind].alias}.${PARENT[kind]} IN (${LIVE_PARENTS[kind]})`),
   ]);
   if ((results.at(-1)?.meta.changes ?? 0) > 0) return "ok";
   // Not restored: either it sits in a hidden parent, or it isn't hidden (or doesn't exist) anymore.

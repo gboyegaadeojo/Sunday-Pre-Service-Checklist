@@ -2,6 +2,7 @@ import { type Context, Hono } from "hono";
 import {
   type AdminListResponse,
   type ApiErrorBody,
+  type ChecklistEditsResponse,
   type CreatedResponse,
   type HiddenItemsResponse,
   NAME_MAX,
@@ -15,6 +16,7 @@ import {
   addTask,
   editTask,
   getAdminList,
+  getEdits,
   getHiddenItems,
   hideCategory,
   hideSection,
@@ -26,12 +28,16 @@ import {
   reorder,
   restore,
 } from "../db/admin-structure";
+import type { Actor } from "../db/checkoffs";
+import { actorFor } from "../lib/actor";
 import { requireAdmin } from "../middleware/auth";
 import type { AppEnv } from "../types";
 
-// Admin checklist editor, Stage 5 (US-12, US-12a, US-13, US-13a). Admins only, enforced here.
+// Admin checklist editor, Stage 5 (US-12, US-12a, US-13, US-13a, US-13b). Admins only, enforced here.
+// Every applied change below is logged to checklist_events in the same transaction (db/admin-structure.ts).
 //   GET    /api/admin/lists/:listId                  structure ("default" or an ID)
 //   GET    /api/admin/lists/:listId/hidden           hidden items, newest first
+//   GET    /api/admin/lists/:listId/edits            the append-only checklist edit log, newest first (US-13b)
 //   POST   /api/admin/lists/:listId/categories      { name }  add a department at the end
 //   POST   /api/admin/categories/:id/sections        { name }  add a section at the end
 //   POST   /api/admin/sections/:id/tasks             { text }  add a task at the end
@@ -64,7 +70,7 @@ async function readText(c: Context<AppEnv>, field: "name" | "text", max: number)
   return value;
 }
 
-type Op = (db: D1Database, id: number, value: string) => Promise<boolean | number | null>;
+type Op = (db: D1Database, actor: Actor, id: number, value: string) => Promise<boolean | number | null>;
 
 function textRoute(field: "name" | "text", max: number, op: Op, created: boolean) {
   return async (c: Context<AppEnv>) => {
@@ -72,16 +78,16 @@ function textRoute(field: "name" | "text", max: number, op: Op, created: boolean
     if (target === null) return notFound(c);
     const value = await readText(c, field, max);
     if (typeof value !== "string") return c.json<ApiErrorBody>(value, 400);
-    const result = await op(c.env.DB, target, value);
+    const result = await op(c.env.DB, actorFor(c), target, value);
     if (result === false || result === null) return notFound(c);
     return created ? c.json<CreatedResponse>({ id: result as number }, 201) : c.body(null, 204);
   };
 }
 
-function hideRoute(op: (db: D1Database, id: number) => Promise<boolean>) {
+function hideRoute(op: (db: D1Database, actor: Actor, id: number) => Promise<boolean>) {
   return async (c: Context<AppEnv>) => {
     const target = id(c);
-    if (target === null || !(await op(c.env.DB, target))) return notFound(c);
+    if (target === null || !(await op(c.env.DB, actorFor(c), target))) return notFound(c);
     return c.body(null, 204);
   };
 }
@@ -92,7 +98,7 @@ function reorderRoute(kind: StructureKind) {
     if (target === null) return notFound(c);
     const { direction } = await readBody(c);
     if (direction !== "up" && direction !== "down") return c.json<ApiErrorBody>({ error: 'Direction must be "up" or "down".' }, 400);
-    const result = await reorder(c.env.DB, kind, target, direction);
+    const result = await reorder(c.env.DB, actorFor(c), kind, target, direction);
     if (result === "not_found") return notFound(c);
     if (result === "edge") return c.json<ApiErrorBody>({ error: direction === "up" ? "It's already first." : "It's already last." }, 409);
     if (result === "conflict") return c.json<ApiErrorBody>({ error: "Someone else changed this list just now. Try again." }, 409);
@@ -100,14 +106,14 @@ function reorderRoute(kind: StructureKind) {
   };
 }
 
-function moveRoute(field: "sectionId" | "categoryId", op: (db: D1Database, id: number, to: number) => Promise<MoveResult>) {
+function moveRoute(field: "sectionId" | "categoryId", op: (db: D1Database, actor: Actor, id: number, to: number) => Promise<MoveResult>) {
   const destination = field === "sectionId" ? "section" : "department";
   return async (c: Context<AppEnv>) => {
     const target = id(c);
     if (target === null) return notFound(c);
     const to = toId((await readBody(c))[field]);
     if (to === null) return c.json<ApiErrorBody>({ error: `Choose a ${destination} to move it to.` }, 400);
-    const result = await op(c.env.DB, target, to);
+    const result = await op(c.env.DB, actorFor(c), target, to);
     if (result === "same_place") return c.json<ApiErrorBody>({ error: `It's already in that ${destination}.` }, 400);
     if (result === "not_found") {
       return c.json<ApiErrorBody>({ error: `That item or ${destination} no longer exists. Reload to see the latest checklist.` }, 404);
@@ -121,7 +127,7 @@ function restoreRoute(kind: StructureKind) {
     const target = id(c);
     if (target === null) return notFound(c);
     const withParents = (await readBody(c)).withParents === true;
-    const result = await restore(c.env.DB, kind, target, withParents);
+    const result = await restore(c.env.DB, actorFor(c), kind, target, withParents);
     if (result === "not_found") return c.json<ApiErrorBody>({ error: "That item isn't hidden anymore. Reload to see the latest." }, 404);
     if (result === "parent_hidden") {
       return c.json<ApiErrorBody>(
@@ -148,6 +154,12 @@ export const adminStructureRoutes = new Hono<AppEnv>()
     const hidden = ref === null ? null : await getHiddenItems(c.env.DB, ref);
     if (!hidden) return c.json<ApiErrorBody>({ error: "No checklist found." }, 404);
     return c.json<HiddenItemsResponse>(hidden);
+  })
+  .get("/lists/:id/edits", async (c) => {
+    const ref = listRef(c);
+    const edits = ref === null ? null : await getEdits(c.env.DB, ref);
+    if (!edits) return c.json<ApiErrorBody>({ error: "No checklist found." }, 404);
+    return c.json<ChecklistEditsResponse>(edits);
   })
   .post("/lists/:id/categories", textRoute("name", NAME_MAX, addCategory, true))
   .post("/categories/:id/sections", textRoute("name", NAME_MAX, addSection, true))
