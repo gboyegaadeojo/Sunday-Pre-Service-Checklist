@@ -4,6 +4,7 @@ import { adminHistoryRoutes } from "./routes/admin-history";
 import { adminListRoutes } from "./routes/admin-lists";
 import { adminSettingsRoutes } from "./routes/admin-settings";
 import { adminStructureRoutes } from "./routes/admin-structure";
+import { adminUserRoutes } from "./routes/admin-users";
 import { authRoutes } from "./routes/auth";
 import { brandingRoutes } from "./routes/branding";
 import { checklistRoutes } from "./routes/checklist";
@@ -28,6 +29,7 @@ app.route("/api/admin", adminStructureRoutes);
 app.route("/api/admin", adminListRoutes);
 app.route("/api/admin/settings", adminSettingsRoutes);
 app.route("/api/admin/history", adminHistoryRoutes);
+app.route("/api/admin/users", adminUserRoutes);
 
 // Fake sign-in exists only in local development (vite dev server and tests). `vite build` replaces
 // import.meta.env.DEV with false, so this branch and the test users are removed from the production

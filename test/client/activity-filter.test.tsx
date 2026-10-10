@@ -2,7 +2,7 @@
 // read as before → after (US-07a, US-13b).
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ActivityResponse, ChecklistEditEvent, ChecklistEditsResponse, SettingsEditsResponse } from "../../src/shared/types";
+import type { ActivityResponse, ChecklistEditEvent, ChecklistEditsResponse, RoleEditsResponse, SettingsEditsResponse } from "../../src/shared/types";
 import { ActivityPage } from "../../src/client/pages/ActivityPage";
 
 const actor = { user: "Test Admin", sessionId: "sess1234abcd", tabId: "tab1234abcd" };
@@ -43,14 +43,16 @@ const edits: ChecklistEditsResponse = {
 };
 
 const settings: SettingsEditsResponse = { events: [], truncated: false };
+const roles: RoleEditsResponse = { events: [], truncated: false };
 
 beforeEach(() => {
   settings.events = [];
+  roles.events = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const path = String(input);
-      const body = path === "/api/services/current/events" ? checkoffs : path === "/api/admin/settings/events" ? settings : edits;
+      const body = path === "/api/services/current/events" ? checkoffs : path === "/api/admin/settings/events" ? settings : path === "/api/admin/users/events" ? roles : edits;
       return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
     }),
   );
@@ -125,5 +127,17 @@ describe("Activity", () => {
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toContain("Changed settings");
+  });
+
+  it("shows role changes in words, under their own filter (US-03)", async () => {
+    roles.events = [
+      { id: 1, at: "2026-10-11T17:30:00.000Z", target: "Test Volunteer", before: { isAdmin: true, isDirector: false }, after: { isAdmin: false, isDirector: true }, ...actor },
+    ];
+    render(<ActivityPage onAccessChanged={() => {}} />);
+    await screen.findByText("Open ProPresenter");
+    expect(screen.getByText("Test Volunteer: Admin removed; Director added")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Roles" }));
+    expect(rows()).toHaveLength(1);
+    expect(rows()[0]).toContain("Changed roles");
   });
 });

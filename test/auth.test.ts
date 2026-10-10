@@ -135,10 +135,11 @@ describe("GET /api/auth/me", () => {
   });
 
   it("re-reads roles from the database on every request (US-03)", async () => {
-    const cookie = await signInAs("admin");
-    await env.DB.prepare(`UPDATE users SET is_admin = 0 WHERE id = ${userIdSql("admin")}`).run();
+    // Director, not Admin: the only Admin can't lose the role (migration 0009).
+    const cookie = await signInAs("director");
+    await env.DB.prepare(`UPDATE users SET is_director = 0 WHERE id = ${userIdSql("director")}`).run();
     const { user } = await (await request("/api/auth/me", withCookie(cookie))).json<MeResponse>();
-    expect(user.isAdmin).toBe(false);
+    expect(user.isDirector).toBe(false);
   });
 
   it("treats a session for a deleted user as signed out and clears the cookie", async () => {

@@ -6,8 +6,11 @@ import type {
   ListsResponse,
   SettingsResponse,
   StructureKind,
+  UpdateRolesRequest,
+  UpdateRolesResponse,
   UpdateSettingsRequest,
   UpdateSettingsResponse,
+  UsersResponse,
 } from "../../shared/types";
 import { deleteJson, patchJson, postJson, putJson } from "../api";
 import { useServerFirst } from "./useServerFirst";
@@ -99,5 +102,14 @@ export function useSettings({ onAccessChanged }: { onAccessChanged: () => void }
       });
       return saved as UpdateSettingsResponse | null;
     },
+  };
+}
+
+/** People and their roles (Stage 6, US-03): grant or revoke Admin and Director. */
+export function useUsers({ onAccessChanged }: { onAccessChanged: () => void }) {
+  const { run, ...rest } = useServerFirst<UsersResponse>("/api/admin/users", { onAccessChanged });
+  return {
+    ...rest,
+    setRoles: (id: number, roles: UpdateRolesRequest) => run(() => putJson<UpdateRolesResponse>(`/api/admin/users/${id}/roles`, roles)),
   };
 }

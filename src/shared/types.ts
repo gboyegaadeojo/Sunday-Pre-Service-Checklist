@@ -100,7 +100,7 @@ export interface CheckoffResponse {
 export interface ApiErrorBody {
   error: string;
   /** Lets the client tell "signed out" (401) from "not on a media team" (403). */
-  code?: "signed_out" | "no_access" | "forbidden" | "service_changed" | "nothing_to_reset" | "nothing_to_undo" | "parent_hidden";
+  code?: "signed_out" | "no_access" | "forbidden" | "service_changed" | "nothing_to_reset" | "nothing_to_undo" | "parent_hidden" | "last_admin";
 }
 
 export interface CurrentUser {
@@ -464,4 +464,51 @@ export interface ServiceHistoryResponse {
   removed: RemovedTask[];
   /** Every reset of the service, oldest first. */
   resets: Omit<ResetInfo, "canUndo">[];
+}
+
+/** One person in GET /api/admin/users (Stage 6, US-03): everyone who has signed in. */
+export interface UserSummary {
+  /** Internal app user ID (US-03a). */
+  id: number;
+  name: string;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+  isDirector: boolean;
+  /** Verified as a member of a linked media team (US-02). Without it and without a role, they have no access. */
+  onMediaTeam: boolean;
+  lastSeenAt: string | null;
+}
+
+export interface UsersResponse {
+  users: UserSummary[];
+  timeZone: string;
+}
+
+export type RoleField = "isAdmin" | "isDirector";
+
+/** PUT /api/admin/users/:id/roles: both roles, as the screen shows them. */
+export type UpdateRolesRequest = Record<RoleField, boolean>;
+
+/** The roles that changed (none if they were already set). */
+export interface UpdateRolesResponse {
+  changed: RoleField[];
+}
+
+/** One entry of the append-only role log: only the roles that changed, before and after. */
+export interface RoleEditEvent {
+  id: number;
+  at: string;
+  /** The person whose roles changed, by their name at the time. */
+  target: string;
+  before: Partial<Record<RoleField, boolean>>;
+  after: Partial<Record<RoleField, boolean>>;
+  user: string;
+  sessionId: string | null;
+  tabId: string | null;
+}
+
+/** GET /api/admin/users/events, newest first. */
+export interface RoleEditsResponse {
+  events: RoleEditEvent[];
+  truncated: boolean;
 }

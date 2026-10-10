@@ -7,6 +7,9 @@ import type {
   EditAction,
   EditEntity,
   EditPlace,
+  RoleEditEvent,
+  RoleEditsResponse,
+  RoleField,
   SettingField,
   SettingsEditEvent,
   SettingsEditsResponse,
@@ -39,12 +42,13 @@ const SETTING: Record<SettingField, string> = {
   appName: "App name",
 };
 
-type Filter = "all" | "checkoffs" | "edits" | "settings";
+type Filter = "all" | "checkoffs" | "edits" | "settings" | "roles";
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "checkoffs", label: "Check-offs" },
   { value: "edits", label: "Checklist edits" },
   { value: "settings", label: "Settings" },
+  { value: "roles", label: "Roles" },
 ];
 
 /** "Audio Engineer › Power On" (the department and section as named at the time). */
@@ -116,15 +120,25 @@ const describeSettings = (e: SettingsEditEvent) =>
     .map((f) => `${SETTING[f]}: ${settingValue(f, e.before[f])} → ${settingValue(f, e.after[f])}`)
     .join("; ");
 
+const ROLE: Record<RoleField, string> = { isAdmin: "Admin", isDirector: "Director" };
+
+/** "Test Volunteer: Director added; Admin removed" (US-03). */
+const describeRoles = (e: RoleEditEvent) =>
+  `${e.target}: ${(Object.keys(ROLE) as RoleField[])
+    .filter((f) => f in e.after)
+    .map((f) => `${ROLE[f]} ${e.after[f] ? "added" : "removed"}`)
+    .join("; ")}`;
+
 type Entry =
   | { type: "checkoff"; event: ActivityEvent }
   | { type: "edit"; event: ChecklistEditEvent }
-  | { type: "setting"; event: SettingsEditEvent };
+  | { type: "setting"; event: SettingsEditEvent }
+  | { type: "role"; event: RoleEditEvent };
 
 type State =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; checkoffs: ActivityResponse; edits: ChecklistEditsResponse; settings: SettingsEditsResponse };
+  | { status: "ready"; checkoffs: ActivityResponse; edits: ChecklistEditsResponse; settings: SettingsEditsResponse; roles: RoleEditsResponse };
 
 // Admin-only activity: the append-only check-off log for the current service (Stage 4, US-07a) and the
 // append-only checklist edit log (Stage 5c, US-13b), newest first, with a filter. Read-only: entries can't be
@@ -137,12 +151,13 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [checkoffs, edits, settings] = await Promise.all([
+      const [checkoffs, edits, settings, roles] = await Promise.all([
         getJson<ActivityResponse>("/api/services/current/events"),
         getJson<ChecklistEditsResponse>("/api/admin/edits"),
         getJson<SettingsEditsResponse>("/api/admin/settings/events"),
+        getJson<RoleEditsResponse>("/api/admin/users/events"),
       ]);
-      setState({ status: "ready", checkoffs, edits, settings });
+      setState({ status: "ready", checkoffs, edits, settings, roles });
     } catch (err) {
       if (isAuthError(err)) return onAccessChanged();
       setState({ status: "error", message: (err as Error).message });
@@ -174,13 +189,15 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
     ...(shows("checkoffs") ? state.checkoffs.events.map((event) => ({ type: "checkoff" as const, event })) : []),
     ...(shows("edits") ? state.edits.events.map((event) => ({ type: "edit" as const, event })) : []),
     ...(shows("settings") ? state.settings.events.map((event) => ({ type: "setting" as const, event })) : []),
+    ...(shows("roles") ? state.roles.events.map((event) => ({ type: "role" as const, event })) : []),
   ].sort((a, b) => b.event.at.localeCompare(a.event.at));
   // With more than one list in the feed, name the list of each department/section/task edit.
   const manyLists = new Set(state.edits.events.map((e) => e.list.id)).size > 1;
   const truncated =
     (shows("checkoffs") && state.checkoffs.truncated) ||
     (shows("edits") && state.edits.truncated) ||
-    (shows("settings") && state.settings.truncated);
+    (shows("settings") && state.settings.truncated) ||
+    (shows("roles") && state.roles.truncated);
 
   return (
     <main className="mx-auto max-w-app space-y-4 px-4 pt-4 pb-16 md:px-6 md:pt-6">
@@ -188,7 +205,7 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
         <div className="max-w-2xl">
           <h1 className="text-page font-semibold tracking-tight">Activity</h1>
           <p className="text-meta text-fg-muted">
-            Check-offs, resets and undos for {formatServiceDate(service.date)}, and changes to the checklist and settings, newest
+            Check-offs, resets and undos for {formatServiceDate(service.date)}, and changes to the checklist, settings and roles, newest
             first.
             Entries can't be edited or deleted. Session and tab IDs show which sign-in and which browser tab made each change.
           </p>
@@ -222,6 +239,8 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
               ? "No checklist edits yet."
               : filter === "settings"
                 ? "No settings changes yet."
+                : filter === "roles"
+                ? "No role changes yet."
                 : filter === "checkoffs"
                 ? "No check-offs yet for this service."
                 : "No activity yet."
@@ -236,7 +255,9 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                   ? ACTION[(e as ActivityEvent).action]
                   : type === "edit"
                     ? EDIT[(e as ChecklistEditEvent).action]
-                    : { label: "Changed settings", tone: "text-accent-soft" };
+                    : type === "setting"
+                      ? { label: "Changed settings", tone: "text-accent-soft" }
+                      : { label: "Changed roles", tone: "text-warning" };
               return (
                 <li
                   key={`${type}-${e.id}`}
@@ -252,7 +273,9 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                       ? describeCheckoff(e as ActivityEvent)
                       : type === "edit"
                         ? describeEdit(e as ChecklistEditEvent)
-                        : describeSettings(e as SettingsEditEvent)}
+                        : type === "setting"
+                          ? describeSettings(e as SettingsEditEvent)
+                          : describeRoles(e as RoleEditEvent)}
                     {type === "edit" && manyLists && (e as ChecklistEditEvent).kind !== "list" && (
                       <span className="text-fg-muted"> · in “{(e as ChecklistEditEvent).list.name}”</span>
                     )}

@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.16 · **Date:** October 2026  
+> **Version:** 1.17 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.16
+## 0. Changes in Version 1.17
+
+| # | Change | Why |
+|---|--------|-----|
+| C28 | **There must always be at least one Admin** (US-03). Removing the Admin role from the last Admin is refused, even when two Admins remove each other at the same moment. An Admin removing their own Admin role is asked to confirm first, even when other Admins exist. | Without an Admin, nobody could manage the checklist, people or settings, and only a developer could fix it. |
+
+## Changes in Version 1.16
 
 | # | Change | Why |
 |---|--------|-----|
@@ -158,6 +164,8 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Admin and Director status are stored as flags on the user record in the app's database, keyed by Planning Center person ID.
 - The first admin is seeded at deployment time (documented in the deployment guide).
 - An admin can grant or revoke Admin and Director flags for other users from within the app.
+- **There must always be at least one Admin.** The server refuses to remove the Admin role from the last Admin ("You can't remove the last Admin. Make someone else an Admin first."), including when two Admins try to remove each other at the same moment.
+- An Admin removing their own Admin role is asked to confirm first, even when other Admins exist.
 - Roles are checked on the server on every request, so revoking access takes effect on the user's next page load.
 - Admin-only UI is hidden from non-admins, and admin actions are rejected by the server for non-admins even if called directly.
 
@@ -796,4 +804,4 @@ Nothing outside these modules knows it is talking to Planning Center. The databa
 
 ---
 
-*End of Requirements — Version 1.16*
+*End of Requirements — Version 1.17*

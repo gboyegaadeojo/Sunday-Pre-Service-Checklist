@@ -38,7 +38,9 @@
 │   ├── 0002_seed_ifc_checklist.sql   # Section 6 of requirements (US-14)
 │   ├── 0003_default_settings.sql     # starting branding, time zone, service weekday (US-11a)
 │   ├── 0004–0006                     # check-off log, checklist edit log, settings log (append-only)
-│   └── 0007_service_tasks.sql        # the record of each service's checklist (US-07b)
+│   ├── 0007_service_tasks.sql        # the record of each service's checklist (US-07b)
+│   ├── 0008_role_events.sql          # role change log (append-only, Stage 6)
+│   └── 0009_keep_an_admin.sql        # trigger: never zero Admins (US-03)
 ├── src/
 │   ├── worker/
 │   │   ├── index.ts          # Hono app: mounts routes and middleware
@@ -144,6 +146,8 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 - Written in the same `db.batch` transaction as the edit. Triggers abort `UPDATE` and `DELETE`. No foreign keys.
 
 **service_tasks** (migration `0007`, Stage 5d.4, US-07b): the record of each service's checklist. One row per service and task: `text`, `category_id`/`category_name`/`category_order`, `section_id`/`section_name`/`section_order`, `task_order` (as at the end of the service, or when removed), `added_at`, `removed_at` (hidden during the service; NULL = on the checklist). `services.tasks_recorded_from` says when recording started (NULL = no record: services from before `0007`). Triggers refuse inserts and updates once a service is more than a day past in UTC (a safety net; SQL can't know the church's time zone). Rows cascade-delete with their service or task, which only tests do.
+
+**role_events** (migration `0008`, Stage 6): append-only log of Admin and Director changes (US-03). Columns: `target_user_id`/`target_name` (whose roles changed, name at the time), `before_json`, `after_json` (only the roles that changed, e.g. `{"isDirector": false}`), then the actor columns as in `settings_events`. Same transaction and triggers as the other logs.
 
 **settings_events** (migration `0006`, Stage 5d.2): append-only log of church settings changes (US-11a). Columns: `before_json`, `after_json` (only the fields that changed, e.g. `{"serviceWeekday": 0}`), `user_id` (internal), `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`. Same transaction and triggers as the other logs.
 
@@ -293,8 +297,11 @@ Built in parts, each approved and committed on its own. The server rejects every
 - **Test in the browser:** check a task, add a task, hide another, then end the service (local SQL: set its date in the past) and confirm history shows X of Y, the unchecked tasks and the removed one; edit the list afterwards and confirm the past service doesn't change.
 
 ### Stage 6 — Admin user management
-- Users page: grant or revoke Admin and Director (US-03). Revoking takes effect on the user's next page load.
-- **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the reset controls appear.
+- Admin › **Users** (`/admin/users`): everyone who has signed in, by name, with a search box. Each shows what they can do (Admin, Director, Volunteer, or "No access: not on a media team"), when they were last seen, and Admin and Director switches. No sign-in provider IDs are sent (US-03a).
+- `PUT /api/admin/users/:id/roles` `{ isAdmin, isDirector }` saves only what changed. Takes effect on that person's next request (roles are re-read every time). Giving someone a role also gives them access (US-02).
+- **Never without an Admin** (requirements v1.17): removing Admin from the last Admin is refused (409 `last_admin`, "You can't remove the last Admin. Make someone else an Admin first."); the screen disables that switch and says why. The role change's own guard does this, and a trigger on `users` (migration `0009`) makes it impossible however the change is attempted. D1 runs writes one at a time, so two Admins removing each other at the same moment can't both succeed. An Admin removing their own Admin role always confirms first, even with other Admins, then leaves the Admin area.
+- **Logged** in a new append-only `role_events` table (migration `0008`), in the same transaction, guarded so a change made meanwhile by someone else is refused (409) rather than overwritten. Activity gets a **Roles** filter.
+- **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the reset controls appear. Try to remove the only Admin; see the change under Activity › Roles; confirm a Director has no Users tab and gets 403.
 
 ### Stage 7 — Team mapping and access, with the fake schedule source
 - The fake `ScheduleSource` (standing in for Planning Center) provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its sample data, including the church's real position names (below), lives in a **dev-only data file** under `src/worker/dev/`. Production builds drop it, as with the test users, and the production-build test checks those names are absent. **Nothing is mapped automatically:** admins link every team or position in the mapping screen, with the fake data as with real data.

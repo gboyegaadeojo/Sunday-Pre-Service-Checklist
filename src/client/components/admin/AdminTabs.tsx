@@ -5,6 +5,7 @@ const TABS: { route: Route; label: string; active: (r: Route) => boolean }[] = [
   // Hidden items belong to the checklist (US-13a), reached from the editor.
   { route: "admin-checklist", label: "Checklist", active: (r) => r === "admin-checklist" || r === "admin-hidden" },
   { route: "admin-lists", label: "Lists", active: (r) => r === "admin-lists" },
+  { route: "admin-users", label: "Users", active: (r) => r === "admin-users" },
   { route: "admin-activity", label: "Activity", active: (r) => r === "admin-activity" },
   { route: "admin-history", label: "History", active: (r) => r === "admin-history" },
 ];

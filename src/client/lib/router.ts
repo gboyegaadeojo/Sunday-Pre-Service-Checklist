@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 // URLs survive reloads and can be bookmarked. Unknown paths show the checklist. A query string (e.g.
 // ?list=5 for the checklist editor) is kept alongside the route.
 
-export type Route = "checklist" | "progress" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-activity" | "admin-history" | "settings";
+export type Route = "checklist" | "progress" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-users" | "admin-activity" | "admin-history" | "settings";
 
 /** Goes to a route, optionally with a query string such as "?list=5". */
 export type Navigate = (route: Route, search?: string) => void;
@@ -15,6 +15,7 @@ export const ROUTE_PATHS: Record<Route, string> = {
   "admin-checklist": "/admin/checklist",
   "admin-hidden": "/admin/checklist/hidden",
   "admin-lists": "/admin/lists",
+  "admin-users": "/admin/users",
   "admin-activity": "/admin/activity",
   // ?service=ID opens one past service.
   "admin-history": "/admin/history",
