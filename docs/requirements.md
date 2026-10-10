@@ -11,6 +11,7 @@
 | # | Change | Why |
 |---|--------|-----|
 | C24 | **A scheduled volunteer sees only their own department(s) by default** (US-05). A "Show all departments" control shows the rest, where they can also check off tasks (e.g. covering for someone). Volunteers who aren't scheduled, or whose position has no link, see all departments and choose theirs, as before. Admins, Directors and Technical Directors (a position an Admin marks "sees all departments" in the team mapping, US-15) see all departments by default. | A shorter, focused checklist for most volunteers, without stopping anyone from helping another department. Built in Stage 7. |
+| C25 | **List names are unique among visible lists**, ignoring capitalization and extra spaces (US-11). | Two lists with the same name would be impossible to tell apart when copying or choosing the default. |
 | — | Added to "Later": choosing a list for a specific service date, and carrying Planning Center links over to copied lists. For Version 1, admins switch the default list before a special service and switch it back afterward (US-11). | Recorded now; not built. |
 
 ## Changes in Version 1.13
@@ -292,6 +293,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 **Acceptance Criteria:**
 - Admin can create a list with a name and optional description, starting empty or as a copy of another live list (its departments, sections and tasks in order; hidden items and Planning Center links are not copied).
 - Admin can rename a list and change its description.
+- List names are unique among visible lists, ignoring capitalization and extra spaces. A name that's taken is refused with a clear message. A hidden list's name is free to reuse, so restoring a hidden list is refused while a visible list has its name; the admin renames that list first.
 - One list can be set as the default for regular services. New services use the default; a service keeps the list it started with. When changing the default, the admin may also switch the current service to it, but only while that service has no check-offs.
 - Lists appear in an admin management view, the default first, with which list the current service uses.
 - Admin can hide a list and restore it. The default list and the list the current service uses can't be hidden. A hidden list can't be edited or copied; past services that used it keep their records.

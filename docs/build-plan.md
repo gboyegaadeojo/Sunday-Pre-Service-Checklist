@@ -253,6 +253,7 @@ Built in parts, each approved and committed on its own. The server rejects every
 - **Copy** is three set-based `INSERT … SELECT`s (departments, sections, tasks), matching parents by `sort_order`, so it stays within D1 Free's 50 queries per request whatever the list's size. The new list's ID is chosen first so every statement in the batch refers to it.
 - **Make default** clears the old default and sets the new one in one batch. With "Also use it for this service", the current service switches too, only while it has no check-offs at all.
 - **Hide** is refused for the default list and for the current service's list.
+- **Unique names** among visible lists, ignoring capitalization and extra spaces (requirements C25). Names are stored with spaces collapsed, and the check is repeated inside the write, so two admins can't take the same name at once. Restoring a hidden list is refused while a visible list has its name. "Copy to a new list" suggests a free name ("… (copy 2)").
 - Every list change is logged in `checklist_events` (entity `list`, action `set_default` added). The Activity feed now covers all lists (`GET /api/admin/edits`) and names the list when there's more than one.
 - **Test in the browser:** copy the regular list to "Christmas Eve", edit the copy and confirm the original is unchanged; make it the default with "Also use it for this service"; check that the default list can't be hidden; hide and restore a list; see each change in Activity.
 

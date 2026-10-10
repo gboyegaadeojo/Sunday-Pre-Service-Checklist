@@ -15,6 +15,27 @@ const logListSql = (action: string, o: { where: string; before?: string; after?:
    SELECT l.id, 'list', l.id, l.name, '${action}', ${o.before ?? "NULL"}, ${o.after ?? "NULL"}, ?21, ?22, ?23, ?24, ?25
      FROM task_lists l WHERE ${o.where}`;
 
+/**
+ * List names are unique among visible lists, ignoring capitalization and extra spaces (US-11). Names are
+ * stored with spaces collapsed, so comparing lower(name) is enough. SQL condition: no visible list other
+ * than `self` (an SQL expression, or NULL) is called `name` (an SQL expression).
+ */
+const NAME_FREE = (name: string, self: string) =>
+  `NOT EXISTS (SELECT 1 FROM task_lists o WHERE o.deleted_at IS NULL AND o.id IS NOT ${self} AND lower(o.name) = lower(${name}))`;
+
+/** Trims a list name and collapses runs of spaces, the form it's stored and compared in. */
+export const normalizeListName = (name: string) => name.trim().replace(/\s+/g, " ");
+
+/** The visible list (other than exceptId) whose name matches, ignoring case and spaces, or null. */
+async function takenBy(db: D1Database, name: string, exceptId: number | null): Promise<string | null> {
+  const { results } = await db
+    .prepare("SELECT name FROM task_lists WHERE deleted_at IS NULL AND id IS NOT ?")
+    .bind(exceptId)
+    .all<{ name: string }>();
+  const key = normalizeListName(name).toLowerCase();
+  return results.find((r) => normalizeListName(r.name).toLowerCase() === key)?.name ?? null;
+}
+
 /** {"id", "name"} of the live default list, as JSON (or NULL). */
 const DEFAULT_LIST_JSON = "json((SELECT json_object('id', id, 'name', name) FROM task_lists WHERE is_default = 1 AND deleted_at IS NULL))";
 
@@ -69,21 +90,25 @@ export async function getLists(db: D1Database, now: Date): Promise<ListsResponse
   };
 }
 
+export type CreateListResult = { ok: true; id: number } | { ok: false; reason: "not_found" } | { ok: false; reason: "name_taken"; existing: string };
+
 /**
  * Creates a list, empty or as a copy of a live list's live departments, sections and tasks (in order, with
  * new IDs; hidden items and Planning Center links are not copied). The copy is three set-based INSERTs, so
- * it stays within D1's per-request query limit whatever the list's size. Returns the new ID, or null if the
- * list to copy isn't live.
+ * it stays within D1's per-request query limit whatever the list's size. Refused if the list to copy
+ * isn't live, or a visible list already has the name.
  */
 export async function createList(
   db: D1Database,
   actor: Actor,
   { name, description, copyFrom }: { name: string; description: string | null; copyFrom: number | null },
-): Promise<number | null> {
+): Promise<CreateListResult> {
   if (copyFrom !== null) {
     const source = await db.prepare("SELECT 1 FROM task_lists WHERE id = ? AND deleted_at IS NULL").bind(copyFrom).first();
-    if (!source) return null;
+    if (!source) return { ok: false, reason: "not_found" };
   }
+  const existing = await takenBy(db, name, null);
+  if (existing !== null) return { ok: false, reason: "name_taken", existing };
   // The new list's ID is fixed up front so every statement below can refer to it. If another admin takes
   // it first, the INSERT fails, the whole batch rolls back, and we try once more.
   for (let attempt = 0; ; attempt++) {
@@ -96,7 +121,7 @@ export async function createList(
             db
               .prepare(
                 `INSERT INTO categories (list_id, name, sort_order)
-                 SELECT ?1, name, sort_order FROM categories WHERE list_id = ?2 AND deleted_at IS NULL`,
+                 SELECT ?1, name, sort_order FROM categories WHERE list_id = ?2 AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM task_lists WHERE id = ?1)`,
               )
               .bind(id, copyFrom),
             // sort_order is distinct within a parent, so it pairs each copied parent with its original.
@@ -107,7 +132,7 @@ export async function createList(
                    FROM sections s
                    JOIN categories oc ON oc.id = s.category_id
                    JOIN categories nc ON nc.list_id = ?1 AND nc.sort_order = oc.sort_order
-                  WHERE oc.list_id = ?2 AND oc.deleted_at IS NULL AND s.deleted_at IS NULL`,
+                  WHERE EXISTS (SELECT 1 FROM task_lists WHERE id = ?1) AND oc.list_id = ?2 AND oc.deleted_at IS NULL AND s.deleted_at IS NULL`,
               )
               .bind(id, copyFrom),
             db
@@ -119,13 +144,17 @@ export async function createList(
                    JOIN categories oc ON oc.id = os.category_id
                    JOIN categories nc ON nc.list_id = ?1 AND nc.sort_order = oc.sort_order
                    JOIN sections ns ON ns.category_id = nc.id AND ns.sort_order = os.sort_order
-                  WHERE oc.list_id = ?2 AND oc.deleted_at IS NULL AND os.deleted_at IS NULL AND t.deleted_at IS NULL`,
+                  WHERE EXISTS (SELECT 1 FROM task_lists WHERE id = ?1) AND oc.list_id = ?2 AND oc.deleted_at IS NULL AND os.deleted_at IS NULL AND t.deleted_at IS NULL`,
               )
               .bind(id, copyFrom),
           ];
     try {
-      await db.batch([
-        db.prepare("INSERT INTO task_lists (id, name, description) VALUES (?1, ?2, ?3)").bind(id, name, description),
+      // The name check is repeated in the INSERT, so two admins can't take the same name at once. The
+      // copy statements run only if the list row went in.
+      const [inserted] = await db.batch([
+        db
+          .prepare(`INSERT INTO task_lists (id, name, description) SELECT ?1, ?2, ?3 WHERE ${NAME_FREE("?2", "NULL")}`)
+          .bind(id, name, description),
         bindWithActor(
           db.prepare(
             logListSql("add", {
@@ -140,20 +169,25 @@ export async function createList(
         ),
         ...copy,
       ]);
-      return id;
+      if (inserted.meta.changes === 0) return { ok: false, reason: "name_taken", existing: (await takenBy(db, name, null)) ?? name };
+      return { ok: true, id };
     } catch (err) {
       if (attempt > 0 || !/UNIQUE|PRIMARY KEY/i.test(String(err))) throw err;
     }
   }
 }
 
-/** Renames a live list and/or changes its description, logging old and new. False if it isn't live. */
-export async function updateList(db: D1Database, actor: Actor, id: number, name: string, description: string | null): Promise<boolean> {
+export type UpdateListResult = "ok" | "not_found" | { nameTakenBy: string };
+
+/** Renames a live list and/or changes its description, logging old and new. Refused if another visible list has the name. */
+export async function updateList(db: D1Database, actor: Actor, id: number, name: string, description: string | null): Promise<UpdateListResult> {
+  const existing = await takenBy(db, name, id);
+  if (existing !== null) return { nameTakenBy: existing };
   const [, updated] = await db.batch([
     bindWithActor(
       db.prepare(
         logListSql("rename", {
-          where: "l.id = ?1 AND l.deleted_at IS NULL",
+          where: `l.id = ?1 AND l.deleted_at IS NULL AND ${NAME_FREE("?2", "?1")}`,
           before: "json_object('name', l.name, 'description', l.description)",
           after: "json_object('name', ?2, 'description', ?3)",
         }),
@@ -165,7 +199,9 @@ export async function updateList(db: D1Database, actor: Actor, id: number, name:
     ),
     db.prepare("UPDATE task_lists SET name = ?2, description = ?3 WHERE id = ?1 AND changes() = 1").bind(id, name, description),
   ]);
-  return updated.meta.changes > 0;
+  if (updated.meta.changes > 0) return "ok";
+  const taken = await takenBy(db, name, id);
+  return taken === null ? "not_found" : { nameTakenBy: taken };
 }
 
 export type SetDefaultResult = { ok: true; serviceSwitched: boolean } | { ok: false; reason: "not_found" | "already_default" };
@@ -246,11 +282,23 @@ export async function hideList(db: D1Database, actor: Actor, id: number, current
   return row.is_default === 1 ? "default" : "in_use";
 }
 
-/** Brings a hidden list back, with everything in it that wasn't hidden on its own. False if it isn't hidden. */
-export async function restoreList(db: D1Database, actor: Actor, id: number): Promise<boolean> {
+export type RestoreListResult = "ok" | "not_found" | { nameTakenBy: string };
+
+/**
+ * Brings a hidden list back, with everything in it that wasn't hidden on its own. Refused if it isn't hidden,
+ * or a visible list now has its name (rename that one first).
+ */
+export async function restoreList(db: D1Database, actor: Actor, id: number): Promise<RestoreListResult> {
   const [, restored] = await db.batch([
-    bindWithActor(db.prepare(logListSql("restore", { where: "l.id = ?1 AND l.deleted_at IS NOT NULL" })), actor, id),
+    bindWithActor(
+      db.prepare(logListSql("restore", { where: `l.id = ?1 AND l.deleted_at IS NOT NULL AND ${NAME_FREE("l.name", "?1")}` })),
+      actor,
+      id,
+    ),
     db.prepare("UPDATE task_lists SET deleted_at = NULL WHERE id = ?1 AND changes() = 1").bind(id),
   ]);
-  return restored.meta.changes > 0;
+  if (restored.meta.changes > 0) return "ok";
+  const row = await db.prepare("SELECT name FROM task_lists WHERE id = ? AND deleted_at IS NOT NULL").bind(id).first<{ name: string }>();
+  const taken = row ? await takenBy(db, row.name, id) : null;
+  return taken === null ? "not_found" : { nameTakenBy: taken };
 }

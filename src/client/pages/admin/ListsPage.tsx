@@ -139,6 +139,18 @@ function ListForm({
   );
 }
 
+/** Names compare as the server does: ignoring capitalization and extra spaces (US-11). */
+const nameKey = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase();
+
+/** "Name (copy)", or "Name (copy 2)" … if that's taken by a visible list. */
+function copyName(name: string, live: AdminListSummary[]) {
+  const taken = new Set(live.map((l) => nameKey(l.name)));
+  for (let n = 1; ; n++) {
+    const candidate = `${name} (copy${n === 1 ? "" : ` ${n}`})`;
+    if (!taken.has(nameKey(candidate))) return candidate;
+  }
+}
+
 type Dialog = { kind: "default"; list: AdminListSummary } | { kind: "hide"; list: AdminListSummary } | null;
 
 interface Props {
@@ -286,7 +298,7 @@ export function ListsPage({ onAccessChanged, onNavigate }: Props) {
                       ...(l.isDefault ? [] : [{ label: "Make default", onSelect: () => openDefault(l) }]),
                       {
                         label: "Copy to a new list",
-                        onSelect: () => setCreating({ name: `${l.name} (copy)`, description: l.description ?? "", copyFrom: l.id }),
+                        onSelect: () => setCreating({ name: copyName(l.name, live), description: l.description ?? "", copyFrom: l.id }),
                       },
                       {
                         label: hideBlocker(l) ?? "Hide list",

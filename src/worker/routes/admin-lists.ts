@@ -8,7 +8,7 @@ import {
   NAME_MAX,
 } from "../../shared/types";
 import { getEdits } from "../db/admin-structure";
-import { createList, getLists, hideList, restoreList, setDefaultList, updateList } from "../db/lists";
+import { createList, getLists, hideList, normalizeListName, restoreList, setDefaultList, updateList } from "../db/lists";
 import { getCurrentService } from "../db/services";
 import { actorFor } from "../lib/actor";
 import { requireAdmin } from "../middleware/auth";
@@ -21,6 +21,7 @@ import type { AppEnv } from "../types";
 //   POST   /api/admin/lists/:id/default        { applyToCurrentService? }  make it the default
 //   DELETE /api/admin/lists/:id                hide (not the default, not the current service's list)
 //   POST   /api/admin/lists/:id/restore        bring a hidden list back
+// Names are unique among visible lists, ignoring capitalization and extra spaces (409 when taken).
 //   GET    /api/admin/edits?list=:id           the append-only checklist edit log, newest first
 // Every change is logged to checklist_events in the same transaction (db/lists.ts).
 
@@ -29,6 +30,9 @@ const id = (c: Context<AppEnv>) => {
   return Number.isInteger(n) && n > 0 ? n : null;
 };
 
+const nameTaken = (c: Context<AppEnv>, existing: string) =>
+  c.json<ApiErrorBody>({ error: `There's already a list called “${existing}”. Choose a different name.` }, 409);
+
 const notFound = (c: Context<AppEnv>) => c.json<ApiErrorBody>({ error: "That list no longer exists. Reload to see the latest." }, 404);
 
 type ListFields = { name: string; description: string | null; copyFrom: number | null } | { error: string };
@@ -36,7 +40,7 @@ type ListFields = { name: string; description: string | null; copyFrom: number |
 /** Validated name, description and copyFrom from the body, or an error message. */
 async function readListFields(c: Context<AppEnv>): Promise<ListFields> {
   const body = ((await c.req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
-  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const name = typeof body.name === "string" ? normalizeListName(body.name) : "";
   const description = typeof body.description === "string" ? body.description.trim() : "";
   if (!name) return { error: "Name can't be empty." };
   if (name.length > NAME_MAX) return { error: `Name can be at most ${NAME_MAX} characters.` };
@@ -55,15 +59,18 @@ export const adminListRoutes = new Hono<AppEnv>()
     const fields = await readListFields(c);
     if ("error" in fields) return c.json<ApiErrorBody>({ error: fields.error }, 400);
     const created = await createList(c.env.DB, actorFor(c), fields);
-    if (created === null) return c.json<ApiErrorBody>({ error: "The list to copy no longer exists." }, 404);
-    return c.json<CreatedResponse>({ id: created }, 201);
+    if (!created.ok && created.reason === "name_taken") return nameTaken(c, created.existing);
+    if (!created.ok) return c.json<ApiErrorBody>({ error: "The list to copy no longer exists." }, 404);
+    return c.json<CreatedResponse>({ id: created.id }, 201);
   })
   .patch("/lists/:id", async (c) => {
     const target = id(c);
     if (target === null) return notFound(c);
     const fields = await readListFields(c);
     if ("error" in fields) return c.json<ApiErrorBody>({ error: fields.error }, 400);
-    if (!(await updateList(c.env.DB, actorFor(c), target, fields.name, fields.description))) return notFound(c);
+    const result = await updateList(c.env.DB, actorFor(c), target, fields.name, fields.description);
+    if (result === "not_found") return notFound(c);
+    if (result !== "ok") return nameTaken(c, result.nameTakenBy);
     return c.body(null, 204);
   })
   .post("/lists/:id/default", async (c) => {
@@ -92,8 +99,13 @@ export const adminListRoutes = new Hono<AppEnv>()
   })
   .post("/lists/:id/restore", async (c) => {
     const target = id(c);
-    if (target === null || !(await restoreList(c.env.DB, actorFor(c), target))) {
-      return c.json<ApiErrorBody>({ error: "That list isn't hidden anymore. Reload to see the latest." }, 404);
+    const result = target === null ? "not_found" : await restoreList(c.env.DB, actorFor(c), target);
+    if (result === "not_found") return c.json<ApiErrorBody>({ error: "That list isn't hidden anymore. Reload to see the latest." }, 404);
+    if (result !== "ok") {
+      return c.json<ApiErrorBody>(
+        { error: `A visible list is already called “${result.nameTakenBy}”. Rename that list first, then restore this one.` },
+        409,
+      );
     }
     return c.body(null, 204);
   })

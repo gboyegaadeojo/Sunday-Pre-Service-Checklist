@@ -137,6 +137,36 @@ describe("renaming", () => {
   });
 });
 
+describe("unique names (US-11)", () => {
+  const error = async (res: Response) => ((await res.json()) as ApiErrorBody).error;
+
+  it("refuses a name a visible list has, ignoring capitalization and extra spaces, and logs nothing", async () => {
+    const res = await admin("POST", "/lists", { name: "  test   LIST " });
+    expect(res.status).toBe(409);
+    expect(await error(res)).toBe("There's already a list called “Test list”. Choose a different name.");
+    // Copies too, and renames onto another list's name; renaming a list to itself (another spelling) is fine.
+    expect((await admin("POST", "/lists", { name: "TEST LIST", copyFrom: LIST })).status).toBe(409);
+    const other = await create({ name: "Other" });
+    expect((await admin("PATCH", `/lists/${other}`, { name: "test list" })).status).toBe(409);
+    expect((await admin("PATCH", `/lists/${LIST}`, { name: "TEST  List" })).status).toBe(204);
+    expect((await lists()).lists.filter((l) => l.name.toLowerCase() === "test list").map((l) => l.name)).toEqual(["TEST List"]);
+    expect((await listEdits()).map((e) => e.action)).toEqual(["add", "rename"]);
+    // Nothing was half-created by the refused copy.
+    expect((await lists()).lists).toHaveLength(3);
+  });
+
+  it("frees a hidden list's name, and won't restore it while a visible list has that name", async () => {
+    const old = await create({ name: "Easter" });
+    expect((await admin("DELETE", `/lists/${old}`)).status).toBe(204);
+    const next = await create({ name: "easter" }); // the hidden one doesn't count
+    const res = await admin("POST", `/lists/${old}/restore`);
+    expect(res.status).toBe(409);
+    expect(await error(res)).toBe("A visible list is already called “easter”. Rename that list first, then restore this one.");
+    expect((await admin("PATCH", `/lists/${next}`, { name: "Easter 2027" })).status).toBe(204);
+    expect((await admin("POST", `/lists/${old}/restore`)).status).toBe(204);
+  });
+});
+
 describe("setting the default (US-11)", () => {
   it("switches the default for new services; the current service keeps its list", async () => {
     await checklist();

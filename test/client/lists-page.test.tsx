@@ -87,6 +87,15 @@ describe("Lists page", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("admin-checklist", "?list=42"));
   });
 
+  it("suggests a copy name no visible list has (names are unique, ignoring case)", async () => {
+    data.lists.push(list(4, "christmas eve (COPY)"), list(5, "Christmas Eve (copy 2)", { hiddenAt: "2026-09-01T00:00:00Z" }));
+    await renderPage();
+    menu("Christmas Eve");
+    fireEvent.click(screen.getByRole("button", { name: "Copy to a new list" }));
+    // "(copy)" is taken; the hidden "(copy 2)" doesn't count.
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Christmas Eve (copy 2)");
+  });
+
   it("makes a list the default, and can switch this service while it has no check-offs", async () => {
     await renderPage();
     menu("Christmas Eve");

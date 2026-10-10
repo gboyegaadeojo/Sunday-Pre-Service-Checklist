@@ -40,6 +40,8 @@ Before committing, always:
 3. Give the user a short summary of what changed and anything not finished.
 4. Wait for the user's OK before committing.
 
+When the user says "commit", that means commit **and push** (to `origin main`).
+
 `.githooks/pre-commit` enforces points 1 and 2 automatically. `npm install` enables it through the `prepare` script, which runs `git config core.hooksPath .githooks`. The hook blocks a commit if:
 - forbidden files are staged, or
 - an added line looks like a secret (a `*_SECRET`, `*_TOKEN`, `*_PASSWORD` or `*_API_KEY` name with a long value, or a private key), or
@@ -130,6 +132,7 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - **Hidden items (US-13a):** `pages/admin/HiddenItemsPage.tsx` lists rows with `deleted_at` set (`getHiddenItems`). Restore clears `deleted_at` and keeps ID and `sort_order`, so history and position come back. The server never restores into a hidden parent (409 `parent_hidden`); `withParents: true` restores the hidden ancestors in the same batch. Team links deleted by a hide are not recreated.
 - **Task lists** (Stage 5d.1, US-11; `db/lists.ts`, `routes/admin-lists.ts`, `pages/admin/ListsPage.tsx`):
   - Create empty or as a copy (three set-based `INSERT … SELECT`s; never per-row statements: D1 Free allows 50 queries per request). Make default (one batch; optionally switches the current service only if it has no check-offs). Hide is refused for the default and the current service's list. Restore.
+  - Names are unique among visible lists, ignoring case and extra spaces (`normalizeListName`, `NAME_FREE` guard inside each write; 409 when taken). Restore is refused while a visible list has the hidden list's name.
   - List changes log to `checklist_events` with entity `list`; `GET /api/admin/edits` (optional `?list=`) is the edit feed across lists.
 - **Checklist edit log** (`checklist_events`, migration `0005`, Stage 5c, US-13b):
   - Every applied add, rename, edit, hide, restore, move and reorder is logged with the actor (`actorFor`), the item, its name/text after the change (`entity_name`), and `before_json`/`after_json` holding only what changed (`name`/`text`, `place` = department, section, 1-based position; `teamLinks` removed by a department hide). Refused edits change nothing and log nothing.
