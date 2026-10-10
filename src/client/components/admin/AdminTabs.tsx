@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MappingStatusResponse } from "../../../shared/types";
 import { getJson } from "../../api";
 import type { Navigate, Route } from "../../lib/router";
@@ -42,13 +42,42 @@ function useMappingAttention(route: Route) {
 /** Dispatched on window by the mapping screen after a change, so the tab's count follows. */
 export const MAPPING_CHANGED = "mapping-changed";
 
+/**
+ * On narrow screens the tabs scroll sideways (design.md §5): the current tab is scrolled into view, and each edge
+ * fades while more tabs are off screen that side, so it's clear there are more.
+ */
+function useTabScroll(route: Route) {
+  const ref = useRef<HTMLElement>(null);
+  const [more, setMore] = useState({ left: false, right: false });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run when the current tab changes
+  useEffect(() => {
+    const nav = ref.current;
+    if (!nav) return;
+    const current = nav.querySelector<HTMLElement>("[aria-current=page]");
+    if (current && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft = Math.max(0, current.offsetLeft + current.offsetWidth - nav.clientWidth + 16);
+    }
+    const update = () => setMore({ left: nav.scrollLeft > 1, right: nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1 });
+    update();
+    nav.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      nav.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [route]);
+  return { ref, more };
+}
+
 // Sections of the Admin workspace (design.md §7). Only sections that exist are listed.
 export function AdminTabs({ route, onNavigate }: { route: Route; onNavigate: Navigate }) {
   const { attention, newTeams } = useMappingAttention(route);
+  const { ref, more } = useTabScroll(route);
   return (
-    <div className="border-b border-line bg-bg">
-      <nav aria-label="Admin sections" className="mx-auto flex max-w-app gap-1 overflow-x-auto px-4 md:px-6">
-        <span className="mr-2 flex items-center text-meta font-semibold tracking-wide text-fg-muted uppercase">Admin</span>
+    <div className="relative border-b border-line bg-bg">
+      <nav ref={ref} aria-label="Admin sections" className="mx-auto flex max-w-app gap-1 overflow-x-auto px-4 md:px-6">
+        {/* The header's Admin tab already says where you are, so phones give this room to the tabs. */}
+        <span className="mr-2 hidden items-center text-meta font-semibold tracking-wide text-fg-muted uppercase sm:flex">Admin</span>
         {TABS.map((t) => {
           const current = t.active(route);
           const badge = t.route === "admin-mapping" && attention > 0 ? attention : 0;
@@ -80,6 +109,8 @@ export function AdminTabs({ route, onNavigate }: { route: Route; onNavigate: Nav
           );
         })}
       </nav>
+      {more.left && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-linear-to-r from-bg to-transparent" />}
+      {more.right && <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-linear-to-l from-bg to-transparent" />}
     </div>
   );
 }

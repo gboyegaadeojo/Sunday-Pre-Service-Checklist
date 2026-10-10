@@ -46,9 +46,16 @@ export function NoAccessPage({
         <Card className="w-full max-w-md p-6">
           <h1 className="text-page font-semibold tracking-tight">Almost ready</h1>
           <p className="mt-2 text-task text-fg-muted">The app is being set up. Check back soon.</p>
-          <Button className="mt-5" onClick={onSignOut} disabled={signingOut}>
-            {signingOut ? "Signing out…" : "Sign out"}
-          </Button>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {onRetry && (
+              <Button variant="primary" onClick={onRetry}>
+                Try again
+              </Button>
+            )}
+            <Button onClick={onSignOut} disabled={signingOut}>
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
+          </div>
         </Card>
       </main>
     );

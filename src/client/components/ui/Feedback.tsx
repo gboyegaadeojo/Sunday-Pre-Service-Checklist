@@ -4,18 +4,20 @@ import { AlertIcon, CheckIcon } from "./Icons";
 interface Props {
   message: string | null;
   onDismiss: () => void;
+  /** Stays until dismissed (or the message is cleared), e.g. a failed check-off someone might not see in time. */
+  persistent?: boolean;
 }
 
 /**
  * A brief, dismissible message at the bottom of the screen (design.md §8: concise, non-disruptive).
- * Hides itself after a few seconds.
+ * Hides itself after a few seconds, unless `persistent`.
  */
-function Toast({ message, onDismiss, tone }: Props & { tone: "error" | "notice" }) {
+function Toast({ message, onDismiss, tone, persistent = false }: Props & { tone: "error" | "notice" }) {
   useEffect(() => {
-    if (!message) return;
+    if (!message || persistent) return;
     const timer = setTimeout(onDismiss, tone === "error" ? 7000 : 5000);
     return () => clearTimeout(timer);
-  }, [message, onDismiss, tone]);
+  }, [message, onDismiss, tone, persistent]);
 
   return (
     <div

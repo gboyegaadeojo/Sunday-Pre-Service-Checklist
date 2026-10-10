@@ -108,6 +108,7 @@ describe("access by team membership (US-02)", () => {
     await env.DB.prepare(sql).run();
     const volunteer = await signInAs("volunteer");
     expect(await me(volunteer)).toMatchObject({ hasAccess: false, settingUp: true });
+    expect("teamMappingPending" in (await me(volunteer))).toBe(false);
     const res = await request("/api/checklist", withCookie(volunteer));
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: "The app is being set up. Check back soon.", code: "no_access" });
@@ -116,12 +117,15 @@ describe("access by team membership (US-02)", () => {
       const user = await me(await signInAs(key));
       expect(user.hasAccess, key).toBe(true);
       expect("settingUp" in user, key).toBe(false);
+      // They're told volunteers can't get in yet (design review #9).
+      expect(user.teamMappingPending, key).toBe(true);
     }
     // Once set up, people's team membership decides again.
     await env.DB.prepare("DELETE FROM team_links").run();
     await setUpMapping();
     expect(await me(volunteer)).toEqual(expect.objectContaining({ hasAccess: true }));
     expect("settingUp" in (await me(volunteer))).toBe(false);
+    expect("teamMappingPending" in (await me(await signInAs("admin")))).toBe(false);
   });
 });
 
@@ -190,7 +194,8 @@ describe("the published plan", () => {
     await request("/api/dev/schedule", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ unpublished: true }) });
     const body = await checklist(await signInAs("camera2"));
     expect(body.service.published).toBe(false);
-    expect(body.view).toEqual({ mode: "choose", own: [], note: null });
+    // The source's name comes with it, for the "No service is published in … yet" note (US-05, C22).
+    expect(body.view).toEqual({ mode: "choose", own: [], note: null, source: "Planning Center (sample data)" });
     expect((await viewOf("admin")).mode).toBe("all");
   });
 });

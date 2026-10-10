@@ -11,11 +11,12 @@ interface Props {
   onToggleExpanded: () => void;
   timeZone: string;
   savingTaskIds: ReadonlySet<number>;
+  failedTaskIds: ReadonlySet<number>;
   onToggleTask: (task: ChecklistTask) => void;
 }
 
 // A numbered section with a full-width toggle header showing done/total (design.md §3D).
-export function SectionGroup({ section, number, expanded, onToggleExpanded, timeZone, savingTaskIds, onToggleTask }: Props) {
+export function SectionGroup({ section, number, expanded, onToggleExpanded, timeZone, savingTaskIds, failedTaskIds, onToggleTask }: Props) {
   const panelId = `section-${section.id}`;
   const progress = sectionProgress(section);
   const complete = progressStatus(progress) === "complete";
@@ -55,6 +56,7 @@ export function SectionGroup({ section, number, expanded, onToggleExpanded, time
                 task={task}
                 timeZone={timeZone}
                 saving={savingTaskIds.has(task.id)}
+                failed={failedTaskIds.has(task.id)}
                 onToggle={() => onToggleTask(task)}
               />
             ))}

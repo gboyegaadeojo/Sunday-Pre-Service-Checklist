@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
+import { InfoIcon } from "../ui/Icons";
 import { Brand } from "./Brand";
 
 interface Props {
@@ -8,13 +9,15 @@ interface Props {
   onSignIn?: () => void;
   signingIn?: boolean;
   error?: string | null;
+  /** Why they're here, e.g. signed out mid-save and the change wasn't saved. */
+  notice?: string | null;
   /** Rendered below the sign-in card (local development tools only). */
   children?: ReactNode;
 }
 
 // The one sign-in screen (US-01, design.md). It only ever offers a single option: roles come from
 // Planning Center membership and the app's role flags after sign-in, never from the user.
-export function SignInScreen({ onSignIn, signingIn = false, error = null, children }: Props) {
+export function SignInScreen({ onSignIn, signingIn = false, error = null, notice = null, children }: Props) {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
@@ -23,6 +26,12 @@ export function SignInScreen({ onSignIn, signingIn = false, error = null, childr
         </div>
         <Card className="p-6">
           <h1 className="text-page font-semibold tracking-tight">Sign in</h1>
+          {notice && (
+            <p role="status" className="mt-3 flex gap-2.5 rounded-control border border-accent-soft/30 bg-accent/10 px-3 py-2.5 text-sm">
+              <InfoIcon className="mt-0.5 size-4 shrink-0 text-accent-soft" />
+              <span className="min-w-0">{notice}</span>
+            </p>
+          )}
           <p className="mt-1 text-sm text-fg-muted">
             Use your Planning Center account. Your team and role are set by Planning Center and the media team admins.
           </p>

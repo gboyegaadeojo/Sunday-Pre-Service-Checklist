@@ -100,7 +100,9 @@ export async function getChecklistView(
   const unknown: ChecklistView = { mode: staff ? "all" : "choose", own: [], note: null };
   const outage: ChecklistView = { ...unknown, note: "schedule_unavailable", ...(source ? { source: source.label } : {}) };
   if (unavailable) return outage;
-  if (!source || !service.planExternalId || !(await getServiceTypeId(db, source))) return unknown;
+  if (!source || !(await getServiceTypeId(db, source))) return unknown;
+  // No plan published: the note names the source (US-05, "No service is published in … yet").
+  if (!service.planExternalId) return { ...unknown, source: source.label };
   const person = await personFor(db, source, user.id);
   if (!person) return unknown;
   const plan = service.planExternalId;

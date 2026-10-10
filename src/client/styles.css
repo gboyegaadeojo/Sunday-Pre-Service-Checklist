@@ -52,6 +52,18 @@ body {
   @apply bg-bg font-sans text-fg antialiased;
 }
 
+/*
+ * The focus colour is every element's outline colour from the start, so `transition-colors` (which animates
+ * outline-color) has nothing to animate and the ring shows purple at once instead of fading in from white.
+ */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    outline-color: var(--color-accent-soft);
+  }
+}
+
 /* One visible focus style everywhere (design.md §8). */
 :focus-visible {
   outline: 2px solid var(--color-accent-soft);

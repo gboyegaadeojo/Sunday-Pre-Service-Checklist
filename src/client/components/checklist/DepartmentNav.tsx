@@ -1,6 +1,7 @@
 import type { ChecklistCategory } from "../../../shared/types";
 import { categoryProgress, progressStatus } from "../../lib/checklist";
 import { StatusDot } from "../ui/StatusDot";
+import { YoursBadge } from "./YoursBadge";
 
 interface Props {
   departments: ChecklistCategory[];
@@ -33,11 +34,7 @@ export function DepartmentNav({ departments, selectedId, onSelect, ownIds }: Pro
               )}
               <span className="min-w-0 flex-1 leading-snug wrap-anywhere">
                 {d.name}
-                {ownIds?.has(d.id) && (
-                  <span className="ml-2 inline-block rounded-control border border-accent-soft/40 px-1.5 text-meta font-normal text-accent-soft">
-                    Yours
-                  </span>
-                )}
+                {ownIds?.has(d.id) && <YoursBadge />}
               </span>
               <span className="flex shrink-0 items-center gap-2 text-meta font-normal text-fg-muted tabular-nums">
                 <StatusDot status={progressStatus(progress)} />

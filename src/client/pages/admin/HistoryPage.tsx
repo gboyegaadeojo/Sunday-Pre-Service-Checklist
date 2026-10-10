@@ -108,7 +108,8 @@ function ServiceList({ onAccessChanged, onNavigate }: Omit<Props, "search">) {
 
 const summaryCounts = (s: ServiceSummary) =>
   [
-    s.totalCount === null ? `${plural(s.checkedCount, "task")} checked` : `${s.checkedCount} of ${s.totalCount} done`,
+    // Services from before the checklist record (US-07b) only know what was checked, so say why there's no "of Y".
+    s.totalCount === null ? `${plural(s.checkedCount, "task")} checked (full list not recorded)` : `${s.checkedCount} of ${s.totalCount} done`,
     s.resetCount > 0 ? `reset ${s.resetCount === 1 ? "once" : `${s.resetCount} times`}` : "",
   ]
     .filter(Boolean)
@@ -339,7 +340,10 @@ function DepartmentRecord({ category, timeZone, withTotals }: { category: Histor
   );
 }
 
-/** A tick for a checked task, an empty box for one that wasn't, with words for screen readers. */
+/**
+ * A tick for a checked task, an empty circle for one that wasn't (as on Progress: a box would look tappable in this
+ * read-only record), with words for screen readers.
+ */
 function TaskMark({ checked }: { checked: boolean }) {
   return checked ? (
     <span className="mt-0.5 shrink-0 text-success">
@@ -347,7 +351,7 @@ function TaskMark({ checked }: { checked: boolean }) {
       <span className="sr-only">Checked:</span>
     </span>
   ) : (
-    <span className="mt-0.5 size-4 shrink-0 rounded-sm border border-idle">
+    <span className="mt-1 size-3.5 shrink-0 rounded-full border-2 border-idle">
       <span className="sr-only">Not checked:</span>
     </span>
   );

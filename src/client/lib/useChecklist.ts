@@ -14,22 +14,28 @@ export type LoadState =
 /** Last save outcome, for the "All changes saved" indicator (design.md §3: "whether changes have been saved"). */
 export type SaveState = "idle" | "saving" | "saved" | "failed";
 
+/** Why access is being re-checked: "unsaved_change" when a tap was refused because the session had ended. */
+export type AccessChangeReason = "unsaved_change";
+
 interface Options {
   /** Shown on optimistic check-offs until the server responds with the real record. */
   userName: string;
   /** The server said the session ended or access changed (401/403). */
-  onAccessChanged: () => void;
+  onAccessChanged: (reason?: AccessChangeReason) => void;
 }
 
 /**
  * The current service's checklist and check-off actions (US-06): optimistic updates that revert if the
  * save fails, never showing a task as saved unless the server accepted it.
+ * A failed save stays visible until it's dealt with: the task is listed in `failed` (its row says "Not saved")
+ * until a save of it succeeds, and the error message stays until dismissed or the next save succeeds.
  */
 export function useChecklist({ userName, onAccessChanged }: Options) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [pending, setPending] = useState<ReadonlySet<number>>(new Set());
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState<ReadonlySet<number>>(new Set());
   const pendingRef = useRef(pending);
   pendingRef.current = pending;
   const dismissError = useCallback(() => setError(null), []);
@@ -88,27 +94,27 @@ export function useChecklist({ userName, onAccessChanged }: Options) {
     setTaskCheckoff(task.id, before ? null : { by: userName, at: new Date().toISOString() });
     setPending((p) => new Set(p).add(task.id));
     setSaveState("saving");
-    setError(null);
     try {
       const res = before ? await deleteJson<CheckoffResponse>(url) : await putJson<CheckoffResponse>(url);
       setTaskCheckoff(task.id, res.checkoff);
       setSaveState("saved");
+      setError(null);
+      setFailed((f) => withoutId(f, task.id));
     } catch (err) {
       setTaskCheckoff(task.id, before); // revert: the server did not accept the change
       setSaveState("failed");
-      if (isAuthError(err)) return onAccessChangedRef.current();
+      if (isAuthError(err)) return onAccessChangedRef.current("unsaved_change");
       if (err instanceof ApiError && (err.code === "service_changed" || err.status === 404)) {
+        // The service or task moved on; tapping again wouldn't save it, so the row isn't marked.
         setError(err.message);
+        setFailed((f) => withoutId(f, task.id));
         void load({ quiet: true });
       } else {
         setError(`Couldn't save "${task.text}". ${(err as Error).message}`);
+        setFailed((f) => new Set(f).add(task.id));
       }
     } finally {
-      setPending((p) => {
-        const next = new Set(p);
-        next.delete(task.id);
-        return next;
-      });
+      setPending((p) => withoutId(p, task.id));
     }
   };
 
@@ -117,8 +123,16 @@ export function useChecklist({ userName, onAccessChanged }: Options) {
     reload: () => void load(),
     toggle: (task: ChecklistTask) => void toggle(task),
     pending,
+    failed,
     saveState: pending.size > 0 ? ("saving" as const) : saveState,
     error,
     dismissError,
   };
 }
+
+const withoutId = (ids: ReadonlySet<number>, id: number): ReadonlySet<number> => {
+  if (!ids.has(id)) return ids;
+  const next = new Set(ids);
+  next.delete(id);
+  return next;
+};

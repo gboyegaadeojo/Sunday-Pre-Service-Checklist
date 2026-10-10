@@ -12,11 +12,14 @@ describe("no-access page", () => {
     expect(screen.getByText("This app is for the media team. If you think you should have access, contact a media team admin.")).toBeTruthy();
   });
 
-  it("says the app is being set up, while team mapping isn't", () => {
-    render(<NoAccessPage settingUp onSignOut={() => {}} signingOut={false} />);
+  it("says the app is being set up, while team mapping isn't, with Try again", () => {
+    let retried = 0;
+    render(<NoAccessPage settingUp onRetry={() => retried++} onSignOut={() => {}} signingOut={false} />);
     expect(screen.getByText("The app is being set up. Check back soon.")).toBeTruthy();
     expect(screen.queryByText(/media team admin/)).toBeNull();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    screen.getByRole("button", { name: "Try again" }).click();
+    expect(retried).toBe(1);
   });
 
   it("asks someone who couldn't be confirmed during an outage to try again", () => {

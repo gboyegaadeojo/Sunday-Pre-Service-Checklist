@@ -5,8 +5,8 @@ type Variant = "primary" | "secondary" | "danger" | "danger-outline";
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white hover:bg-accent/85 active:bg-accent/75",
   secondary: "border border-line bg-card text-fg hover:bg-hover active:bg-line",
-  // Confirming a destructive action.
-  danger: "bg-danger text-white hover:bg-danger/85 active:bg-danger/75",
+  // Confirming a destructive action. Near-black text: white on the error red is only 3.8:1 (WCAG AA needs 4.5:1).
+  danger: "bg-danger text-bg hover:bg-danger/85 active:bg-danger/75",
   // Starting a destructive action (opens a confirmation).
   "danger-outline": "border border-danger/50 bg-transparent text-danger hover:bg-danger/10 active:bg-danger/15",
 };

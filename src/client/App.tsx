@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { BrandingResponse, CurrentUser, MeResponse } from "../shared/types";
 import { ApiError, getJson, postJson } from "./api";
 import { AppHeader } from "./components/app/AppHeader";
-import { EmptyState, ErrorState, LoadingState } from "./components/ui/States";
+import { RouteLink } from "./components/app/RouteLink";
+import { SetupNotice } from "./components/app/SetupNotice";
+import { Card } from "./components/ui/Card";
+import { ErrorState, LoadingState } from "./components/ui/States";
 import { BrandingContext, NO_BRANDING, documentTitle } from "./lib/branding";
 import { AdminTabs } from "./components/admin/AdminTabs";
 import { useRoute } from "./lib/router";
@@ -20,6 +23,10 @@ import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
 import { ProgressPage } from "./pages/ProgressPage";
 import { SignInPage } from "./pages/SignInPage";
+import type { AccessChangeReason } from "./lib/useChecklist";
+
+/** On the sign-in screen after a tap was refused because the session had ended (design.md §9). */
+const UNSAVED_CHANGE_NOTICE = "You were signed out, so your last change wasn't saved. Sign in to carry on.";
 
 // The developer test-user sign-in is chosen at build time: production builds keep only SignInPage.
 const SignIn = import.meta.env.DEV ? DevSignInPage : SignInPage;
@@ -36,6 +43,7 @@ export function App() {
   const [branding, setBranding] = useState<BrandingResponse | undefined>(undefined);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [signInNotice, setSignInNotice] = useState<string | null>(null);
   const { route, search, navigate } = useRoute();
 
   // Who is signed in, and with what access. Re-run whenever the server says the session or access changed.
@@ -43,6 +51,7 @@ export function App() {
     try {
       const { user } = await getJson<MeResponse>("/api/auth/me");
       setSession({ status: "signed_in", user });
+      setSignInNotice(null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) setSession({ status: "signed_out" });
       else setSession({ status: "error", message: (err as Error).message });
@@ -105,10 +114,13 @@ export function App() {
       );
     }
 
-    if (session.status === "signed_out") return <SignIn onSignedIn={() => void loadSession()} />;
+    if (session.status === "signed_out") return <SignIn onSignedIn={() => void loadSession()} notice={signInNotice} />;
 
     const { user } = session;
-    const onAccessChanged = () => void loadSession();
+    const onAccessChanged = (reason?: AccessChangeReason) => {
+      if (reason === "unsaved_change") setSignInNotice(UNSAVED_CHANGE_NOTICE);
+      void loadSession();
+    };
     return (
       <>
         <AppHeader
@@ -138,7 +150,12 @@ export function App() {
     }
     switch (route) {
       case "progress":
-        return <ProgressPage user={user} onAccessChanged={onAccessChanged} />;
+        return (
+          <>
+            {user.teamMappingPending && <SetupNotice isAdmin={user.isAdmin} onNavigate={navigate} />}
+            <ProgressPage user={user} onAccessChanged={onAccessChanged} />
+          </>
+        );
       case "admin-checklist":
       case "admin-hidden":
       case "admin-lists":
@@ -151,8 +168,19 @@ export function App() {
         // bookmarked URL. The server refuses too.
         if (!user.isAdmin) {
           return (
-            <main className="mx-auto max-w-app px-4 py-10 md:px-6">
-              <EmptyState title="Admins only" message="This area is available to Admins." />
+            <main className="mx-auto flex max-w-app justify-center px-4 py-12 md:py-20">
+              <Card className="w-full max-w-md p-6">
+                <h1 className="text-page font-semibold tracking-tight">Admins only</h1>
+                <p className="mt-2 text-task text-fg-muted">This area is available to Admins.</p>
+                <RouteLink
+                  to="checklist"
+                  current={false}
+                  onNavigate={navigate}
+                  className="mt-5 inline-flex min-h-11 items-center justify-center rounded-control border border-line bg-card px-4 text-sm font-medium text-fg transition-colors hover:bg-hover"
+                >
+                  Go to the checklist
+                </RouteLink>
+              </Card>
             </main>
           );
         }
@@ -181,7 +209,12 @@ export function App() {
           </>
         );
       default:
-        return <ChecklistPage user={user} onAccessChanged={onAccessChanged} />;
+        return (
+          <>
+            {user.teamMappingPending && <SetupNotice isAdmin={user.isAdmin} onNavigate={navigate} />}
+            <ChecklistPage user={user} onAccessChanged={onAccessChanged} />
+          </>
+        );
     }
   }
 }

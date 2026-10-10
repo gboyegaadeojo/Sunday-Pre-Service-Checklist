@@ -9,3 +9,6 @@ worker-configuration.d.ts
 !.dev.vars.example
 .env
 .env.*
+
+# Stage 8 design review screenshots (local only; docs/design-review.md links to them)
+docs/design-review/

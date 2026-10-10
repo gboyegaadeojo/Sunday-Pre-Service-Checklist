@@ -59,7 +59,7 @@ export function MappingPage({ onAccessChanged }: { onAccessChanged: () => void }
           <SaveIndicator state={mapping.saveState} />
         </div>
         {data.source && (
-          <div className="flex flex-col items-start gap-1 sm:items-end">
+          <div className="flex flex-col items-start gap-1">
             <Button onClick={() => void change(mapping.refresh, `Teams and positions refreshed from ${data.source?.label}.`)} disabled={busy}>
               {busy ? "Working…" : `Refresh from ${data.source.label}`}
             </Button>

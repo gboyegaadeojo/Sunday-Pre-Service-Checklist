@@ -13,7 +13,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       {shortName && (
         <span
           aria-hidden="true"
-          className="grid h-8 min-w-8 shrink-0 place-items-center rounded-control bg-accent px-1.5 text-[11px] font-bold tracking-wide text-white"
+          className="grid h-8 min-w-8 shrink-0 place-items-center rounded-control bg-accent px-1.5 text-xs font-bold tracking-wide text-white"
         >
           {shortName}
         </span>

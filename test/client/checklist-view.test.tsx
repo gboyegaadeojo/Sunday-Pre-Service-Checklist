@@ -50,7 +50,7 @@ describe("department view", () => {
     await renderPage();
     expect(listed()).toEqual(["Cameras"]);
     expect(heading()).toBe("Cameras");
-    expect(screen.getByText("Showing your department:")).toBeTruthy();
+    expect(screen.getByText("Your department:")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("switch", { name: "Show all departments" }));
     expect(listed()).toEqual(["CamerasYours", "Presentation", "Audio"]);
@@ -145,12 +145,24 @@ describe("department view", () => {
     expect(screen.queryByText(/No service is published/)).toBeNull();
   });
 
-  it("still says when no service is published, outside an outage", async () => {
-    view = { mode: "choose", own: [], note: null };
+  it("says when no service is published, and asks someone choosing to pick their department (US-05)", async () => {
+    view = { mode: "choose", own: [], note: null, source: "Planning Center" };
     const unpublished = body();
     unpublished.service.published = false;
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(unpublished), { headers: { "Content-Type": "application/json" } })));
     await renderPage();
-    expect(screen.getByText(/No service is published in Planning Center yet/)).toBeTruthy();
+    expect(
+      screen.getByRole("note").textContent,
+    ).toBe("No service is published in Planning Center yet — your checklist is ready when you are. Choose your department below.");
+  });
+
+  it("gives Admins and Directors the no-plan note without asking them to choose", async () => {
+    view = { mode: "all", own: [], note: null, source: "Planning Center" };
+    const unpublished = body();
+    unpublished.service.published = false;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(unpublished), { headers: { "Content-Type": "application/json" } })));
+    await renderPage();
+    expect(screen.getByText("No service is published in Planning Center yet — your checklist is ready when you are.")).toBeTruthy();
+    expect(screen.queryByText(/Choose your department below/)).toBeNull();
   });
 });

@@ -140,7 +140,9 @@ describe("progress page", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Department A/ }));
     expect(screen.getByText(/Test volunteer ·/)).toBeTruthy(); // who checked it, and when
-    expect(screen.getByText("Not done")).toBeTruthy();
+    // Open tasks have no visible "Not done" line any more (design review #6); screen readers still hear it.
+    expect(screen.getByText("Not done:")).toBeTruthy();
+    expect(screen.queryByText("Not done")).toBeNull();
   });
 
   it("gives a Director reset and, after a reset, undo", async () => {

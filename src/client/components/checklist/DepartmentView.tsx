@@ -10,14 +10,17 @@ interface Props {
   onToggleSection: (id: number) => void;
   timeZone: string;
   savingTaskIds: ReadonlySet<number>;
+  failedTaskIds: ReadonlySet<number>;
   onToggleTask: (task: ChecklistTask) => void;
 }
 
-export function DepartmentView({ department, collapsedSections, onToggleSection, timeZone, savingTaskIds, onToggleTask }: Props) {
+export function DepartmentView({ department, collapsedSections, onToggleSection, timeZone, savingTaskIds, failedTaskIds, onToggleTask }: Props) {
   const progress = categoryProgress(department);
   return (
     <section aria-labelledby="department-heading">
-      <header className="mb-4">
+      {/* On phones the sticky department bar already names the department and its count, so the heading is for
+          screen readers only there and the tasks start higher up (design.md §5). */}
+      <header className="mb-4 max-md:sr-only">
         <h1 id="department-heading" className="text-page font-semibold tracking-tight wrap-anywhere">
           {department.name}
         </h1>
@@ -44,6 +47,7 @@ export function DepartmentView({ department, collapsedSections, onToggleSection,
               onToggleExpanded={() => onToggleSection(section.id)}
               timeZone={timeZone}
               savingTaskIds={savingTaskIds}
+              failedTaskIds={failedTaskIds}
               onToggleTask={onToggleTask}
             />
           ))}

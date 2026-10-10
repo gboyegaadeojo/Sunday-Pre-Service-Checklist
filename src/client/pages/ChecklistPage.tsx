@@ -4,12 +4,13 @@ import { DepartmentNav } from "../components/checklist/DepartmentNav";
 import { DepartmentPicker } from "../components/checklist/DepartmentPicker";
 import { DepartmentScope } from "../components/checklist/DepartmentScope";
 import { DepartmentView } from "../components/checklist/DepartmentView";
+import { SaveIndicator } from "../components/checklist/SaveIndicator";
 import { ServiceOverview } from "../components/checklist/ServiceOverview";
 import { ErrorFeedback } from "../components/ui/Feedback";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { progressStatus, sectionProgress } from "../lib/checklist";
 import { recallForToday, rememberForToday } from "../lib/forToday";
-import { useChecklist } from "../lib/useChecklist";
+import { type AccessChangeReason, useChecklist } from "../lib/useChecklist";
 
 /** Sections already finished when the page loads start collapsed (design.md §3D); after that the volunteer decides. */
 const completedSectionIds = (checklist: ChecklistResponse) =>
@@ -19,9 +20,12 @@ const completedSectionIds = (checklist: ChecklistResponse) =>
     ),
   );
 
-/** onAccessChanged: the server said the session ended or access was revoked (US-03), so re-check. */
-export function ChecklistPage({ user, onAccessChanged }: { user: CurrentUser; onAccessChanged: () => void }) {
-  const { state, reload, toggle, pending, saveState, error, dismissError } = useChecklist({
+/**
+ * onAccessChanged: the server said the session ended or access was revoked (US-03), so re-check; with
+ * "unsaved_change" when that refused a tap.
+ */
+export function ChecklistPage({ user, onAccessChanged }: { user: CurrentUser; onAccessChanged: (reason?: AccessChangeReason) => void }) {
+  const { state, reload, toggle, pending, failed, saveState, error, dismissError } = useChecklist({
     userName: user.name,
     onAccessChanged,
   });
@@ -62,7 +66,8 @@ export function ChecklistPage({ user, onAccessChanged }: { user: CurrentUser; on
 
       {state.status === "ready" && renderChecklist(state.checklist)}
 
-      <ErrorFeedback message={error} onDismiss={dismissError} />
+      {/* A failed save stays on screen until dismissed or the next save succeeds (US-06, design.md §3E). */}
+      <ErrorFeedback message={error} onDismiss={dismissError} persistent />
     </main>
   );
 
@@ -90,15 +95,25 @@ export function ChecklistPage({ user, onAccessChanged }: { user: CurrentUser; on
       <>
         {/* While a scheduled volunteer sees only their own department(s), their progress leads (US-05). */}
         <ServiceOverview checklist={checklist} saveState={saveState} own={view.mode === "own" && !showAll ? own : undefined} />
-        <DepartmentScope view={view} own={own} showAll={showAll ?? false} onShowAllChange={changeShowAll} />
-        <DepartmentPicker departments={departments} selected={selected} onSelect={selectDepartment} ownIds={marked} />
-        <div className="mt-4 md:mt-6 md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-8">
+        <DepartmentScope
+          view={view}
+          own={own}
+          showAll={showAll ?? false}
+          onShowAllChange={changeShowAll}
+          published={checklist.service.published}
+        />
+        <DepartmentPicker departments={departments} selected={selected} onSelect={selectDepartment} ownIds={marked} saveState={saveState} />
+        <div className="mt-3 md:mt-6 md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-8">
           <aside className="hidden md:block">
             <nav
               aria-label="Departments"
               className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain pb-2"
             >
-              <p className="mb-2 px-4 text-meta font-medium text-fg-muted">Departments</p>
+              {/* The save status stays in view here as the checklist scrolls (US-06). */}
+              <div className="mb-2 flex items-center justify-between gap-2 px-4">
+                <p className="text-meta font-medium text-fg-muted">Departments</p>
+                <SaveIndicator state={saveState} compact />
+              </div>
               <DepartmentNav departments={departments} selectedId={selected.id} onSelect={selectDepartment} ownIds={marked} />
             </nav>
           </aside>
@@ -108,6 +123,7 @@ export function ChecklistPage({ user, onAccessChanged }: { user: CurrentUser; on
             onToggleSection={toggleSection}
             timeZone={checklist.service.timeZone}
             savingTaskIds={pending}
+            failedTaskIds={failed}
             onToggleTask={toggle}
           />
         </div>

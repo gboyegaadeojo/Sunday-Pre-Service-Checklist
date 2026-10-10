@@ -29,5 +29,6 @@ export const toCurrentUser = (user: User, mappingReady: boolean, unreachable?: s
   isDirector: user.isDirector,
   hasAccess: hasAccess(user, mappingReady),
   ...(!mappingReady && !isStaff(user) ? { settingUp: true as const } : {}),
+  ...(!mappingReady && isStaff(user) ? { teamMappingPending: true as const } : {}),
   ...(mappingReady && unreachable && !hasAccess(user, mappingReady) ? { unreachable } : {}),
 });

@@ -251,7 +251,7 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
             type="button"
             aria-pressed={filter === f.value}
             onClick={() => setFilter(f.value)}
-            className={`min-h-11 rounded-control px-3 text-sm transition-colors ${
+            className={`min-h-11 min-w-11 rounded-control px-3 text-sm transition-colors ${
               filter === f.value ? "bg-accent font-semibold text-white" : "text-fg-muted hover:bg-hover hover:text-fg"
             }`}
           >
@@ -320,7 +320,8 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                     )}
                   </span>
                   <span className="font-mono text-meta text-fg-muted md:text-right">
-                    session {short(e.sessionId)} · tab {short(e.tabId)}
+                    session {short(e.sessionId)}
+                    {e.tabId && <> · tab {short(e.tabId)}</>}
                   </span>
                 </li>
               );

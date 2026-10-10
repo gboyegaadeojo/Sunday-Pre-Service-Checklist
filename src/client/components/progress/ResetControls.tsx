@@ -56,6 +56,8 @@ export function ResetControls({ serviceDate, timeZone, checkedCount, reset, onRu
         ) : (
           <p className="text-fg-muted">This service hasn't been reset.</p>
         )}
+        {/* Said in words: a tooltip on the disabled button never shows on a phone. */}
+        {checkedCount === 0 && <p className="text-fg-muted">Nothing to reset yet: no tasks are checked.</p>}
         {notice && (
           <p role="status" className="mt-1 text-success">
             {notice}
@@ -68,7 +70,6 @@ export function ResetControls({ serviceDate, timeZone, checkedCount, reset, onRu
           variant="danger-outline"
           onClick={() => open("reset")}
           disabled={checkedCount === 0}
-          title={checkedCount === 0 ? "Nothing is checked yet" : undefined}
         >
           Reset checklist
         </Button>

@@ -4,6 +4,7 @@ import { formatServiceDate } from "../../lib/format";
 import type { SaveState } from "../../lib/useChecklist";
 import { Card } from "../ui/Card";
 import { ProgressBar } from "../ui/ProgressBar";
+import { notPublishedNote } from "./DepartmentScope";
 import { SaveIndicator } from "./SaveIndicator";
 
 interface Props {
@@ -27,7 +28,7 @@ export function ServiceOverview({ checklist, saveState, own }: Props) {
   const lead = mine ?? whole;
 
   return (
-    <Card role="region" aria-label="Service overview" className="px-4 py-3 md:px-5 md:py-4">
+    <Card role="region" aria-label="Service overview" className="px-4 py-2.5 md:px-5 md:py-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1">
         <p className="min-w-0">
           <span className="block text-meta text-fg-muted">
@@ -40,7 +41,7 @@ export function ServiceOverview({ checklist, saveState, own }: Props) {
 
       {lead.total > 0 && (
         <>
-          <div className="mt-3 flex items-center gap-3">
+          <div className="mt-2 flex items-center gap-3 md:mt-3">
             <ProgressBar progress={lead} label={mine ? "Your progress" : "Overall progress"} className="flex-1" />
             <span className="w-10 shrink-0 text-right text-meta font-medium tabular-nums">{percent(lead)}%</span>
           </div>
@@ -68,11 +69,10 @@ export function ServiceOverview({ checklist, saveState, own }: Props) {
         </>
       )}
 
-      {/* Not shown while the schedule can't be loaded: "not published" might not be true (US-04a). */}
-      {!service.published && checklist.view.note !== "schedule_unavailable" && (
-        <p className="mt-2 text-meta text-fg-muted">
-          No service is published in Planning Center yet — your checklist is ready when you are.
-        </p>
+      {/* Not shown while the schedule can't be loaded: "not published" might not be true (US-04a). Someone choosing
+          their department gets it in the note under this card instead, with "Choose your department below." */}
+      {!service.published && checklist.view.note !== "schedule_unavailable" && checklist.view.mode !== "choose" && (
+        <p className="mt-2 text-meta text-fg-muted">{notPublishedNote(checklist.view)}</p>
       )}
     </Card>
   );

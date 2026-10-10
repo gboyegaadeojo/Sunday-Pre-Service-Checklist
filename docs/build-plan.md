@@ -380,6 +380,8 @@ Built, shown and committed in parts: **7a** the fake schedule source and the map
   - Switch Planning Center to "down" and check the banner, the manual pick and the never-verified message.
 
 ### Stage 8 — Design review
+**Done (October 2026):** the review is in `docs/design-review.md` (20 numbered findings); the project owner approved all 20 and they're fixed. Screenshots stay local in `docs/design-review/` (gitignored).
+
 Every screen is built by now, with the fake sources, so this is the point to look at the app as a whole before real Planning Center (Stage 9) and deployment (Stage 10).
 - **Review every screen against `docs/design.md`** at **375px, 768px and desktop** widths: sign-in and the developer box, no access, checklist (scheduled, unscheduled, "Show all departments", fallback banner, no published service), Progress (as Volunteer and as Director/Admin, with reset and undo), the name menu and Settings, and each Admin section (Checklist, Hidden items, Lists, Users, Team mapping, Activity, History). Include loading, empty, error and confirmation states.
 - **Look for:**

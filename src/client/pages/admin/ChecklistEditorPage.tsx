@@ -160,7 +160,13 @@ export function ChecklistEditorPage({ listRef, onAccessChanged, onNavigate }: Pr
               <span className="font-medium text-fg">{list.name}</span>
               {list.isDefault ? " · the default list for new services" : " · not the default list"}
               {" · "}
-              <RouteLink to="admin-lists" current={false} onNavigate={onNavigate} className="text-accent-soft underline-offset-2 hover:underline">
+              <RouteLink
+                to="admin-lists"
+                current={false}
+                onNavigate={onNavigate}
+                // A 44px-tall hit area around the inline link without moving the text (design.md §5).
+                className="-mx-1 -my-3.5 inline-block px-1 py-3.5 text-accent-soft underline-offset-2 hover:underline"
+              >
                 All lists
               </RouteLink>
             </p>

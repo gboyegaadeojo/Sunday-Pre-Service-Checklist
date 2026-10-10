@@ -7,7 +7,7 @@ import { Switch } from "../components/ui/Switch";
 // LOCAL DEVELOPMENT ONLY. App.tsx renders this only when import.meta.env.DEV is true, so production
 // builds drop this file (test/production-build.test.ts checks the client bundle). The server side
 // also needs DEV_AUTH=true; without it this page behaves exactly like the production sign-in.
-export function DevSignInPage({ onSignedIn }: { onSignedIn: () => void }) {
+export function DevSignInPage({ onSignedIn, notice }: { onSignedIn: () => void; notice?: string | null }) {
   const [users, setUsers] = useState<DevUser[] | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +44,10 @@ export function DevSignInPage({ onSignedIn }: { onSignedIn: () => void }) {
     }
   };
 
-  if (!users) return <SignInScreen />;
+  if (!users) return <SignInScreen notice={notice} />;
 
   return (
-    <SignInScreen onSignIn={() => void signInAs("volunteer", true)} signingIn={pendingKey === "volunteer"} error={error}>
+    <SignInScreen onSignIn={() => void signInAs("volunteer", true)} signingIn={pendingKey === "volunteer"} error={error} notice={notice}>
       <section
         aria-labelledby="dev-tools-heading"
         className="mt-6 rounded-card border border-dashed border-warning/50 bg-warning/5 p-4"

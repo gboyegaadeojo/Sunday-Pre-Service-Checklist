@@ -6,17 +6,20 @@ import { Chevron } from "../ui/Chevron";
 import { CheckIcon } from "../ui/Icons";
 import { ProgressBar } from "../ui/ProgressBar";
 import { StatusDot } from "../ui/StatusDot";
+import { YoursBadge } from "../checklist/YoursBadge";
 
 interface Props {
   department: ChecklistCategory;
   timeZone: string;
   expanded: boolean;
   onToggle: () => void;
+  /** One of the person's own departments (US-05): listed first and marked "Yours". */
+  yours?: boolean;
 }
 
 // One department on the progress view (US-09, design.md §6): name, explicit status label, counts,
 // percentage and bar. Expanding shows every task with who checked it and when.
-export function DepartmentProgressCard({ department, timeZone, expanded, onToggle }: Props) {
+export function DepartmentProgressCard({ department, timeZone, expanded, onToggle, yours = false }: Props) {
   const progress = categoryProgress(department);
   const status = progressStatus(progress);
   const panelId = `progress-${department.id}`;
@@ -32,7 +35,10 @@ export function DepartmentProgressCard({ department, timeZone, expanded, onToggl
           className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-hover"
         >
           <span className="min-w-0 flex-1">
-            <span className="block text-base leading-snug font-semibold wrap-anywhere">{department.name}</span>
+            <span className="block text-base leading-snug font-semibold wrap-anywhere">
+              {department.name}
+              {yours && <YoursBadge />}
+            </span>
             <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-meta">
               {status === "empty" ? <span className="text-fg-muted">No tasks</span> : <StatusDot status={status} showLabel />}
               <span className="text-fg-muted tabular-nums">
@@ -64,11 +70,18 @@ export function DepartmentProgressCard({ department, timeZone, expanded, onToggl
                       ) : (
                         <span aria-hidden="true" className="mt-1 size-3.5 shrink-0 rounded-full border-2 border-idle" />
                       )}
+                      {/* Who and when for done tasks only: a "Not done" line under every open task made long lists
+                          hard to scan (design.md §6). The circle shows it, and screen readers hear it. */}
                       <span className="min-w-0 flex-1 text-sm">
-                        <span className={`block wrap-anywhere ${task.checkoff ? "text-fg" : "text-fg-muted"}`}>{task.text}</span>
-                        <span className="block text-meta text-fg-muted">
-                          {task.checkoff ? `${task.checkoff.by} · ${formatTime(task.checkoff.at, timeZone)}` : "Not done"}
+                        <span className={`block wrap-anywhere ${task.checkoff ? "text-fg" : "text-fg-muted"}`}>
+                          <span className="sr-only">{task.checkoff ? "Done: " : "Not done: "}</span>
+                          {task.text}
                         </span>
+                        {task.checkoff && (
+                          <span className="block text-meta text-fg-muted">
+                            {task.checkoff.by} · {formatTime(task.checkoff.at, timeZone)}
+                          </span>
+                        )}
                       </span>
                     </li>
                   ))}

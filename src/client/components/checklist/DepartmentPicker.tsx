@@ -1,18 +1,23 @@
 import type { ChecklistCategory } from "../../../shared/types";
 import { categoryProgress } from "../../lib/checklist";
+import type { SaveState } from "../../lib/useChecklist";
 import { usePopover } from "../../lib/usePopover";
 import { Chevron } from "../ui/Chevron";
 import { DepartmentNav } from "./DepartmentNav";
+import { SaveIndicator } from "./SaveIndicator";
 
 interface Props {
   departments: ChecklistCategory[];
   selected: ChecklistCategory;
   onSelect: (id: number) => void;
   ownIds?: ReadonlySet<number>;
+  /** Shown in the bar, so whether changes saved stays in view while scrolling (US-06). */
+  saveState: SaveState;
 }
 
-// Mobile department menu (design.md §3C, §5): a sticky bar that opens the same list as the sidebar.
-export function DepartmentPicker({ departments, selected, onSelect, ownIds }: Props) {
+// Mobile department menu (design.md §3C, §5): a sticky bar that opens the same list as the sidebar, and keeps the
+// save status in view.
+export function DepartmentPicker({ departments, selected, onSelect, ownIds, saveState }: Props) {
   const { open, setOpen, close, rootRef, triggerRef } = usePopover();
   const progress = categoryProgress(selected);
 
@@ -27,7 +32,10 @@ export function DepartmentPicker({ departments, selected, onSelect, ownIds }: Pr
         className="flex min-h-12 w-full items-center gap-3 rounded-control border border-line bg-card px-3 py-1.5 text-left"
       >
         <span className="min-w-0 flex-1">
-          <span className="block text-meta text-fg-muted">Department</span>
+          <span className="flex items-center justify-between gap-2">
+            <span className="text-meta text-fg-muted">Department</span>
+            <SaveIndicator state={saveState} compact />
+          </span>
           <span className="block text-sm leading-snug font-semibold wrap-anywhere">{selected.name}</span>
         </span>
         <span className="shrink-0 text-meta text-fg-muted tabular-nums">

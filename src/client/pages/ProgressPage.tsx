@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CurrentUser } from "../../shared/types";
+import type { ChecklistResponse, CurrentUser } from "../../shared/types";
 import { DepartmentProgressCard } from "../components/progress/DepartmentProgressCard";
 import { ProgressSummary } from "../components/progress/ProgressSummary";
 import { ResetControls } from "../components/progress/ResetControls";
@@ -9,6 +9,12 @@ import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { checklistProgress } from "../lib/checklist";
 import { formatServiceDate } from "../lib/format";
 import { useProgress } from "../lib/useProgress";
+
+/** Every department (US-09), the person's own first (US-05), as on the checklist. */
+const byOwnFirst = ({ categories, view }: ChecklistResponse) => [
+  ...view.own.flatMap((id) => categories.filter((c) => c.id === id)),
+  ...categories.filter((c) => !view.own.includes(c.id)),
+];
 
 const formatClock = (d: Date, timeZone: string) =>
   new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone }).format(d);
@@ -80,13 +86,14 @@ export function ProgressPage({ user, onAccessChanged }: { user: CurrentUser; onA
         <EmptyState title="This checklist has no departments yet." />
       ) : (
         <div className="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {data.categories.map((d) => (
+          {byOwnFirst(data).map((d) => (
             <DepartmentProgressCard
               key={d.id}
               department={d}
               timeZone={service.timeZone}
               expanded={expanded.has(d.id)}
               onToggle={() => toggle(d.id)}
+              yours={data.view.own.includes(d.id)}
             />
           ))}
         </div>

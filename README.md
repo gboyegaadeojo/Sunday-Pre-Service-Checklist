@@ -44,8 +44,9 @@ Built so far:
 - **Stage 5:** the checklist editor, task lists, church settings, service history, and the record of each service's checklist.
 - **Stage 6:** users and roles.
 - **Stage 7:** team mapping (7a), access by team membership with each person's department view (7b), carrying on when Planning Center can't be reached (7c), and taking the current service's date from Planning Center plans (7d).
+- **Stage 8:** a design review of every screen, role and state ([docs/design-review.md](docs/design-review.md)), with all 20 findings fixed.
 
-Next: a design review of every screen (Stage 8), the real Planning Center connection (Stage 9), and going live on Cloudflare (Stage 10).
+Next: the real Planning Center connection (Stage 9), and going live on Cloudflare (Stage 10).
 
 The full plan is in [docs/build-plan.md](docs/build-plan.md).
 
