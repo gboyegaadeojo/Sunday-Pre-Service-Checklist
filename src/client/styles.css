@@ -4,8 +4,7 @@
  * Design tokens from docs/design.md §2 and §10.
  * Tailwind's default palette is switched off, so only these colours exist. Each colour is a theme variable (below),
  * so the same utilities (bg-card, text-fg-muted…) follow the Dark or Light theme (US-08a, requirements v1.20).
- * `inline`: utilities read the variables where they're used, so an element with its own data-theme (the previews on
- * My Preferences) shows that theme.
+ * `inline`: utilities read the variables where they're used, so an element with its own data-theme shows that theme.
  */
 @theme inline {
   --color-*: initial;
@@ -33,9 +32,15 @@
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  /* Type scale: page 24, section 16–18, task 15, meta 13 (design.md §2). */
+  /*
+   * Type scale (design.md §2): page heading 24 · secondary heading 20 (title) · section 16–18 (text-base/text-lg) ·
+   * task and card text 15 · body, UI and page descriptions 14 (text-sm) · metadata 13. Text boxes stay 16 (text-base)
+   * so phones don't zoom in on them. Weights: 400, 500, 600; bold only in the logo mark.
+   */
   --text-page: 1.5rem;
   --text-page--line-height: 2rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
   --text-task: 0.9375rem;
   --text-task--line-height: 1.375rem;
   --text-meta: 0.8125rem;

@@ -4,6 +4,7 @@ import { getJson, isAuthError } from "../../api";
 import { RouteLink } from "../../components/app/RouteLink";
 import { Card } from "../../components/ui/Card";
 import { CheckIcon } from "../../components/ui/Icons";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
 import { ACTION, OUTCOME, describeCheckoff, formatWhen, short } from "../../lib/activity";
@@ -67,13 +68,10 @@ function ServiceList({ onAccessChanged, onNavigate }: Omit<Props, "search">) {
 
   return (
     <main className="mx-auto max-w-3xl space-y-4 px-4 pt-4 pb-16 md:px-6 md:pt-6">
-      <header>
-        <h1 className="text-page font-semibold tracking-tight">Service history</h1>
-        <p className="text-meta text-fg-muted">
-          Past services, newest first. Each shows what was checked as it was at the time, even if the checklist has changed since.
-          Nothing here can be edited.
-        </p>
-      </header>
+      <PageHeader
+        title="Service history"
+        description="Past services, newest first. Each shows what was checked as it was at the time, even if the checklist has changed since. Nothing here can be edited."
+      />
       {services.length === 0 ? (
         <EmptyState title="No past services yet." message="A service appears here once its date has passed." />
       ) : (
@@ -164,7 +162,7 @@ function ServiceRecord({ serviceId, onAccessChanged, onNavigate }: Omit<Props, "
       <header className="space-y-1">
         {back}
         <h1 className="text-page font-semibold tracking-tight">{formatServiceDate(service.date)}</h1>
-        <p className="text-meta text-fg-muted wrap-anywhere">
+        <p className="text-sm leading-relaxed text-fg-muted wrap-anywhere">
           <ListName list={service.list} /> · {summaryCounts(service)}
         </p>
         {service.totalCount !== null && (

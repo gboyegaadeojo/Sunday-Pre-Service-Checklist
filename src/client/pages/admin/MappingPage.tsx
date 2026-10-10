@@ -1,13 +1,14 @@
 import { useCallback, useId, useState } from "react";
 import type { MappingLink, MappingPosition, MappingResponse, MappingTeam, SetLinkRequest } from "../../../shared/types";
-import { MAPPING_CHANGED } from "../../lib/adminAttention";
 import { SaveIndicator } from "../../components/checklist/SaveIndicator";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
 import { AlertIcon, InfoIcon } from "../../components/ui/Icons";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
 import { Switch } from "../../components/ui/Switch";
+import { MAPPING_CHANGED } from "../../lib/adminAttention";
 import { plural } from "../../lib/checklist";
 import { formatDateTime } from "../../lib/format";
 import { useMapping } from "../../lib/useAdminList";
@@ -49,24 +50,22 @@ export function MappingPage({ onAccessChanged }: { onAccessChanged: () => void }
 
   return (
     <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">
-      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <div className="min-w-0 max-w-2xl">
-          <h1 className="text-page font-semibold tracking-tight">Team mapping</h1>
-          <p className="text-meta text-fg-muted">
-            Link the teams and positions people are scheduled in to checklist departments. People on a linked team can use the
-            app, and people scheduled in a linked position see their department first. Nothing is linked automatically.
-          </p>
-          <SaveIndicator state={mapping.saveState} />
-        </div>
-        {data.source && (
+      <PageHeader
+        title="Team mapping"
+        description="Link the teams and positions people are scheduled in to checklist departments. People on a linked team can use the app, and people scheduled in a linked position see their department first. Nothing is linked automatically."
+        actions={
+          data.source && (
           <div className="flex flex-col items-start gap-1">
             <Button onClick={() => void change(mapping.refresh, `Teams and positions refreshed from ${data.source?.label}.`)} disabled={busy}>
               {busy ? "Working…" : `Refresh from ${data.source.label}`}
             </Button>
             {data.fetchedAt && <span className="text-meta text-fg-muted">Fetched {formatDateTime(data.fetchedAt, data.timeZone)}</span>}
           </div>
-        )}
-      </header>
+          )
+        }
+      >
+        <SaveIndicator state={mapping.saveState} />
+      </PageHeader>
 
       {!data.source ? (
         <EmptyState

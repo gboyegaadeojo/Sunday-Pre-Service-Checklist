@@ -23,7 +23,7 @@ export function DepartmentView({ department, collapsedSections, onToggleSection,
           screen readers only there and the tasks start higher up (design.md §5). */}
       {/* The department's header card: name, "X of Y complete · Z remaining" and its bar (design.md §3). */}
       <Card className="mb-3 px-5 py-4 max-md:sr-only">
-        <h1 id="department-heading" className="text-lg leading-snug font-semibold wrap-anywhere">
+        <h1 id="department-heading" className="text-title font-semibold wrap-anywhere">
           {department.name}
         </h1>
         {progress.total > 0 && (

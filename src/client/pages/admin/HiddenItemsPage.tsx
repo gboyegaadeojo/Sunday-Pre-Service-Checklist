@@ -6,6 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
 import { plural } from "../../lib/checklist";
 import { formatDateTime } from "../../lib/format";
@@ -92,13 +93,7 @@ export function HiddenItemsPage({ listRef, onAccessChanged, onNavigate }: Props)
         <span aria-hidden="true">←</span> Back to checklist
       </RouteLink>
 
-      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-        <div className="min-w-0">
-          <h1 className="text-page font-semibold tracking-tight">Hidden items</h1>
-          <p className="text-meta text-fg-muted">{list.name}</p>
-        </div>
-        <SaveIndicator state={hidden.saveState} />
-      </header>
+      <PageHeader title="Hidden items" description={list.name} actions={<SaveIndicator state={hidden.saveState} />} />
 
       <p className="text-sm text-fg-muted">
         Hidden items aren't on anyone's checklist, but nothing was erased. Restore brings an item back where it was, with its

@@ -19,6 +19,7 @@ import type {
 import { getJson, isAuthError } from "../api";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { PageHeader } from "../components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { ACTION, OUTCOME, describeCheckoff, formatWhen, short } from "../lib/activity";
 import { formatServiceDate } from "../lib/format";
@@ -229,19 +230,20 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
 
   return (
     <main className="mx-auto max-w-app space-y-4 px-4 pt-4 pb-16 md:px-6 md:pt-6">
-      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div className="max-w-2xl">
-          <h1 className="text-page font-semibold tracking-tight">Activity</h1>
-          <p className="text-meta text-fg-muted">
+      <PageHeader
+        title="Activity"
+        description={
+          <>
             Check-offs, resets and undos for {formatServiceDate(service.date)}, and changes to the checklist, settings, roles and team mapping, newest
-            first.
-            Entries can't be edited or deleted. Session and tab IDs show which sign-in and which browser tab made each change.
-          </p>
-        </div>
-        <Button onClick={() => void load()} disabled={refreshing}>
-          {refreshing ? "Refreshing…" : "Refresh"}
-        </Button>
-      </header>
+            first. Entries can't be edited or deleted. Session and tab IDs show which sign-in and which browser tab made each change.
+          </>
+        }
+        actions={
+          <Button onClick={() => void load()} disabled={refreshing}>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </Button>
+        }
+      />
 
       <fieldset className="inline-flex flex-wrap gap-1 rounded-control border border-line bg-card p-1">
         <legend className="sr-only">Show</legend>

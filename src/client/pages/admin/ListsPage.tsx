@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { ErrorState, LoadingState } from "../../components/ui/States";
 import { plural } from "../../lib/checklist";
 import { formatServiceDate } from "../../lib/format";
@@ -223,10 +224,10 @@ export function ListsPage({ onAccessChanged, onNavigate }: Props) {
 
   return (
     <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">
-      <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-        <div className="min-w-0">
-          <h1 className="text-page font-semibold tracking-tight">Task lists</h1>
-          <p className="text-meta text-fg-muted">
+      <PageHeader
+        title="Task lists"
+        description={
+          <>
             New services use the default list. A service keeps the list it started with.
             {serviceDate && serviceList && (
               <>
@@ -234,17 +235,19 @@ export function ListsPage({ onAccessChanged, onNavigate }: Props) {
                 {serviceDate} uses <span className="font-medium text-fg">{serviceList.name}</span>.
               </>
             )}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {!creating && (
-            <Button variant="primary" onClick={() => setCreating({ name: "", description: "", copyFrom: null })}>
-              New list
-            </Button>
-          )}
-          <SaveIndicator state={lists.saveState} />
-        </div>
-      </header>
+          </>
+        }
+        actions={
+          <>
+            {!creating && (
+              <Button variant="primary" onClick={() => setCreating({ name: "", description: "", copyFrom: null })}>
+                New list
+              </Button>
+            )}
+            <SaveIndicator state={lists.saveState} />
+          </>
+        }
+      />
 
       {creating && (
         <Card className="p-4">

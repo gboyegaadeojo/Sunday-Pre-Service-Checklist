@@ -96,6 +96,20 @@ Recommended hierarchy:
 
 Maintain readable line heights, consistent spacing, clear visual hierarchy, and adequate contrast.
 
+As built (October 2026), the tokens in `styles.css`:
+
+| Use | Size | Weight |
+|---|---|---|
+| Page heading (`text-page`) | 24px | 600 |
+| Secondary heading, e.g. the department header card (`text-title`) | 20px | 600 |
+| Section and card headings (`text-base`, `text-lg` for an editor department) | 16–18px | 600 |
+| Task text, card text (`text-task`) | 15px | 400 |
+| Body, UI text, page descriptions (`text-sm`, relaxed line height, reading width) | 14px | 400 |
+| Metadata, timestamps (`text-meta`) | 13px | 400–500 |
+| Text boxes | 16px, so phones don't zoom in | 400 |
+
+Bold (700) only in the logo mark. Every page heading uses the shared `PageHeader` (title, 14px description, actions on the right, then 24px to the content). Spacing follows the 4px scale: 4px from heading to description, 12px between related cards, 16px card padding on phones and 20px on desktop, 24px between major blocks.
+
 ## 3. Redesign the Volunteer Checklist
 
 The volunteer checklist is the highest-priority screen.

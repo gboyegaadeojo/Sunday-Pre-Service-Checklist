@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-// Appearance (US-08a, requirements v1.20): each person chooses Dark, Light or System on My Preferences, remembered
-// on this device. Dark is the default. System isn't a third look: it picks Dark or Light from the device's setting,
+// Appearance (US-08a, requirements v1.21): each person chooses Dark, Light or System in the name menu (or on the
+// sign-in screen), remembered on this device. Dark is the default. System isn't a third look: it picks Dark or Light from the device's setting,
 // and follows it when it changes. The inline script in index.html applies the stored choice before the page first
 // draws (no flash); keep its key, values and logic in step with this file.
 
@@ -60,7 +60,7 @@ export function startThemeSync(): () => void {
   return () => query.removeEventListener("change", onChange);
 }
 
-/** The choice and the theme showing, for My Preferences (re-rendered when the device's setting changes). */
+/** The choice and the theme showing, for the name menu and the sign-in screen (re-rendered when the device's setting changes). */
 export function useThemePreference() {
   const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
   const [, setDeviceLight] = useState(() => systemQuery()?.matches ?? false);

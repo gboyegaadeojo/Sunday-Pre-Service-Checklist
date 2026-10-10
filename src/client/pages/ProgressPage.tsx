@@ -5,6 +5,7 @@ import { ProgressSummary } from "../components/progress/ProgressSummary";
 import { ResetControls } from "../components/progress/ResetControls";
 import { Button } from "../components/ui/Button";
 import { AlertIcon } from "../components/ui/Icons";
+import { PageHeader } from "../components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
 import { checklistProgress } from "../lib/checklist";
 import { formatServiceDate } from "../lib/format";
@@ -44,22 +45,24 @@ export function ProgressPage({ user, onAccessChanged }: { user: CurrentUser; onA
 
   return (
     <main className="mx-auto max-w-app space-y-4 px-4 pt-4 pb-16 md:px-6 md:pt-6">
-      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div>
-          <h1 className="text-page font-semibold tracking-tight">Progress</h1>
-          <p className="text-meta text-fg-muted">
+      <PageHeader
+        title="Progress"
+        description={
+          <>
             {service.isToday ? "Today's service" : "Upcoming service"} · {formatServiceDate(service.date)}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <p role="status" className="text-meta text-fg-muted">
-            {updatedAt && <>Updated {formatClock(updatedAt, service.timeZone)}</>}
-          </p>
-          <Button onClick={refresh} disabled={refreshing}>
-            {refreshing ? "Refreshing…" : "Refresh"}
-          </Button>
-        </div>
-      </header>
+          </>
+        }
+        actions={
+          <>
+            <p role="status" className="text-meta text-fg-muted">
+              {updatedAt && <>Updated {formatClock(updatedAt, service.timeZone)}</>}
+            </p>
+            <Button onClick={refresh} disabled={refreshing}>
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </Button>
+          </>
+        }
+      />
 
       {staleError && (
         <p role="alert" className="flex items-start gap-2 rounded-card border border-warning/40 bg-warning/5 px-4 py-2.5 text-sm">

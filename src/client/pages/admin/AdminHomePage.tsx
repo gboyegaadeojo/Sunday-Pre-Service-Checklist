@@ -2,6 +2,7 @@ import { AdminShortcuts } from "../../components/admin/AdminLayout";
 import { RouteLink } from "../../components/app/RouteLink";
 import { Card } from "../../components/ui/Card";
 import { AlertIcon, CheckIcon } from "../../components/ui/Icons";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { attentionItems, useMappingStatus } from "../../lib/adminAttention";
 import type { Navigate } from "../../lib/router";
 
@@ -15,11 +16,8 @@ export function AdminHomePage({ onNavigate }: { onNavigate: Navigate }) {
   const sidebarCounts = { attention: (status?.unlinked ?? 0) + (status?.missing ?? 0), newTeams: status?.newTeams ?? 0 };
 
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-4 pt-4 pb-24 md:px-6 md:pt-6">
-      <header>
-        <h1 className="text-page font-semibold tracking-tight">Admin home</h1>
-        <p className="text-sm text-fg-muted">What needs your attention, and every part of Administrative Settings.</p>
-      </header>
+    <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">
+      <PageHeader title="Admin home" description="What needs your attention, and every part of Administrative Settings." />
 
       <section aria-labelledby="attention-heading">
         <h2 id="attention-heading" className="mb-2 text-base font-semibold">
@@ -59,7 +57,7 @@ export function AdminHomePage({ onNavigate }: { onNavigate: Navigate }) {
         )}
       </section>
 
-      <section aria-labelledby="shortcuts-heading">
+      <section aria-labelledby="shortcuts-heading" className="pt-4">
         <h2 id="shortcuts-heading" className="mb-2 text-base font-semibold">
           Shortcuts
         </h2>

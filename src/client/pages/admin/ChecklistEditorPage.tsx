@@ -19,6 +19,7 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
 import type { Navigate } from "../../lib/router";
 import { type ListRef, useAdminList } from "../../lib/useAdminList";
@@ -153,10 +154,10 @@ export function ChecklistEditorPage({ listRef, onAccessChanged, onNavigate }: Pr
       }}
     >
       <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">
-        <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-          <div className="min-w-0">
-            <h1 className="text-page font-semibold tracking-tight">Checklist</h1>
-            <p className="text-meta text-fg-muted">
+        <PageHeader
+          title="Checklist"
+          description={
+            <>
               <span className="font-medium text-fg">{list.name}</span>
               {list.isDefault ? " · the default list for new services" : " · not the default list"}
               {" · "}
@@ -169,9 +170,10 @@ export function ChecklistEditorPage({ listRef, onAccessChanged, onNavigate }: Pr
               >
                 All lists
               </RouteLink>
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            </>
+          }
+          actions={
+            <>
             {/* Starts Reorder mode; the sticky bar below holds Done while it's on. */}
             {!reordering && (
               <Button id={REORDER_START} onClick={toggleReordering}>
@@ -189,8 +191,9 @@ export function ChecklistEditorPage({ listRef, onAccessChanged, onNavigate }: Pr
             </RouteLink>
             {/* Last, so its empty idle state doesn't push the buttons in. */}
             <SaveIndicator state={actions.saveState} />
-          </div>
-        </header>
+            </>
+          }
+        />
 
         {reordering ? (
           // Stays in view while scrolling (below the app header), so leaving the mode is always one tap away.

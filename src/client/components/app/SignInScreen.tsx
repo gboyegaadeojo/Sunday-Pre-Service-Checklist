@@ -39,7 +39,7 @@ export function SignInScreen({ onSignIn, signingIn = false, error = null, notice
           </p>
           <Button
             variant="primary"
-            className="mt-6 min-h-12 w-full text-[15px]"
+            className="mt-6 min-h-12 w-full text-task"
             onClick={onSignIn}
             disabled={!onSignIn || signingIn}
           >
