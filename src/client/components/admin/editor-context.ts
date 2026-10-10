@@ -33,6 +33,8 @@ export interface EditorContextValue {
   reorderItem: (kind: StructureKind, id: number, direction: "up" | "down") => void;
   /** The item that just moved (itemKey), briefly highlighted so it's easy to find again. */
   recent: string | null;
+  /** Reorder mode (build plan 5c.2): rows show up/down arrows instead of their ⋯ menus. */
+  reordering: boolean;
 }
 
 export const EditorContext = createContext<EditorContextValue | null>(null);
@@ -47,6 +49,10 @@ export const itemKey = (kind: StructureKind, id: number) => `${kind}-${id}`;
 
 /** ID of an item's "⋯" button, so focus can return to it after the item moves. */
 export const menuButtonId = (kind: StructureKind, id: number) => `editor-menu-${itemKey(kind, id)}`;
+
+/** ID of an item's up or down arrow in Reorder mode, so focus can follow the item. */
+export const reorderButtonId = (kind: StructureKind, id: number, direction: "up" | "down") =>
+  `editor-reorder-${itemKey(kind, id)}-${direction}`;
 
 /** Background for the item that just moved. */
 export const RECENT_CLASS = "bg-accent/15";

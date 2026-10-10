@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NAME_MAX, type StructureKind } from "../../../shared/types";
 import { AddButton } from "../../components/admin/AddButton";
 import { EditorCategory } from "../../components/admin/EditorCategory";
@@ -9,11 +9,13 @@ import {
   type MoveRequest,
   itemKey,
   menuButtonId,
+  reorderButtonId,
 } from "../../components/admin/editor-context";
 import { MoveDialog } from "../../components/admin/MoveDialog";
 import { TextEditor } from "../../components/admin/TextEditor";
 import { RouteLink } from "../../components/app/RouteLink";
 import { SaveIndicator } from "../../components/checklist/SaveIndicator";
+import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
@@ -23,9 +25,11 @@ import { useAdminList } from "../../lib/useAdminList";
 
 const HIDE_TITLE: Record<HideRequest["kind"], string> = { category: "department", section: "section", task: "task" };
 
-/** Puts focus back on an item's "⋯" button once it has re-rendered in its new place. */
-const focusMenu = (kind: StructureKind, id: number) =>
-  requestAnimationFrame(() => document.getElementById(menuButtonId(kind, id))?.focus());
+/** Where focus goes once a moved item has re-rendered: the first of these IDs that is present and enabled. */
+type FocusTarget = string[];
+
+const REORDER_START = "editor-reorder-start";
+const REORDER_DONE = "editor-reorder-done";
 
 interface Props {
   onAccessChanged: () => void;
@@ -45,6 +49,20 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
   const [recent, setRecent] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const dismissNotice = useCallback(() => setNotice(null), []);
+  const [reordering, setReordering] = useState(false);
+  const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+  const reorderBusy = useRef(false);
+
+  // Keep focus on a moved item (its ⋯ button, or the same arrow in Reorder mode, or the other arrow once
+  // it reaches an end), so repeated moves need no hunting. Runs after each render until it lands.
+  useEffect(() => {
+    if (!focusTarget) return;
+    const el = focusTarget.map((id) => document.getElementById(id) as HTMLButtonElement | null).find((b) => b && !b.disabled);
+    if (el) {
+      el.focus();
+      setFocusTarget(null);
+    }
+  });
 
   // The highlight on a moved item fades after a moment.
   useEffect(() => {
@@ -81,9 +99,24 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
   };
 
   const reorderItem = async (kind: StructureKind, id: number, direction: "up" | "down") => {
-    if (!(await actions.reorder(kind, id, direction))) return;
+    // One move at a time: a tap while the last one is saving is ignored, so arrows never act on stale positions.
+    if (reorderBusy.current) return;
+    reorderBusy.current = true;
+    const ok = await actions.reorder(kind, id, direction);
+    reorderBusy.current = false;
+    if (!ok) return;
     setRecent(itemKey(kind, id));
-    focusMenu(kind, id);
+    const other = direction === "up" ? "down" : "up";
+    setFocusTarget(
+      reordering ? [reorderButtonId(kind, id, direction), reorderButtonId(kind, id, other)] : [menuButtonId(kind, id)],
+    );
+  };
+
+  // The button that was pressed disappears, so focus moves to its counterpart (Done, or Reorder again).
+  const toggleReordering = () => {
+    setEditing(null);
+    setFocusTarget([reordering ? REORDER_START : REORDER_DONE]);
+    setReordering(!reordering);
   };
 
   const confirmMove = async (destinationId: number) => {
@@ -100,7 +133,7 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
     if (department) setExpanded((prev) => new Set(prev).add(department.id));
     setRecent(itemKey(move.kind, move.id));
     setNotice(`Moved “${move.name}” to ${[department?.name, move.kind === "task" ? section?.name : undefined].filter(Boolean).join(" › ")}.`);
-    focusMenu(move.kind, move.id);
+    setFocusTarget([menuButtonId(move.kind, move.id)]);
     setMove(null);
   };
 
@@ -114,6 +147,7 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
         requestMove: setMove,
         reorderItem: (kind, id, direction) => void reorderItem(kind, id, direction),
         recent,
+        reordering,
       }}
     >
       <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">
@@ -126,7 +160,12 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <SaveIndicator state={actions.saveState} />
+            {/* Starts Reorder mode; the sticky bar below holds Done while it's on. */}
+            {!reordering && (
+              <Button id={REORDER_START} onClick={toggleReordering}>
+                Reorder
+              </Button>
+            )}
             <RouteLink
               to="admin-hidden"
               current={false}
@@ -135,13 +174,28 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
             >
               Hidden items
             </RouteLink>
+            {/* Last, so its empty idle state doesn't push the buttons in. */}
+            <SaveIndicator state={actions.saveState} />
           </div>
         </header>
 
-        <p className="text-sm text-fg-muted">
-          Changes are live for everyone as soon as you save. Hidden items disappear from checklists, and past services keep
-          their records. Use each item's ⋯ menu to move or reorder it.
-        </p>
+        {reordering ? (
+          // Stays in view while scrolling (below the app header), so leaving the mode is always one tap away.
+          <div className="sticky top-14 z-20 -mx-4 flex items-center justify-between gap-3 border-b border-line bg-bg px-4 py-2 md:-mx-6 md:px-6">
+            <p className="min-w-0 text-sm">
+              <span className="font-semibold">Reordering.</span>{" "}
+              <span className="text-fg-muted">Use the arrows to move items. Each move saves right away.</span>
+            </p>
+            <Button id={REORDER_DONE} variant="primary" onClick={toggleReordering}>
+              Done
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-fg-muted">
+            Changes are live for everyone as soon as you save. Hidden items disappear from checklists, and past services keep
+            their records. Use each item's ⋯ menu to edit, move or hide it, or Reorder to move several items with arrows.
+          </p>
+        )}
 
         {categories.length === 0 && editing?.kind !== "add-category" && (
           <EmptyState title="This checklist has no departments yet." message="Add one to start building the checklist." />
@@ -159,7 +213,7 @@ export function ChecklistEditorPage({ onAccessChanged, onNavigate }: Props) {
           ))}
         </div>
 
-        {editing?.kind === "add-category" ? (
+        {reordering ? null : editing?.kind === "add-category" ? (
           <Card className="p-4">
             <TextEditor
               label="New department"

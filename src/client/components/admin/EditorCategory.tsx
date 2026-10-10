@@ -6,6 +6,7 @@ import { Chevron } from "../ui/Chevron";
 import { AddButton } from "./AddButton";
 import { type Position, RECENT_CLASS, itemKey, menuButtonId, reorderItems, useEditor } from "./editor-context";
 import { EditorSection } from "./EditorSection";
+import { ReorderButtons } from "./ReorderButtons";
 import { TextEditor } from "./TextEditor";
 
 interface Props {
@@ -17,7 +18,7 @@ interface Props {
 
 export function EditorCategory({ category, position, expanded, onToggle }: Props) {
   const editor = useEditor();
-  const { editing, setEditing, actions, requestHide, recent } = editor;
+  const { editing, setEditing, actions, requestHide, recent, reordering } = editor;
   const taskCount = category.sections.reduce((n, s) => n + s.tasks.length, 0);
   const renaming = editing?.kind === "rename-category" && editing.categoryId === category.id;
   const addingSection = editing?.kind === "add-section" && editing.categoryId === category.id;
@@ -65,26 +66,30 @@ export function EditorCategory({ category, position, expanded, onToggle }: Props
               <Chevron open={expanded} />
             </button>
           </h2>
-          <ActionMenu
-            id={menuButtonId("category", category.id)}
-            label={`Actions for department: ${category.name}`}
-            items={[
-              { label: "Rename", onSelect: () => setEditing({ kind: "rename-category", categoryId: category.id }) },
-              {
-                label: "Add section",
-                onSelect: () => {
-                  if (!expanded) onToggle();
-                  setEditing({ kind: "add-section", categoryId: category.id });
+          {reordering ? (
+            <ReorderButtons kind="category" id={category.id} name={category.name} position={position} />
+          ) : (
+            <ActionMenu
+              id={menuButtonId("category", category.id)}
+              label={`Actions for department: ${category.name}`}
+              items={[
+                { label: "Rename", onSelect: () => setEditing({ kind: "rename-category", categoryId: category.id }) },
+                {
+                  label: "Add section",
+                  onSelect: () => {
+                    if (!expanded) onToggle();
+                    setEditing({ kind: "add-section", categoryId: category.id });
+                  },
                 },
-              },
-              ...reorderItems(editor, "category", category.id, position),
-              {
-                label: "Hide department",
-                danger: true,
-                onSelect: () => requestHide({ kind: "category", id: category.id, name: category.name, details: hideDetails }),
-              },
-            ]}
-          />
+                ...reorderItems(editor, "category", category.id, position),
+                {
+                  label: "Hide department",
+                  danger: true,
+                  onSelect: () => requestHide({ kind: "category", id: category.id, name: category.name, details: hideDetails }),
+                },
+              ]}
+            />
+          )}
         </div>
       )}
 
@@ -104,21 +109,23 @@ export function EditorCategory({ category, position, expanded, onToggle }: Props
               />
             ))}
           </div>
-          <div className="border-t border-line/70 px-2 py-2">
-            {addingSection ? (
-              <div className="p-2">
-                <TextEditor
-                  label={`New section in ${category.name}`}
-                  maxLength={NAME_MAX}
-                  saveLabel="Add section"
-                  onSave={(name) => actions.addSection(category.id, name)}
-                  onCancel={() => setEditing(null)}
-                />
-              </div>
-            ) : (
-              <AddButton label="Add section" onClick={() => setEditing({ kind: "add-section", categoryId: category.id })} />
-            )}
-          </div>
+          {!reordering && (
+            <div className="border-t border-line/70 px-2 py-2">
+              {addingSection ? (
+                <div className="p-2">
+                  <TextEditor
+                    label={`New section in ${category.name}`}
+                    maxLength={NAME_MAX}
+                    saveLabel="Add section"
+                    onSave={(name) => actions.addSection(category.id, name)}
+                    onCancel={() => setEditing(null)}
+                  />
+                </div>
+              ) : (
+                <AddButton label="Add section" onClick={() => setEditing({ kind: "add-section", categoryId: category.id })} />
+              )}
+            </div>
+          )}
         </div>
       )}
     </Card>

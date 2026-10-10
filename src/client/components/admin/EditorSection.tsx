@@ -4,6 +4,7 @@ import { ActionMenu } from "../ui/ActionMenu";
 import { AddButton } from "./AddButton";
 import { type Position, RECENT_CLASS, itemKey, menuButtonId, reorderItems, useEditor } from "./editor-context";
 import { EditorTaskRow } from "./EditorTaskRow";
+import { ReorderButtons } from "./ReorderButtons";
 import { TextEditor } from "./TextEditor";
 
 interface Props {
@@ -16,7 +17,7 @@ interface Props {
 
 export function EditorSection({ section, categoryId, number, position }: Props) {
   const editor = useEditor();
-  const { editing, setEditing, actions, requestHide, requestMove, recent } = editor;
+  const { editing, setEditing, actions, requestHide, requestMove, recent, reordering } = editor;
   const renaming = editing?.kind === "rename-section" && editing.sectionId === section.id;
   const addingTask = editing?.kind === "add-task" && editing.sectionId === section.id;
 
@@ -41,27 +42,31 @@ export function EditorSection({ section, categoryId, number, position }: Props) 
             {section.name}
           </h3>
           <span className="shrink-0 text-meta text-fg-muted tabular-nums">{plural(section.tasks.length, "task")}</span>
-          <ActionMenu
-            id={menuButtonId("section", section.id)}
-            label={`Actions for section: ${section.name}`}
-            items={[
-              { label: "Rename", onSelect: () => setEditing({ kind: "rename-section", sectionId: section.id }) },
-              { label: "Add task", onSelect: () => setEditing({ kind: "add-task", sectionId: section.id }) },
-              ...reorderItems(editor, "section", section.id, position),
-              { label: "Move to…", onSelect: () => requestMove({ kind: "section", id: section.id, name: section.name, categoryId }) },
-              {
-                label: "Hide section",
-                danger: true,
-                onSelect: () =>
-                  requestHide({
-                    kind: "section",
-                    id: section.id,
-                    name: section.name,
-                    details: section.tasks.length > 0 ? [`Its ${plural(section.tasks.length, "task")} will be hidden with it.`] : [],
-                  }),
-              },
-            ]}
-          />
+          {reordering ? (
+            <ReorderButtons kind="section" id={section.id} name={section.name} position={position} />
+          ) : (
+            <ActionMenu
+              id={menuButtonId("section", section.id)}
+              label={`Actions for section: ${section.name}`}
+              items={[
+                { label: "Rename", onSelect: () => setEditing({ kind: "rename-section", sectionId: section.id }) },
+                { label: "Add task", onSelect: () => setEditing({ kind: "add-task", sectionId: section.id }) },
+                ...reorderItems(editor, "section", section.id, position),
+                { label: "Move to…", onSelect: () => requestMove({ kind: "section", id: section.id, name: section.name, categoryId }) },
+                {
+                  label: "Hide section",
+                  danger: true,
+                  onSelect: () =>
+                    requestHide({
+                      kind: "section",
+                      id: section.id,
+                      name: section.name,
+                      details: section.tasks.length > 0 ? [`Its ${plural(section.tasks.length, "task")} will be hidden with it.`] : [],
+                    }),
+                },
+              ]}
+            />
+          )}
         </div>
       )}
 
@@ -78,22 +83,24 @@ export function EditorSection({ section, categoryId, number, position }: Props) 
         ))}
       </ul>
 
-      <div className="pl-6">
-        {addingTask ? (
-          <div className="py-2 pr-4">
-            <TextEditor
-              label={`New task in ${section.name}`}
-              maxLength={TASK_TEXT_MAX}
-              multiline
-              saveLabel="Add task"
-              onSave={(text) => actions.addTask(section.id, text)}
-              onCancel={() => setEditing(null)}
-            />
-          </div>
-        ) : (
-          <AddButton label="Add task" onClick={() => setEditing({ kind: "add-task", sectionId: section.id })} />
-        )}
-      </div>
+      {!reordering && (
+        <div className="pl-6">
+          {addingTask ? (
+            <div className="py-2 pr-4">
+              <TextEditor
+                label={`New task in ${section.name}`}
+                maxLength={TASK_TEXT_MAX}
+                multiline
+                saveLabel="Add task"
+                onSave={(text) => actions.addTask(section.id, text)}
+                onCancel={() => setEditing(null)}
+              />
+            </div>
+          ) : (
+            <AddButton label="Add task" onClick={() => setEditing({ kind: "add-task", sectionId: section.id })} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

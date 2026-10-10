@@ -239,7 +239,8 @@ Built in parts, each approved and committed on its own. The server rejects every
 - **Test in the browser:** sign in as each test user and confirm roles, check-offs, reset/undo and both logs work as before. The Activity view shows the same names.
 
 **5c.2 — Reorder mode (small follow-up)**
-- A "Reorder" toggle in the editor shows up/down arrow buttons (44 px) on every department, section and task row, so several moves don't need the ⋯ menu each time. The ⋯ menu's Move up/Move down stay.
+- A "Reorder" toggle in the editor shows up/down arrow buttons (44 px) on every department, section and task row, so several moves don't need the ⋯ menu each time. While it's on, the arrows take the place of the ⋯ menus and the "Add …" buttons are hidden, so rows stay readable at 375 px. A sticky bar with Done stays in view. Outside Reorder mode the ⋯ menu's Move up/Move down stay.
+- Focus stays on the moved item's arrow (its other arrow once it reaches an end), and a tap while the previous move is saving is ignored.
 - Same server endpoints as 5b, and reorders are logged as in 5c.
 - **Test in the browser:** at 375 px, turn on Reorder and move a task down three places with the arrows. Then turn it off.
 
