@@ -6,6 +6,7 @@ const TABS: { route: Route; label: string; active: (r: Route) => boolean }[] = [
   { route: "admin-checklist", label: "Checklist", active: (r) => r === "admin-checklist" || r === "admin-hidden" },
   { route: "admin-lists", label: "Lists", active: (r) => r === "admin-lists" },
   { route: "admin-activity", label: "Activity", active: (r) => r === "admin-activity" },
+  { route: "admin-history", label: "History", active: (r) => r === "admin-history" },
 ];
 
 // Sections of the Admin workspace (design.md §7). Only sections that exist are listed.

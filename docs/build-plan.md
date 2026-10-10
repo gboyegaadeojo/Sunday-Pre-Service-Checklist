@@ -270,10 +270,18 @@ Built in parts, each approved and committed on its own. The server rejects every
 - **Test in the browser:** open Settings from the user menu; change the team name and see the preview, header and tab title follow; clear the short name; change the service day and confirm the move (the checklist shows the new date); see the three entries under Activity › Settings; confirm a Director has no Settings item, gets 403 and sees "Admins only" at `/settings`; confirm `/admin/settings` lands on `/settings`.
 
 **5d.3 — Service history (design.md §7)**
-- Each past service's check-offs (by the department and section snapshots) and activity log, read-only. Nothing in the admin area can edit or delete log entries.
+- Admin › **History** (`/admin/history`): every service except the current one, newest first, with its list (marked if since hidden), how many tasks were checked and how many times it was reset. `GET /api/admin/history`, Admins only.
+- Each service (`/admin/history?service=ID`, `GET /api/admin/history/:id`) shows, read-only:
+  - the tasks still checked at the end, grouped by the department and section **snapshots** (text, department and section as at check-off time), so later edits, moves and hides never change them. Departments and sections keep their current order, hidden ones included.
+  - every reset, with who, when, how many check-offs it cleared, and any undo.
+  - its activity log (`GET /api/services/:id/events`). For a past service, task text comes from the check-off snapshot, not today's text.
+- No "X of Y" totals: the app doesn't record which tasks a past service's checklist held, so only what was checked is shown (design.md preface: no made-up numbers).
+- Nothing in the admin area can edit or delete history or log entries.
 - **Test in the browser:**
   - Edit a task that's already checked and confirm the service history still shows the old text.
   - Delete a category and confirm it disappears from the checklist but past data still displays.
+  - Move a checked task to another section and confirm the past service still shows it where it was.
+  - Confirm a Director has no History tab and gets 403 / "Admins only".
 
 ### Stage 6 — Admin user management
 - Users page: grant or revoke Admin and Director (US-03). Revoking takes effect on the user's next page load.

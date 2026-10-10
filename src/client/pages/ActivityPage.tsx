@@ -15,20 +15,8 @@ import { getJson, isAuthError } from "../api";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { EmptyState, ErrorState, LoadingState } from "../components/ui/States";
+import { ACTION, OUTCOME, describeCheckoff, formatWhen, short } from "../lib/activity";
 import { formatServiceDate } from "../lib/format";
-
-const ACTION: Record<ActivityEvent["action"], { label: string; tone: string }> = {
-  check: { label: "Checked", tone: "text-success" },
-  uncheck: { label: "Unchecked", tone: "text-fg" },
-  reset: { label: "Reset checklist", tone: "text-danger" },
-  undo_reset: { label: "Undid reset", tone: "text-warning" },
-};
-
-const OUTCOME: Record<Exclude<ActivityEvent["outcome"], "applied">, string> = {
-  no_change: "No change",
-  not_found: "Task not on checklist",
-  service_changed: "Service had ended",
-};
 
 const EDIT: Record<EditAction, { label: string; tone: string }> = {
   add: { label: "Added", tone: "text-accent-soft" },
@@ -58,22 +46,6 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "edits", label: "Checklist edits" },
   { value: "settings", label: "Settings" },
 ];
-
-/** "9:42:10 AM" today in the church's time zone; "Oct 4, 9:42 AM" for older entries (edits can be from any day). */
-function formatWhen(iso: string, timeZone: string, today: string) {
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date(iso));
-  const options: Intl.DateTimeFormatOptions =
-    day === today ? { hour: "numeric", minute: "2-digit", second: "2-digit" } : { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
-  return new Intl.DateTimeFormat(undefined, { ...options, timeZone }).format(new Date(iso));
-}
-
-const short = (id: string | null) => (id ? id.slice(0, 8) : "—");
-
-function describeCheckoff(e: ActivityEvent): string {
-  if (e.action === "reset") return `${e.affected ?? 0} check-off${e.affected === 1 ? "" : "s"} cleared`;
-  if (e.action === "undo_reset") return `${e.affected ?? 0} check-off${e.affected === 1 ? "" : "s"} restored`;
-  return e.taskText ?? `Task #${e.taskId} (no longer exists)`;
-}
 
 /** "Audio Engineer › Power On" (the department and section as named at the time). */
 const where = (p?: EditPlace) => [p?.department?.name, p?.section?.name].filter(Boolean).join(" › ");

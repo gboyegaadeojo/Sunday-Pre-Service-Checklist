@@ -9,6 +9,7 @@ import { useRoute } from "./lib/router";
 import { ActivityPage } from "./pages/ActivityPage";
 import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
 import { HiddenItemsPage } from "./pages/admin/HiddenItemsPage";
+import { HistoryPage } from "./pages/admin/HistoryPage";
 import { ListsPage } from "./pages/admin/ListsPage";
 import { SettingsPage } from "./pages/admin/SettingsPage";
 import { listRefFrom } from "./lib/useAdminList";
@@ -130,6 +131,7 @@ export function App() {
       case "admin-hidden":
       case "admin-lists":
       case "admin-activity":
+      case "admin-history":
       case "settings":
         // The Admin link and the Settings menu item are hidden for non-admins; this covers a typed or
         // bookmarked URL. The server refuses too.
@@ -147,6 +149,9 @@ export function App() {
             <AdminTabs route={route} onNavigate={navigate} />
             {route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />
+            ) : route === "admin-history" ? (
+              // Keyed by the query, so opening another service starts fresh.
+              <HistoryPage key={search} search={search} onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : route === "admin-lists" ? (
               <ListsPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : route === "admin-hidden" ? (

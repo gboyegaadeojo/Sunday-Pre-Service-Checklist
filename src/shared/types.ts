@@ -68,7 +68,10 @@ export interface ActivityEvent {
   action: "check" | "uncheck" | "reset" | "undo_reset";
   outcome: "applied" | "no_change" | "not_found" | "service_changed";
   taskId: number | null;
-  /** The task's current text, or null for service-wide actions or unknown tasks. */
+  /**
+   * The task text: for a past service, as it was when last checked in that service (US-06); for the current
+   * service, its current text. null for service-wide actions or unknown tasks.
+   */
   taskText: string | null;
   affected: number | null;
   user: string;
@@ -383,4 +386,55 @@ export interface SettingsEditEvent {
 export interface SettingsEditsResponse {
   events: SettingsEditEvent[];
   truncated: boolean;
+}
+
+/** One service in GET /api/admin/history (Stage 5d.3, design.md §7). */
+export interface ServiceSummary {
+  id: number;
+  /** "YYYY-MM-DD" in the church's time zone. */
+  date: string;
+  /** The list the service used, by its current name (it may since have been hidden). */
+  list: { id: number; name: string; hidden: boolean };
+  /** Tasks still checked when the service ended (archived and unchecked ones not counted). */
+  checkedCount: number;
+  resetCount: number;
+}
+
+/** GET /api/admin/history: past services, newest first. The current service is left out. */
+export interface HistoryResponse {
+  services: ServiceSummary[];
+  /** True when older services exist beyond the returned page. */
+  truncated: boolean;
+}
+
+/** A check-off as recorded: the text, department and section are the snapshots from check-off time (US-06, US-13). */
+export interface HistoryTask {
+  taskId: number;
+  text: string;
+  by: string;
+  at: string;
+}
+
+export interface HistorySection {
+  id: number;
+  name: string;
+  tasks: HistoryTask[];
+}
+
+export interface HistoryCategory {
+  id: number;
+  name: string;
+  sections: HistorySection[];
+}
+
+/**
+ * GET /api/admin/history/:serviceId: what was checked, grouped by department and section as they were at
+ * check-off time, plus every reset. The app doesn't record which tasks a past service's checklist held, so
+ * there are no "X of Y" totals.
+ */
+export interface ServiceHistoryResponse {
+  service: ServiceSummary & { timeZone: string; isCurrent: boolean };
+  categories: HistoryCategory[];
+  /** Every reset of the service, oldest first. */
+  resets: Omit<ResetInfo, "canUndo">[];
 }
