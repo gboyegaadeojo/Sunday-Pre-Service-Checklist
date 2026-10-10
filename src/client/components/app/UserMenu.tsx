@@ -1,19 +1,24 @@
 import type { CurrentUser } from "../../../shared/types";
+import type { Navigate, Route } from "../../lib/router";
 import { roleLabel } from "../../lib/roles";
 import { usePopover } from "../../lib/usePopover";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
 import { Chevron } from "../ui/Chevron";
+import { RouteLink } from "./RouteLink";
 
 interface Props {
   user: CurrentUser;
+  route: Route;
+  onNavigate: Navigate;
   onSignOut: () => void;
   signingOut: boolean;
   signOutError: string | null;
 }
 
-// Avatar, name and role in the header (design.md §3A), with sign-out in a small menu.
-export function UserMenu({ user, onSignOut, signingOut, signOutError }: Props) {
+// Avatar, name and role in the header (design.md §3A), with a small menu: Settings (Admins only,
+// US-11a; the server refuses anyone else) and sign-out.
+export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signOutError }: Props) {
   const { open, setOpen, rootRef, triggerRef } = usePopover();
   const role = roleLabel(user);
 
@@ -40,6 +45,21 @@ export function UserMenu({ user, onSignOut, signingOut, signOutError }: Props) {
         <div id="user-menu" className="absolute top-full right-0 z-40 mt-1 w-64 rounded-card border border-line bg-panel p-3">
           <p className="text-sm font-medium">{user.name}</p>
           {role && <p className="text-meta text-fg-muted">{role}</p>}
+          {user.isAdmin && (
+            <RouteLink
+              to="settings"
+              current={route === "settings"}
+              onNavigate={(to, search) => {
+                setOpen(false);
+                onNavigate(to, search);
+              }}
+              className={`-mx-1 mt-3 flex min-h-11 items-center rounded-control px-3 text-sm transition-colors hover:bg-hover ${
+                route === "settings" ? "font-semibold text-fg" : "text-fg-muted hover:text-fg"
+              }`}
+            >
+              Settings
+            </RouteLink>
+          )}
           {signOutError && (
             <p role="alert" className="mt-3 text-meta text-danger">
               {signOutError}

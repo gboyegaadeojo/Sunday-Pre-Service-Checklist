@@ -10,6 +10,7 @@
 > - Department names come from the checklist data. The seed's "Director (Switcher)" is the brief's "Director".
 > - **Requirements v1.7 adds a sixth department, Technical Director.** Wherever this brief says "five departments" (§3C, §6, §11, §12), read it as all departments in the checklist (currently six). Layouts must not assume a fixed count.
 > - **Requirements v1.6 overrides §6 on who sees the dashboard:** the progress dashboard is for everyone with access, Volunteers included. Reset and "Undo reset" stay Admin/Director-only, and list management and Planning Center mapping stay Admin-only.
+> - **Church settings (US-11a) are not part of the §7 Admin workspace.** Admins open them from the menu under their name in the header (§3A), above Sign out. Nobody else sees that item.
 > - The sign-in screen shows exactly one sign-in option, "Sign in with Planning Center". Users never choose a role. Local development may add a separate, clearly labelled developer-only test-user control, which never exists in production builds.
 
 ## Role and Expectations

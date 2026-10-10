@@ -1,10 +1,12 @@
 // Stage 4 role rules in the UI (requirements v1.6): progress for everyone with access, reset/undo for
 // Admins and Directors, the activity log for Admins only. The server enforces the same rules
 // (test/resets.test.ts); these tests make sure the UI never offers what the server would refuse.
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChecklistResponse, CurrentUser, ResetInfo } from "../../src/shared/types";
 import { AppNav } from "../../src/client/components/app/AppNav";
+import { UserMenu } from "../../src/client/components/app/UserMenu";
+import { useRoute } from "../../src/client/lib/router";
 import { ProgressPage } from "../../src/client/pages/ProgressPage";
 
 const user = (role: "volunteer" | "director" | "admin"): CurrentUser => ({
@@ -82,6 +84,43 @@ describe("header navigation", () => {
   ] as const)("shows the %s only the sections they may use", (role, labels) => {
     render(<AppNav user={user(role)} route="checklist" onNavigate={() => {}} />);
     expect(screen.getAllByRole("link").map((a) => a.textContent)).toEqual(labels);
+  });
+});
+
+// Settings (US-11a) is in the user menu, above Sign out, for Admins only.
+describe("user menu", () => {
+  const openMenu = (role: "volunteer" | "director" | "admin", onNavigate = vi.fn()) => {
+    render(<UserMenu user={user(role)} route="checklist" onNavigate={onNavigate} onSignOut={() => {}} signingOut={false} signOutError={null} />);
+    fireEvent.click(screen.getByRole("button", { name: `Account: Test ${role}` }));
+    return onNavigate;
+  };
+
+  it.each(["volunteer", "director"] as const)("never offers Settings to a %s", (role) => {
+    openMenu(role);
+    expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  });
+
+  it("offers an Admin Settings above Sign out, and closes after choosing it", () => {
+    const onNavigate = openMenu("admin");
+    const settings = screen.getByRole("link", { name: "Settings" });
+    expect(settings.getAttribute("href")).toBe("/settings");
+    const signOut = screen.getByRole("button", { name: "Sign out" });
+    expect(settings.compareDocumentPosition(signOut) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(settings);
+    expect(onNavigate).toHaveBeenCalledWith("settings", "");
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+  });
+});
+
+describe("old addresses", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  it("redirects /admin/settings to /settings", () => {
+    window.history.replaceState(null, "", "/admin/settings");
+    const { result } = renderHook(() => useRoute());
+    expect(result.current.route).toBe("settings");
+    expect(window.location.pathname).toBe("/settings");
   });
 });
 

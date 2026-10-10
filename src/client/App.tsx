@@ -130,8 +130,9 @@ export function App() {
       case "admin-hidden":
       case "admin-lists":
       case "admin-activity":
-      case "admin-settings":
-        // The Admin link is hidden for non-admins; this covers a typed or bookmarked URL. The server refuses too.
+      case "settings":
+        // The Admin link and the Settings menu item are hidden for non-admins; this covers a typed or
+        // bookmarked URL. The server refuses too.
         if (!user.isAdmin) {
           return (
             <main className="mx-auto max-w-app px-4 py-10 md:px-6">
@@ -139,13 +140,13 @@ export function App() {
             </main>
           );
         }
+        // Settings is opened from the user menu, so it has no Admin tabs.
+        if (route === "settings") return <SettingsPage onAccessChanged={onAccessChanged} onBrandingChanged={loadBranding} />;
         return (
           <>
             <AdminTabs route={route} onNavigate={navigate} />
             {route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />
-            ) : route === "admin-settings" ? (
-              <SettingsPage onAccessChanged={onAccessChanged} onBrandingChanged={loadBranding} />
             ) : route === "admin-lists" ? (
               <ListsPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : route === "admin-hidden" ? (

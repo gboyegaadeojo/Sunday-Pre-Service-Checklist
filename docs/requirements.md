@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.14 · **Date:** October 2026  
+> **Version:** 1.15 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.14
+## 0. Changes in Version 1.15
+
+| # | Change | Why |
+|---|--------|-----|
+| C26 | **Admins open Settings from the menu under their name** in the header, above Sign out, instead of from the Admin area (US-11a). Nobody else sees that menu item, and the server still refuses them. The old address still works and leads to the new one. | Settings are church-wide and rarely changed, so they sit with the account controls rather than among the checklist tools. |
+
+## Changes in Version 1.14
 
 | # | Change | Why |
 |---|--------|-----|
@@ -309,6 +315,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Admin can edit the **branding** shown in the header, on the sign-in screen, and in the browser tab: short name (logo mark), team name, and app name. Empty values are simply left out of the display.
 - Seeded starting values: America/Winnipeg, Sunday, "IFC", "IFC Production", "Pre-Service Checklist".
 - Changes take effect on the next page load. Only Admins can change settings; the server rejects anyone else.
+- Admins open Settings from the menu under their name in the header. Nobody else sees that menu item.
 - The branding values are readable without signing in (the sign-in screen shows them); no other setting is exposed publicly.
 
 ---
@@ -768,4 +775,4 @@ Nothing outside these modules knows it is talking to Planning Center. The databa
 
 ---
 
-*End of Requirements — Version 1.13*
+*End of Requirements — Version 1.15*

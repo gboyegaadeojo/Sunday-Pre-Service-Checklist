@@ -23,7 +23,7 @@ export function AppHeader({ user, route, onNavigate, ...menu }: Props) {
         <div className="h-full min-w-0 flex-1">
           <AppNav user={user} route={route} onNavigate={onNavigate} />
         </div>
-        <UserMenu user={user} {...menu} />
+        <UserMenu user={user} route={route} onNavigate={onNavigate} {...menu} />
       </div>
     </header>
   );

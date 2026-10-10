@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 // URLs survive reloads and can be bookmarked. Unknown paths show the checklist. A query string (e.g.
 // ?list=5 for the checklist editor) is kept alongside the route.
 
-export type Route = "checklist" | "progress" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-activity" | "admin-settings";
+export type Route = "checklist" | "progress" | "admin-checklist" | "admin-hidden" | "admin-lists" | "admin-activity" | "settings";
 
 /** Goes to a route, optionally with a query string such as "?list=5". */
 export type Navigate = (route: Route, search?: string) => void;
@@ -16,11 +16,16 @@ export const ROUTE_PATHS: Record<Route, string> = {
   "admin-hidden": "/admin/checklist/hidden",
   "admin-lists": "/admin/lists",
   "admin-activity": "/admin/activity",
-  "admin-settings": "/admin/settings",
+  // Admin-only, but opened from the user menu rather than the Admin tabs.
+  settings: "/settings",
 };
 
-/** Older or shorter paths that still work. */
-const ALIASES: Record<string, Route> = { "/admin": "admin-checklist", "/activity": "admin-activity" };
+/** Older or shorter paths that still work. The address bar is switched to the canonical path. */
+const ALIASES: Record<string, Route> = {
+  "/admin": "admin-checklist",
+  "/activity": "admin-activity",
+  "/admin/settings": "settings", // where Settings lived before it moved to the user menu
+};
 
 export const isAdminRoute = (r: Route) => r.startsWith("admin-");
 
@@ -32,7 +37,7 @@ export function useRoute() {
   const [search, setSearch] = useState(() => window.location.search);
 
   useEffect(() => {
-    // Show the canonical address for an alias (e.g. /activity → /admin/activity).
+    // Show the canonical address for an alias (e.g. /activity → /admin/activity, /admin/settings → /settings).
     if (window.location.pathname !== ROUTE_PATHS[route] && ALIASES[window.location.pathname]) {
       window.history.replaceState(null, "", ROUTE_PATHS[route]);
     }
