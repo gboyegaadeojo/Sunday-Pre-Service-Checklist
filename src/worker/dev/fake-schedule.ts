@@ -4,10 +4,10 @@
 // names are absent. Its sample data uses the church's real position names, but nothing is mapped automatically:
 // Admins link every team and position in the mapping screen, as they will with real data.
 //
-// Developers and tests can adjust it (teams added; positions added, renamed or removed) through /api/dev/schedule, stored
+// Developers and tests can adjust it (teams added; positions added, renamed or removed; no plan published) through /api/dev/schedule, stored
 // in the dev_state table so the changes survive dev-server restarts.
 
-import type { ScheduleSource, SourceServiceType, SourceTeam } from "../sources/schedule";
+import type { ScheduleSource, SourceAssignment, SourceServiceType, SourceTeam } from "../sources/schedule";
 
 export const FAKE_SERVICE_TYPES: SourceServiceType[] = [
   { externalId: "st-sunday", name: "Sunday Service" },
@@ -51,6 +51,31 @@ const FAKE_TEAMS: Record<string, SourceTeam[]> = {
   ],
 };
 
+// People are the test users (src/worker/dev/fake-users.ts): the fake source's ID for a person is their test-user key,
+// the subject of their "dev" sign-in account.
+
+/** Team rosters (US-02): membership, not this week's schedule. */
+const FAKE_ROSTERS: Record<string, string[]> = {
+  volunteer: ["team-production"], // on the team, not scheduled this week
+  admin: ["team-production"],
+  camera2: ["team-production"],
+  "audio-presentation": ["team-production"],
+  "technical-director": ["team-production"],
+  outsider: ["team-worship-band"], // a team that isn't a media team
+};
+
+/** Who's scheduled where in every plan (US-05). */
+const FAKE_ASSIGNMENTS: Record<string, SourceAssignment[]> = {
+  admin: [{ teamExternalId: "team-production", positionExternalId: "pos-production-director" }],
+  camera2: [{ teamExternalId: "team-production", positionExternalId: "pos-camera-2" }],
+  "audio-presentation": [
+    { teamExternalId: "team-production", positionExternalId: "pos-audio" },
+    { teamExternalId: "team-production", positionExternalId: "pos-propresenter" },
+  ],
+  "technical-director": [{ teamExternalId: "team-production", positionExternalId: "pos-technical-director" }],
+  outsider: [{ teamExternalId: "team-worship-band", positionExternalId: "pos-vocals" }],
+};
+
 /** Developer adjustments to the sample data, kept in dev_state under this key. */
 export const FAKE_SCHEDULE_STATE_KEY = "fake_schedule";
 
@@ -63,6 +88,8 @@ export interface FakeScheduleState {
   renamedPositions?: Record<string, string>;
   /** Position IDs removed, as if deleted in Planning Center. */
   removedPositions?: string[];
+  /** No plan is published, as before Planning Center has the service (US-05 note). */
+  unpublished?: boolean;
 }
 
 async function readState(db: D1Database): Promise<FakeScheduleState> {
@@ -95,9 +122,11 @@ export function createFakeScheduleSource(db: D1Database): ScheduleSource {
           .map((p) => ({ externalId: p.externalId, name: state.renamedPositions?.[p.externalId] ?? p.name })),
       }));
     },
-    // Rosters, plans and assignments arrive with access and the department view (Stage 7b).
-    teamsOf: async () => [],
-    nextPlan: async () => null,
-    assignments: async () => [],
+    teamsOf: async (person) => FAKE_ROSTERS[person] ?? [],
+    // A plan is published on whatever date is asked for (so it follows the church's service day), in every Service
+    // Type, unless a developer marked the schedule unpublished.
+    nextPlan: async (serviceTypeExternalId, fromDate) =>
+      (await readState(db)).unpublished || !FAKE_TEAMS[serviceTypeExternalId] ? null : { externalId: `plan-${serviceTypeExternalId}-${fromDate}`, date: fromDate },
+    assignments: async (_plan, person) => FAKE_ASSIGNMENTS[person] ?? [],
   };
 }

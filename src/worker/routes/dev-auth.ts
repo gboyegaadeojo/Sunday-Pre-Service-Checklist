@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { DevSignInRequest, DevUsersResponse } from "../../shared/types";
+import { verifyMembership } from "../db/schedule-view";
 import { signInWithIdentity } from "../db/users";
 import { FAKE_USERS } from "../dev/fake-users";
 import { startSession } from "../middleware/auth";
@@ -34,6 +35,8 @@ export const createDevAuthRoutes = () =>
         },
         new Date().toISOString(),
       );
+      // Once team mapping is set up, the fake schedule's rosters decide access, as Planning Center's will (US-02).
+      await verifyMembership(c.env.DB, c.var.schedule, userId, new Date());
       await startSession(c, userId);
       return c.body(null, 204);
     });

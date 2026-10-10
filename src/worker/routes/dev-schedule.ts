@@ -5,7 +5,7 @@ import type { AppEnv } from "../types";
 // Adjusting the fake schedule source, local development only (like dev-auth.ts: a factory, mounted only inside the
 // import.meta.env.DEV branch, answering only when DEV_AUTH is "true"). The change is seen once the cached
 // schedule expires or an Admin presses "Refresh" on the mapping screen, as with a real change in Planning Center.
-//   PUT /api/dev/schedule  { addedTeams?, addedPositions?, renamedPositions?, removedPositions? }  replaces the adjustments
+//   PUT /api/dev/schedule  { addedTeams?, addedPositions?, renamedPositions?, removedPositions?, unpublished? }  replaces the adjustments
 export const createDevScheduleRoutes = () =>
   new Hono<AppEnv>()
     .use(async (c, next) => {

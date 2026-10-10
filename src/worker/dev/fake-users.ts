@@ -6,6 +6,7 @@ export interface FakeUser {
   key: string;
   name: string;
   description: string;
+  /** Their starting access before team mapping is set up; afterwards the fake schedule's rosters decide (US-02). */
   onMediaTeam: boolean;
   isAdmin: boolean;
   isDirector: boolean;
@@ -15,7 +16,7 @@ export const FAKE_USERS: FakeUser[] = [
   {
     key: "volunteer",
     name: "Test Volunteer",
-    description: "Volunteer on a media team",
+    description: "On the media team, not scheduled this week",
     onMediaTeam: true,
     isAdmin: false,
     isDirector: false,
@@ -23,7 +24,7 @@ export const FAKE_USERS: FakeUser[] = [
   {
     key: "admin",
     name: "Test Admin",
-    description: "Admin: manages lists, mappings and roles",
+    description: "Admin, scheduled as Production Director",
     onMediaTeam: true,
     isAdmin: true,
     isDirector: false,
@@ -31,7 +32,7 @@ export const FAKE_USERS: FakeUser[] = [
   {
     key: "director",
     name: "Test Director",
-    description: "Director: sees progress, can reset",
+    description: "Director role, not on a team",
     onMediaTeam: false,
     isAdmin: false,
     isDirector: true,
@@ -39,8 +40,32 @@ export const FAKE_USERS: FakeUser[] = [
   {
     key: "outsider",
     name: "Test Non-member",
-    description: "Signed in, but not on a media team",
+    description: "On the Worship Band only, not a media team",
     onMediaTeam: false,
+    isAdmin: false,
+    isDirector: false,
+  },
+  {
+    key: "camera2",
+    name: "Test Camera Operator",
+    description: "Scheduled on Camera 2",
+    onMediaTeam: true,
+    isAdmin: false,
+    isDirector: false,
+  },
+  {
+    key: "audio-presentation",
+    name: "Test Two Positions",
+    description: "Scheduled on Audio and Propresenter",
+    onMediaTeam: true,
+    isAdmin: false,
+    isDirector: false,
+  },
+  {
+    key: "technical-director",
+    name: "Test Technical Director",
+    description: "Scheduled as Technical Director",
+    onMediaTeam: true,
     isAdmin: false,
     isDirector: false,
   },

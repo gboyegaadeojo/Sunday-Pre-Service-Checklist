@@ -89,7 +89,24 @@ export interface ActivityResponse {
 export interface ChecklistResponse {
   service: ServiceInfo;
   list: { id: number; name: string };
+  /** Every department: the progress view always shows them all (US-09). */
   categories: ChecklistCategory[];
+  /** Which of them the checklist shows this person, and how (US-05). */
+  view: ChecklistView;
+}
+
+/**
+ * US-05, from the schedule (Stage 7b). A display choice only: anyone with access may check off any task.
+ * - "own": scheduled, and their positions lead to departments: show `own` only, with "Show all departments".
+ * - "all": Admins, Directors, and positions marked "sees all departments": everything, `own` first.
+ * - "choose": everything, and the person picks theirs.
+ */
+export interface ChecklistView {
+  mode: "own" | "all" | "choose";
+  /** The person's departments for this service, in checklist order (may be empty). */
+  own: number[];
+  /** Why they choose: not scheduled for this service, or scheduled in a position with no link yet. */
+  note: "not_scheduled" | "not_linked" | null;
 }
 
 /** PUT/DELETE /api/services/:serviceId/tasks/:taskId/checkoff */
@@ -112,6 +129,8 @@ export interface CurrentUser {
   isDirector: boolean;
   /** False for a signed-in user who is not on a linked media team and has no role (US-02). */
   hasAccess: boolean;
+  /** Present (true) when they can't get in only because team mapping isn't set up yet (US-02). */
+  settingUp?: true;
 }
 
 /** Church branding from settings (admin-editable). A null field has no value set. */

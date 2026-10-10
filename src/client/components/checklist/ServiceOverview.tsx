@@ -1,16 +1,30 @@
-import type { ChecklistResponse } from "../../../shared/types";
-import { checklistProgress, percent } from "../../lib/checklist";
+import type { ChecklistCategory, ChecklistResponse } from "../../../shared/types";
+import { categoryProgress, checklistProgress, percent } from "../../lib/checklist";
 import { formatServiceDate } from "../../lib/format";
 import type { SaveState } from "../../lib/useChecklist";
 import { Card } from "../ui/Card";
 import { ProgressBar } from "../ui/ProgressBar";
 import { SaveIndicator } from "./SaveIndicator";
 
+interface Props {
+  checklist: ChecklistResponse;
+  saveState: SaveState;
+  /**
+   * A scheduled volunteer's own departments, while the checklist shows only those (US-05): their progress leads, and
+   * the whole service's follows on a smaller line. Omitted for everyone else, who see the whole service's progress.
+   */
+  own?: ChecklistCategory[];
+}
+
 // Service overview (design.md §3B): which service, how much is done, and whether changes are saved.
 // Every number comes from the checklist data.
-export function ServiceOverview({ checklist, saveState }: { checklist: ChecklistResponse; saveState: SaveState }) {
+export function ServiceOverview({ checklist, saveState, own }: Props) {
   const { service } = checklist;
-  const progress = checklistProgress(checklist);
+  const whole = checklistProgress(checklist);
+  const mine = own?.length
+    ? own.map(categoryProgress).reduce((a, p) => ({ done: a.done + p.done, total: a.total + p.total }), { done: 0, total: 0 })
+    : null;
+  const lead = mine ?? whole;
 
   return (
     <Card role="region" aria-label="Service overview" className="px-4 py-3 md:px-5 md:py-4">
@@ -24,18 +38,33 @@ export function ServiceOverview({ checklist, saveState }: { checklist: Checklist
         <SaveIndicator state={saveState} />
       </div>
 
-      {progress.total > 0 && (
+      {lead.total > 0 && (
         <>
           <div className="mt-3 flex items-center gap-3">
-            <ProgressBar progress={progress} label="Overall progress" className="flex-1" />
-            <span className="w-10 shrink-0 text-right text-meta font-medium tabular-nums">{percent(progress)}%</span>
+            <ProgressBar progress={lead} label={mine ? "Your progress" : "Overall progress"} className="flex-1" />
+            <span className="w-10 shrink-0 text-right text-meta font-medium tabular-nums">{percent(lead)}%</span>
           </div>
-          <p className="mt-1.5 text-meta text-fg-muted tabular-nums">
-            <span className="font-medium text-fg">
-              {progress.done} of {progress.total}
-            </span>{" "}
-            tasks done · {progress.total - progress.done} remaining
-          </p>
+          {mine && own ? (
+            <>
+              <p className="mt-1.5 text-sm tabular-nums wrap-anywhere">
+                <span className="font-medium">{own.map((d) => d.name).join(", ")}:</span>{" "}
+                <span className="font-medium text-fg">
+                  {mine.done} of {mine.total}
+                </span>{" "}
+                <span className="text-fg-muted">done · {mine.total - mine.done} remaining</span>
+              </p>
+              <p className="mt-0.5 text-meta text-fg-muted tabular-nums">
+                Whole service: {whole.done} of {whole.total} done · {whole.total - whole.done} remaining
+              </p>
+            </>
+          ) : (
+            <p className="mt-1.5 text-meta text-fg-muted tabular-nums">
+              <span className="font-medium text-fg">
+                {whole.done} of {whole.total}
+              </span>{" "}
+              tasks done · {whole.total - whole.done} remaining
+            </p>
+          )}
         </>
       )}
 

@@ -14,8 +14,19 @@ beforeAll(async () => {
   cookies.volunteer = await signInAs("volunteer");
 });
 
+/** Nothing mapped and the fake schedule as shipped (the log keeps its rows: it's append-only). */
+const unmap = () =>
+  env.DB.batch([
+    env.DB.prepare("DELETE FROM team_links"),
+    env.DB.prepare("DELETE FROM non_media_teams"),
+    env.DB.prepare("DELETE FROM settings WHERE key IN ('schedule_source', 'schedule_service_type')"),
+    env.DB.prepare("DELETE FROM source_cache"),
+    env.DB.prepare("DELETE FROM dev_state"),
+  ]);
+
 let marker: number;
 beforeEach(async () => {
+  await unmap();
   marker = (await env.DB.prepare("SELECT COALESCE(MAX(id), 0) AS id FROM mapping_events").first<{ id: number }>())?.id ?? 0;
 });
 // Start each test unmapped, with a fresh fake schedule (the log keeps its rows: it's append-only).

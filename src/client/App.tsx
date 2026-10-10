@@ -125,7 +125,7 @@ export function App() {
   }
 
   function renderPage(user: CurrentUser, onAccessChanged: () => void) {
-    if (!user.hasAccess) return <NoAccessPage onSignOut={() => void signOut()} signingOut={signingOut} />;
+    if (!user.hasAccess) return <NoAccessPage settingUp={user.settingUp} onSignOut={() => void signOut()} signingOut={signingOut} />;
     switch (route) {
       case "progress":
         return <ProgressPage user={user} onAccessChanged={onAccessChanged} />;

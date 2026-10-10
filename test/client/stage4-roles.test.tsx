@@ -31,6 +31,7 @@ function checklist(role: "volunteer" | "director" | "admin", reset: ResetInfo | 
       ...(role === "volunteer" ? {} : { reset }), // the server sends reset details to staff only
     },
     list: { id: 1, name: "Test list" },
+    view: { mode: "choose", own: [], note: null },
     categories: [
       {
         id: 1,

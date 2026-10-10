@@ -18,6 +18,7 @@ function fakeServer() {
   const checklist = (): ChecklistResponse => ({
     service: { id: 7, date: "2026-10-11", isToday: true, published: false, timeZone: "America/Winnipeg" },
     list: { id: 1, name: "Test list" },
+    view: { mode: "choose", own: [], note: null },
     categories: [
       {
         id: 1,

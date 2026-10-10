@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.18 · **Date:** October 2026  
+> **Version:** 1.19 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.18
+## 0. Changes in Version 1.19
+
+| # | Change | Why |
+|---|--------|-----|
+| C30 | **Until team mapping is set up, only Admins and Directors get in** (US-02). Before an Admin has chosen the Service Type and linked at least one team or position, nobody can be confirmed as a media team member, so everyone else sees "The app is being set up. Check back soon." | The app must not be shared with volunteers half-configured, and can't tell who belongs until the mapping exists. |
+
+## Changes in Version 1.18
 
 | # | Change | Why |
 |---|--------|-----|
@@ -160,6 +166,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - A user who is on a linked team but not scheduled for the current service sees the full checklist with a note: "You're not on the schedule for this service, but you can still help."
 - A user who is not on any linked team and has no role sees: "This app is for the media team. If you think you should have access, contact a media team admin." They cannot see checklists or admin functions.
 - When the app verifies a user's team membership, it records the date of that check (used by US-04).
+- **Until team mapping is set up** (no Service Type chosen, or no team or position linked yet, US-15), only Admins and Directors get in. Everyone else sees: "The app is being set up. Check back soon."
 
 ---
 
@@ -814,4 +821,4 @@ Nothing outside these modules knows it is talking to Planning Center. The databa
 
 ---
 
-*End of Requirements — Version 1.18*
+*End of Requirements — Version 1.19*

@@ -6,6 +6,8 @@
 // The source in use is c.var.schedule (src/worker/index.ts): the fake one in local development and tests,
 // Planning Center from Stage 8, and null in production until then.
 
+import type { IdentityProviderId } from "./identity";
+
 /** Source names as stored in team_links.source and services.plan_source. */
 export type ScheduleSourceId = "planning_center" | "fake";
 
@@ -49,3 +51,12 @@ export interface ScheduleSource {
   nextPlan(serviceTypeExternalId: string, fromDate: string): Promise<SourcePlan | null>;
   assignments(planExternalId: string, person: string): Promise<SourceAssignment[]>;
 }
+
+/**
+ * Which sign-in account holds a person's ID in each schedule source: a person's Planning Center sign-in subject is
+ * their Planning Center person ID, and the fake source uses the test users' "dev" sign-in subjects (their keys).
+ */
+export const PERSON_PROVIDER: Record<ScheduleSourceId, IdentityProviderId> = {
+  planning_center: "planning_center",
+  fake: "dev",
+};

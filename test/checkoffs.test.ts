@@ -51,7 +51,8 @@ describe("GET /api/checklist: current service (US-07)", () => {
   it("creates the service for the configured service day, with every task unchecked", async () => {
     const body = await getChecklist();
     const expected = currentServiceDate(new Date(), "America/Winnipeg", 0);
-    expect(body.service).toMatchObject({ date: expected.date, isToday: expected.isToday, published: false, timeZone: "America/Winnipeg" });
+    // Published: the fake schedule source (Stage 7) publishes a plan for the service date.
+    expect(body.service).toMatchObject({ date: expected.date, isToday: expected.isToday, published: true, timeZone: "America/Winnipeg" });
     expect(body.categories.flatMap((c) => c.sections.flatMap((s) => s.tasks)).every((t) => t.checkoff === null)).toBe(true);
 
     const again = await getChecklist();

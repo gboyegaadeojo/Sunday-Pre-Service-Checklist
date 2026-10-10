@@ -12,6 +12,10 @@ import {
   verifySessionToken,
 } from "../lib/session";
 import type { AppEnv } from "../types";
+import { isTeamMappingReady } from "../db/schedule-view";
+
+/** Shown to everyone but Admins and Directors until team mapping is set up (US-02). */
+export const SETTING_UP_MESSAGE = "The app is being set up. Check back soon.";
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
@@ -73,7 +77,10 @@ export const requireUser = createMiddleware<AppEnv>(async (c, next) => {
 export const requireAccess = createMiddleware<AppEnv>(async (c, next) => {
   const user = c.var.user;
   if (!user) return c.json<ApiErrorBody>({ error: "Please sign in.", code: "signed_out" }, 401);
-  if (!hasAccess(user)) {
+  // Admins and Directors always get in; for anyone else, is team mapping set up yet? (one query)
+  const ready = user.isAdmin || user.isDirector || (await isTeamMappingReady(c.env.DB, c.var.schedule));
+  if (!ready) return c.json<ApiErrorBody>({ error: SETTING_UP_MESSAGE, code: "no_access" }, 403);
+  if (!hasAccess(user, ready)) {
     return c.json<ApiErrorBody>(
       {
         error: "This app is for the media team. If you think you should have access, contact a media team admin.",

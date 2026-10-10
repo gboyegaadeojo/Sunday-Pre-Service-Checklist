@@ -8,10 +8,11 @@ interface Props {
   departments: ChecklistCategory[];
   selected: ChecklistCategory;
   onSelect: (id: number) => void;
+  ownIds?: ReadonlySet<number>;
 }
 
 // Mobile department menu (design.md §3C, §5): a sticky bar that opens the same list as the sidebar.
-export function DepartmentPicker({ departments, selected, onSelect }: Props) {
+export function DepartmentPicker({ departments, selected, onSelect, ownIds }: Props) {
   const { open, setOpen, close, rootRef, triggerRef } = usePopover();
   const progress = categoryProgress(selected);
 
@@ -45,6 +46,7 @@ export function DepartmentPicker({ departments, selected, onSelect }: Props) {
           <DepartmentNav
             departments={departments}
             selectedId={selected.id}
+            ownIds={ownIds}
             onSelect={(id) => {
               onSelect(id);
               close();

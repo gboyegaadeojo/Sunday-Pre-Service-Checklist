@@ -6,11 +6,13 @@ interface Props {
   departments: ChecklistCategory[];
   selectedId: number;
   onSelect: (id: number) => void;
+  /** The person's own departments (US-05), marked "Yours". */
+  ownIds?: ReadonlySet<number>;
 }
 
 // Department list shared by the desktop sidebar and the mobile picker (design.md §3C):
 // name, done/total, and status (dot plus a screen-reader label; the count is always visible).
-export function DepartmentNav({ departments, selectedId, onSelect }: Props) {
+export function DepartmentNav({ departments, selectedId, onSelect, ownIds }: Props) {
   return (
     <ul className="space-y-1">
       {departments.map((d) => {
@@ -29,7 +31,14 @@ export function DepartmentNav({ departments, selectedId, onSelect }: Props) {
               {selected && (
                 <span aria-hidden="true" className="absolute inset-y-2.5 left-0 w-1 rounded-full bg-accent" />
               )}
-              <span className="min-w-0 flex-1 leading-snug wrap-anywhere">{d.name}</span>
+              <span className="min-w-0 flex-1 leading-snug wrap-anywhere">
+                {d.name}
+                {ownIds?.has(d.id) && (
+                  <span className="ml-2 inline-block rounded-control border border-accent-soft/40 px-1.5 text-meta font-normal text-accent-soft">
+                    Yours
+                  </span>
+                )}
+              </span>
               <span className="flex shrink-0 items-center gap-2 text-meta font-normal text-fg-muted tabular-nums">
                 <StatusDot status={progressStatus(progress)} />
                 {progress.done}/{progress.total}

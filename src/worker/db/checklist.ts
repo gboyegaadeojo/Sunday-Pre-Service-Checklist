@@ -7,7 +7,7 @@ import { type StructureRow, buildStructure, structureStatement } from "./structu
  * order, each task with its active check-off. Check-offs are placed by the task's *current* location,
  * so a task moved mid-service stays checked in its new place (US-13).
  */
-export async function getServiceChecklist(db: D1Database, service: Service): Promise<ChecklistResponse | null> {
+export async function getServiceChecklist(db: D1Database, service: Service): Promise<Omit<ChecklistResponse, "view"> | null> {
   const [listResult, structure, checkoffRows] = await db.batch([
     db.prepare("SELECT id, name FROM task_lists WHERE id = ?").bind(service.listId),
     structureStatement(db, service.listId),
