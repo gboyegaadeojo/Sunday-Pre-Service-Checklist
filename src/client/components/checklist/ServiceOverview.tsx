@@ -68,7 +68,8 @@ export function ServiceOverview({ checklist, saveState, own }: Props) {
         </>
       )}
 
-      {!service.published && (
+      {/* Not shown while the schedule can't be loaded: "not published" might not be true (US-04a). */}
+      {!service.published && checklist.view.note !== "schedule_unavailable" && (
         <p className="mt-2 text-meta text-fg-muted">
           No service is published in Planning Center yet — your checklist is ready when you are.
         </p>

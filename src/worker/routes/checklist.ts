@@ -15,7 +15,8 @@ import type { AppEnv } from "../types";
  */
 export const checklistRoutes = new Hono<AppEnv>().get("/", requireAccess, async (c) => {
   const current = await getCurrentService(c.env.DB, new Date());
-  const service = current && (await attachPlan(c.env.DB, c.var.schedule, current));
+  const planned = current && (await attachPlan(c.env.DB, c.var.schedule, current));
+  const service = planned?.service;
   const checklist = service && (await getServiceChecklist(c.env.DB, service));
   if (!service || !checklist) return c.json({ error: "No default checklist is set up yet." }, 404);
 
@@ -27,6 +28,7 @@ export const checklistRoutes = new Hono<AppEnv>().get("/", requireAccess, async 
     user,
     service,
     checklist.categories.map((d) => d.id),
+    planned?.unavailable,
   );
   return c.json<ChecklistResponse>({ ...checklist, view });
 });

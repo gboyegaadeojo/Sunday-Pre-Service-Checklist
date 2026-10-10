@@ -12,8 +12,13 @@ export const authRoutes = new Hono<AppEnv>()
     // Each page load re-checks team membership (US-02), so joining or leaving a linked team takes effect then.
     const now = new Date();
     const membership = await verifyMembership(c.env.DB, c.var.schedule, user.id, now);
-    const checked = membership === "unknown" ? user : { ...user, teamVerifiedAt: membership === "member" ? now.toISOString() : null };
-    return c.json<MeResponse>({ user: toCurrentUser(checked, await isTeamMappingReady(c.env.DB, c.var.schedule)) });
+    const checked =
+      membership === "member" || membership === "not_member"
+        ? { ...user, teamVerifiedAt: membership === "member" ? now.toISOString() : null }
+        : user;
+    // Unreachable: the last confirmation stands for 90 days; without one, they're told to try again shortly (US-04a).
+    const unreachable = membership === "unavailable" ? c.var.schedule?.label : undefined;
+    return c.json<MeResponse>({ user: toCurrentUser(checked, await isTeamMappingReady(c.env.DB, c.var.schedule), unreachable) });
   })
   .post("/sign-out", (c) => {
     endSession(c);

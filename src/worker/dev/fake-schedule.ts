@@ -4,9 +4,10 @@
 // names are absent. Its sample data uses the church's real position names, but nothing is mapped automatically:
 // Admins link every team and position in the mapping screen, as they will with real data.
 //
-// Developers and tests can adjust it (teams added; positions added, renamed or removed; no plan published) through /api/dev/schedule, stored
+// Developers and tests can adjust it (teams added; positions added, renamed or removed; no plan published; down or slow) through /api/dev/schedule, stored
 // in the dev_state table so the changes survive dev-server restarts.
 
+import { ProviderUnavailableError } from "../sources/identity";
 import type { ScheduleSource, SourceAssignment, SourceServiceType, SourceTeam } from "../sources/schedule";
 
 export const FAKE_SERVICE_TYPES: SourceServiceType[] = [
@@ -90,9 +91,13 @@ export interface FakeScheduleState {
   removedPositions?: string[];
   /** No plan is published, as before Planning Center has the service (US-05 note). */
   unpublished?: boolean;
+  /** Planning Center is down: every call fails, and sign-in through it is unavailable (US-04a, US-04b). */
+  down?: boolean;
+  /** Every call takes this long to answer, to try the 5-second limit (US-04a). */
+  delayMs?: number;
 }
 
-async function readState(db: D1Database): Promise<FakeScheduleState> {
+export async function readFakeScheduleState(db: D1Database): Promise<FakeScheduleState> {
   const row = await db.prepare("SELECT json FROM dev_state WHERE key = ?").bind(FAKE_SCHEDULE_STATE_KEY).first<{ json: string }>();
   return row ? (JSON.parse(row.json) as FakeScheduleState) : {};
 }
@@ -103,14 +108,25 @@ export const writeFakeScheduleState = (db: D1Database, state: FakeScheduleState)
     .bind(FAKE_SCHEDULE_STATE_KEY, JSON.stringify(state))
     .run();
 
+/** The adjustments, after any delay; throws as an unreachable source would while "down". */
+async function answer(db: D1Database): Promise<FakeScheduleState> {
+  const state = await readFakeScheduleState(db);
+  if (state.delayMs) await new Promise((resolve) => setTimeout(resolve, state.delayMs));
+  if (state.down) throw new ProviderUnavailableError("The fake schedule source is switched to down");
+  return state;
+}
+
 /** The fake source. A factory with no module-level side effects, so production builds drop it entirely. */
 export function createFakeScheduleSource(db: D1Database): ScheduleSource {
   return {
     id: "fake",
     label: "Planning Center (sample data)",
-    listServiceTypes: async () => FAKE_SERVICE_TYPES,
+    listServiceTypes: async () => {
+      await answer(db);
+      return FAKE_SERVICE_TYPES;
+    },
     listTeams: async (serviceTypeExternalId) => {
-      const state = await readState(db);
+      const state = await answer(db);
       const removed = new Set(state.removedPositions ?? []);
       const added = (state.addedTeams ?? [])
         .filter((t) => t.serviceTypeExternalId === serviceTypeExternalId)
@@ -122,11 +138,17 @@ export function createFakeScheduleSource(db: D1Database): ScheduleSource {
           .map((p) => ({ externalId: p.externalId, name: state.renamedPositions?.[p.externalId] ?? p.name })),
       }));
     },
-    teamsOf: async (person) => FAKE_ROSTERS[person] ?? [],
+    teamsOf: async (person) => {
+      await answer(db);
+      return FAKE_ROSTERS[person] ?? [];
+    },
     // A plan is published on whatever date is asked for (so it follows the church's service day), in every Service
     // Type, unless a developer marked the schedule unpublished.
     nextPlan: async (serviceTypeExternalId, fromDate) =>
-      (await readState(db)).unpublished || !FAKE_TEAMS[serviceTypeExternalId] ? null : { externalId: `plan-${serviceTypeExternalId}-${fromDate}`, date: fromDate },
-    assignments: async (_plan, person) => FAKE_ASSIGNMENTS[person] ?? [],
+      (await answer(db)).unpublished || !FAKE_TEAMS[serviceTypeExternalId] ? null : { externalId: `plan-${serviceTypeExternalId}-${fromDate}`, date: fromDate },
+    assignments: async (_plan, person) => {
+      await answer(db);
+      return FAKE_ASSIGNMENTS[person] ?? [];
+    },
   };
 }

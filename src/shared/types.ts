@@ -105,8 +105,13 @@ export interface ChecklistView {
   mode: "own" | "all" | "choose";
   /** The person's departments for this service, in checklist order (may be empty). */
   own: number[];
-  /** Why they choose: not scheduled for this service, or scheduled in a position with no link yet. */
-  note: "not_scheduled" | "not_linked" | null;
+  /**
+   * Why they choose: not scheduled for this service, scheduled in a position with no link yet, or the schedule
+   * couldn't be loaded (US-04a: everyone sees all departments and picks theirs; check-offs work as usual).
+   */
+  note: "not_scheduled" | "not_linked" | "schedule_unavailable" | null;
+  /** With "schedule_unavailable": the schedule source's name, e.g. "Planning Center". */
+  source?: string;
 }
 
 /** PUT/DELETE /api/services/:serviceId/tasks/:taskId/checkoff */
@@ -131,6 +136,11 @@ export interface CurrentUser {
   hasAccess: boolean;
   /** Present (true) when they can't get in only because team mapping isn't set up yet (US-02). */
   settingUp?: true;
+  /**
+   * Present when they can't get in because the schedule source couldn't be reached to confirm their team, and they
+   * haven't been confirmed in the last 90 days (US-04a). Its name, e.g. "Planning Center".
+   */
+  unreachable?: string;
 }
 
 /** Church branding from settings (admin-editable). A null field has no value set. */
@@ -156,6 +166,8 @@ export interface DevUsersResponse {
 }
 
 export interface DevSignInRequest {
+  /** Signing in through the main button, which stands in for Planning Center sign-in (US-04b while "down"). */
+  viaPlanningCenter?: boolean;
   key: string;
 }
 

@@ -50,13 +50,13 @@ export async function isTeamMappingReady(db: D1Database, source: ScheduleSource 
   return row?.ready === 1;
 }
 
-export type Membership = "member" | "not_member" | "unknown";
+export type Membership = "member" | "not_member" | "unknown" | "unavailable";
 
 /**
  * US-02: is the user on a team an Admin has linked? Membership is enough; this week's schedule doesn't matter.
  * Stamps users.team_verified_at with `now` for a member and clears it for someone who isn't. "unknown" changes
- * nothing: no source, team mapping not set up yet (no Service Type or no links: before then nobody could be
- * confirmed, so existing access is left alone), no account in this source, or the source can't be reached.
+ * nothing: no source, team mapping not set up yet, or no account in this source. "unavailable" changes nothing
+ * either: the source couldn't be reached, so the last confirmation stands (90 days, US-04a).
  */
 export async function verifyMembership(db: D1Database, source: ScheduleSource | null, userId: number, now: Date): Promise<Membership> {
   if (!source || !(await getServiceTypeId(db, source))) return "unknown";
@@ -68,7 +68,7 @@ export async function verifyMembership(db: D1Database, source: ScheduleSource | 
   if (linked.length === 0 || !person) return "unknown";
 
   const teams = await orUnavailable(() => cached(db, `${source.id}:teams-of:${person}`, () => source.teamsOf(person)));
-  if (!teams) return "unknown";
+  if (!teams) return "unavailable";
   const member = teams.some((t) => linked.some((l) => l.team_external_id === t));
   await db
     .prepare("UPDATE users SET team_verified_at = CASE WHEN ?2 THEN ?3 ELSE NULL END WHERE id = ?1")
@@ -81,21 +81,30 @@ export async function verifyMembership(db: D1Database, source: ScheduleSource | 
  * The source's plan for the current service's date, recorded on the service (plan_source, plan_external_id): the
  * service is then "published" (US-05) and its assignments say who is scheduled. Unchanged without a plan.
  * The date itself still comes from the service-day setting; a plan on another date doesn't move the service.
+ * `unavailable`: the source couldn't be reached (a plan recorded earlier still stands).
  */
-export async function attachPlan(db: D1Database, source: ScheduleSource | null, service: Service): Promise<Service> {
+export async function attachPlan(
+  db: D1Database,
+  source: ScheduleSource | null,
+  service: Service,
+): Promise<{ service: Service; unavailable: boolean }> {
   const serviceTypeId = source && (await getServiceTypeId(db, source));
-  if (!source || !serviceTypeId) return service;
-  const plan = await orUnavailable(() =>
-    cached<SourcePlan | null>(db, `${source.id}:plan:${serviceTypeId}:${service.date}`, () => source.nextPlan(serviceTypeId, service.date)),
-  );
-  if (!plan || plan.date !== service.date) return service;
+  if (!source || !serviceTypeId) return { service, unavailable: false };
+  const looked = await orUnavailable(async () => ({
+    plan: await cached<SourcePlan | null>(db, `${source.id}:plan:${serviceTypeId}:${service.date}`, () =>
+      source.nextPlan(serviceTypeId, service.date),
+    ),
+  }));
+  if (!looked) return { service, unavailable: true };
+  const { plan } = looked;
+  if (!plan || plan.date !== service.date) return { service, unavailable: false };
   if (service.planExternalId !== plan.externalId) {
     await db
       .prepare("UPDATE services SET plan_source = ?2, plan_external_id = ?3 WHERE id = ?1")
       .bind(service.id, source.id, plan.externalId)
       .run();
   }
-  return { ...service, planExternalId: plan.externalId };
+  return { service: { ...service, planExternalId: plan.externalId }, unavailable: false };
 }
 
 /**
@@ -106,6 +115,8 @@ export async function attachPlan(db: D1Database, source: ScheduleSource | null, 
  * - "choose": everything, and they pick theirs. `note` says why: not scheduled for this service, or scheduled in a
  *   position nobody has linked yet; null when the schedule can't tell (nothing set up, no plan, source unreachable).
  * `categoryIds` are the service checklist's departments in display order; `own` follows that order.
+ * When the source can't be reached (`unavailable`, or the assignments can't be loaded), everyone sees all
+ * departments and picks theirs, with note "schedule_unavailable" (US-04a).
  */
 export async function getChecklistView(
   db: D1Database,
@@ -113,9 +124,12 @@ export async function getChecklistView(
   user: User,
   service: Service,
   categoryIds: number[],
+  unavailable = false,
 ): Promise<ChecklistView> {
   const staff = user.isAdmin || user.isDirector;
   const unknown: ChecklistView = { mode: staff ? "all" : "choose", own: [], note: null };
+  const outage: ChecklistView = { ...unknown, note: "schedule_unavailable", ...(source ? { source: source.label } : {}) };
+  if (unavailable) return outage;
   if (!source || !service.planExternalId || !(await getServiceTypeId(db, source))) return unknown;
   const person = await personFor(db, source, user.id);
   if (!person) return unknown;
@@ -123,7 +137,7 @@ export async function getChecklistView(
   const assignments = await orUnavailable(() =>
     cached<SourceAssignment[]>(db, `${source.id}:assignments:${plan}:${person}`, () => source.assignments(plan, person)),
   );
-  if (!assignments) return unknown;
+  if (!assignments) return outage;
 
   const { results: links } = await db
     .prepare("SELECT team_external_id, position_external_id, category_id, sees_all FROM team_links WHERE source = ?")

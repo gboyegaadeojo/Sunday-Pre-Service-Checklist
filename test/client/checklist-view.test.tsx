@@ -133,4 +133,24 @@ describe("department view", () => {
       cleanup();
     }
   });
+
+  it("during an outage, shows the banner and every department to pick from, without claiming nothing is published", async () => {
+    view = { mode: "choose", own: [], note: "schedule_unavailable", source: "Planning Center" };
+    const outage = body();
+    outage.service.published = false; // the plan couldn't be looked up
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(outage), { headers: { "Content-Type": "application/json" } })));
+    await renderPage();
+    expect(screen.getByText("We couldn't load your schedule from Planning Center. Please select your department.")).toBeTruthy();
+    expect(listed()).toEqual(["Presentation", "Audio", "Cameras"]);
+    expect(screen.queryByText(/No service is published/)).toBeNull();
+  });
+
+  it("still says when no service is published, outside an outage", async () => {
+    view = { mode: "choose", own: [], note: null };
+    const unpublished = body();
+    unpublished.service.published = false;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(unpublished), { headers: { "Content-Type": "application/json" } })));
+    await renderPage();
+    expect(screen.getByText(/No service is published in Planning Center yet/)).toBeTruthy();
+  });
 });

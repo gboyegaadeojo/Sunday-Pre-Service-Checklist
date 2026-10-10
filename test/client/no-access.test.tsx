@@ -18,4 +18,13 @@ describe("no-access page", () => {
     expect(screen.queryByText(/media team admin/)).toBeNull();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
   });
+
+  it("asks someone who couldn't be confirmed during an outage to try again", () => {
+    let retried = 0;
+    render(<NoAccessPage unreachable="Planning Center" onRetry={() => retried++} onSignOut={() => {}} signingOut={false} />);
+    expect(screen.getByText("We couldn't reach Planning Center to confirm your team. Please try again in a few minutes.")).toBeTruthy();
+    screen.getByRole("button", { name: "Try again" }).click();
+    expect(retried).toBe(1);
+    expect(screen.queryByText(/media team admin/)).toBeNull();
+  });
 });
