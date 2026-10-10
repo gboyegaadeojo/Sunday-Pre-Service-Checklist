@@ -330,3 +330,57 @@ export interface SetDefaultRequest {
   /** Also switch the current service to this list. Allowed only while it has no check-offs. */
   applyToCurrentService?: boolean;
 }
+
+// Church settings (Stage 5d.2, US-11a). Admin only, except the branding (GET /api/branding).
+
+/** Longest short name (the logo mark) the server accepts (trimmed). */
+export const SHORT_NAME_MAX = 8;
+/** Longest team name or app name the server accepts (trimmed). */
+export const BRANDING_MAX = 60;
+
+export interface ChurchSettings {
+  /** IANA time zone name, e.g. "America/Winnipeg". Empty if missing. */
+  timeZone: string;
+  /** 0 = Sunday … 6 = Saturday; null if missing or invalid. */
+  serviceWeekday: number | null;
+  /** Branding; an empty string is left out of the display. */
+  shortName: string;
+  teamName: string;
+  appName: string;
+}
+
+export type SettingField = keyof ChurchSettings;
+
+/** GET /api/admin/settings */
+export interface SettingsResponse {
+  settings: ChurchSettings;
+  /** The current service and how many tasks are checked on it now, or null while the calendar settings are invalid. */
+  currentService: { date: string; checkedCount: number } | null;
+}
+
+/** PUT /api/admin/settings: every field, as the form shows it. */
+export type UpdateSettingsRequest = ChurchSettings & { serviceWeekday: number };
+
+export interface UpdateSettingsResponse {
+  /** Fields that changed (none if the values were already saved). */
+  changed: SettingField[];
+  /** The current service date under the saved calendar settings. */
+  currentServiceDate: string;
+}
+
+/** One entry of the append-only settings log: only the fields that changed, before and after. */
+export interface SettingsEditEvent {
+  id: number;
+  at: string;
+  before: Partial<Record<SettingField, string | number | null>>;
+  after: Partial<Record<SettingField, string | number | null>>;
+  user: string;
+  sessionId: string | null;
+  tabId: string | null;
+}
+
+/** GET /api/admin/settings/events, newest first. */
+export interface SettingsEditsResponse {
+  events: SettingsEditEvent[];
+  truncated: boolean;
+}

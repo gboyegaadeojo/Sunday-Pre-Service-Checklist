@@ -10,6 +10,7 @@ import { ActivityPage } from "./pages/ActivityPage";
 import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
 import { HiddenItemsPage } from "./pages/admin/HiddenItemsPage";
 import { ListsPage } from "./pages/admin/ListsPage";
+import { SettingsPage } from "./pages/admin/SettingsPage";
 import { listRefFrom } from "./lib/useAdminList";
 import { ChecklistPage } from "./pages/ChecklistPage";
 import { DevSignInPage } from "./pages/DevSignInPage";
@@ -49,11 +50,16 @@ export function App() {
     void loadSession();
   }, [loadSession]);
 
-  useEffect(() => {
+  // Also re-run after an admin saves new branding (Settings), so the header and tab title update at once.
+  const loadBranding = useCallback(() => {
     getJson<BrandingResponse>("/api/branding")
       .then(setBranding)
-      .catch(() => setBranding(NO_BRANDING)); // branding is cosmetic; never block the app on it
+      .catch(() => setBranding((b) => b ?? NO_BRANDING)); // branding is cosmetic; never block the app on it
   }, []);
+
+  useEffect(() => {
+    loadBranding();
+  }, [loadBranding]);
 
   useEffect(() => {
     if (branding) document.title = documentTitle(branding);
@@ -124,6 +130,7 @@ export function App() {
       case "admin-hidden":
       case "admin-lists":
       case "admin-activity":
+      case "admin-settings":
         // The Admin link is hidden for non-admins; this covers a typed or bookmarked URL. The server refuses too.
         if (!user.isAdmin) {
           return (
@@ -137,6 +144,8 @@ export function App() {
             <AdminTabs route={route} onNavigate={navigate} />
             {route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />
+            ) : route === "admin-settings" ? (
+              <SettingsPage onAccessChanged={onAccessChanged} onBrandingChanged={loadBranding} />
             ) : route === "admin-lists" ? (
               <ListsPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : route === "admin-hidden" ? (

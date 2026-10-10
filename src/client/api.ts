@@ -37,7 +37,11 @@ async function send<T>(path: string, init: RequestInit): Promise<T> {
 
 export const getJson = <T>(path: string) => send<T>(path, {});
 
-export const putJson = <T>(path: string) => send<T>(path, { method: "PUT" });
+export const putJson = <T>(path: string, body?: unknown) =>
+  send<T>(
+    path,
+    body === undefined ? { method: "PUT" } : { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+  );
 
 export const deleteJson = <T>(path: string) => send<T>(path, { method: "DELETE" });
 

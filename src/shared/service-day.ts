@@ -1,17 +1,28 @@
 // Service-day calendar maths (US-07). Pure functions: the time zone and weekday always come from
 // settings (US-11a), never from code. Dates are calendar dates ("YYYY-MM-DD") in the church's time zone.
+// Shared: the Worker uses it for the current service, the Settings screen to preview a change.
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export class InvalidSettingError extends Error {}
 
-/** Throws InvalidSettingError unless timeZone is a time zone this runtime knows (IANA name). */
-export function assertTimeZone(timeZone: string): void {
+/**
+ * True for an IANA time zone name this runtime knows (e.g. "America/Winnipeg", "UTC"). Offsets such as
+ * "+05:00", which Intl also accepts, are refused: they ignore daylight saving.
+ */
+export function isTimeZone(timeZone: string): boolean {
+  if (!/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/.test(timeZone)) return false;
   try {
     new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
   } catch {
-    throw new InvalidSettingError(`time_zone setting "${timeZone}" is not a valid IANA time zone`);
+    return false;
   }
+}
+
+/** Throws InvalidSettingError unless timeZone is a time zone this runtime knows (IANA name). */
+export function assertTimeZone(timeZone: string): void {
+  if (!isTimeZone(timeZone)) throw new InvalidSettingError(`time_zone setting "${timeZone}" is not a valid IANA time zone`);
 }
 
 /** Parses the service_weekday setting: 0 = Sunday … 6 = Saturday. */

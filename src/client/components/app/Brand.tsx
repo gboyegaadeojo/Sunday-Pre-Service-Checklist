@@ -1,14 +1,15 @@
 import { useBranding } from "../../lib/branding";
 
 // Header/sign-in branding from settings. Lines with no value are left out.
-// compact: below the sm breakpoint show only the mark (if there is one), to leave room for navigation.
+// compact: below the sm breakpoint show only the mark, to leave room for navigation. With no mark (an admin
+// can clear it, US-11a) nothing shows there; the names still show from sm up and in the tab title.
 export function Brand({ compact = false }: { compact?: boolean }) {
   const { shortName, teamName, appName } = useBranding();
   const title = teamName ?? appName ?? "Checklist";
   const subtitle = teamName ? appName : null;
 
   return (
-    <div className="flex min-w-0 items-center gap-3">
+    <div className={`min-w-0 items-center gap-3 ${compact && !shortName ? "hidden sm:flex" : "flex"}`}>
       {shortName && (
         <span
           aria-hidden="true"
@@ -17,7 +18,7 @@ export function Brand({ compact = false }: { compact?: boolean }) {
           {shortName}
         </span>
       )}
-      <p className={`min-w-0 leading-tight ${compact && shortName ? "hidden sm:block" : ""}`}>
+      <p className={`min-w-0 leading-tight ${compact ? "hidden sm:block" : ""}`}>
         <span className="block truncate text-sm font-semibold">{title}</span>
         {subtitle && <span className="block truncate text-meta text-fg-muted">{subtitle}</span>}
       </p>

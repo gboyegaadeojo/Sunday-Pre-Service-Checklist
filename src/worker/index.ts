@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { loadSession } from "./middleware/auth";
 import { adminListRoutes } from "./routes/admin-lists";
+import { adminSettingsRoutes } from "./routes/admin-settings";
 import { adminStructureRoutes } from "./routes/admin-structure";
 import { authRoutes } from "./routes/auth";
 import { brandingRoutes } from "./routes/branding";
@@ -24,6 +25,7 @@ app.route("/api/services", resetRoutes);
 app.route("/api/services", eventRoutes);
 app.route("/api/admin", adminStructureRoutes);
 app.route("/api/admin", adminListRoutes);
+app.route("/api/admin/settings", adminSettingsRoutes);
 
 // Fake sign-in exists only in local development (vite dev server and tests). `vite build` replaces
 // import.meta.env.DEV with false, so this branch and the test users are removed from the production

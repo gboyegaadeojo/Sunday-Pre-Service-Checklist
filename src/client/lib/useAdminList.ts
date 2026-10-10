@@ -1,5 +1,15 @@
-import type { AdminListResponse, CreatedResponse, CreateListRequest, HiddenItemsResponse, ListsResponse, StructureKind } from "../../shared/types";
-import { deleteJson, patchJson, postJson } from "../api";
+import type {
+  AdminListResponse,
+  CreatedResponse,
+  CreateListRequest,
+  HiddenItemsResponse,
+  ListsResponse,
+  SettingsResponse,
+  StructureKind,
+  UpdateSettingsRequest,
+  UpdateSettingsResponse,
+} from "../../shared/types";
+import { deleteJson, patchJson, postJson, putJson } from "../api";
 import { useServerFirst } from "./useServerFirst";
 
 /** URL segment for each kind under /api/admin. */
@@ -73,5 +83,21 @@ export function useLists({ onAccessChanged }: { onAccessChanged: () => void }) {
     },
     hide: (id: number) => run(() => deleteJson(`/api/admin/lists/${id}`)),
     restore: (id: number) => run(() => postJson(`/api/admin/lists/${id}/restore`)),
+  };
+}
+
+/** Church settings (Stage 5d.2, US-11a): read, and save every field at once. */
+export function useSettings({ onAccessChanged }: { onAccessChanged: () => void }) {
+  const { run, ...rest } = useServerFirst<SettingsResponse>("/api/admin/settings", { onAccessChanged });
+  return {
+    ...rest,
+    /** Resolves to what the server saved, or null if it failed. */
+    save: async (body: UpdateSettingsRequest) => {
+      let saved: UpdateSettingsResponse | null = null;
+      await run(async () => {
+        saved = await putJson<UpdateSettingsResponse>("/api/admin/settings", body);
+      });
+      return saved as UpdateSettingsResponse | null;
+    },
   };
 }

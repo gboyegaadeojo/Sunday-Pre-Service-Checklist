@@ -1,4 +1,4 @@
-import { InvalidSettingError, assertTimeZone, currentServiceDate, parseWeekday } from "../lib/service-day";
+import { InvalidSettingError, assertTimeZone, currentServiceDate, parseWeekday } from "../../shared/service-day";
 import { getSettings } from "./settings";
 
 export interface Service {

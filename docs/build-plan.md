@@ -36,7 +36,8 @@
 ├── migrations/
 │   ├── 0001_schema.sql
 │   ├── 0002_seed_ifc_checklist.sql   # Section 6 of requirements (US-14)
-│   └── 0003_default_settings.sql     # starting branding, time zone, service weekday (US-11a)
+│   ├── 0003_default_settings.sql     # starting branding, time zone, service weekday (US-11a)
+│   └── 0004–0006                     # check-off log, checklist edit log, settings log (append-only)
 ├── src/
 │   ├── worker/
 │   │   ├── index.ts          # Hono app: mounts routes and middleware
@@ -140,6 +141,8 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 - Columns: `list_id`, `entity` (category/section/task), `entity_id`, `entity_name` (its name or text after the change, so the entry reads correctly after later renames), `action` (add/rename/edit/hide/restore/move/reorder), `before_json`, `after_json`, `user_id` (internal), `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`.
 - `before_json`/`after_json` hold only what changed: `name` or `text`; `place` (department, section and 1-based position among live siblings) for add, move and reorder; `teamLinks` removed by hiding a department.
 - Written in the same `db.batch` transaction as the edit. Triggers abort `UPDATE` and `DELETE`. No foreign keys.
+
+**settings_events** (migration `0006`, Stage 5d.2): append-only log of church settings changes (US-11a). Columns: `before_json`, `after_json` (only the fields that changed, e.g. `{"serviceWeekday": 0}`), `user_id` (internal), `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`. Same transaction and triggers as the other logs.
 
 **checkoff_events** — append-only activity log (migration `0004`): one row per check or uncheck attempt that reaches the check-off logic.
 - Columns: `service_id`, `task_id`, `action` (check/uncheck), `outcome` (applied / no_change / not_found / service_changed), `user_id` (internal), `user_name`, `session_id` (random, fixed at sign-in, kept when the cookie renews), `tab_id` (random per page load, sent as `X-Tab-Id`), `user_agent`, `created_at`.
@@ -258,7 +261,12 @@ Built in parts, each approved and committed on its own. The server rejects every
 - **Test in the browser:** copy the regular list to "Christmas Eve", edit the copy and confirm the original is unchanged; make it the default with "Also use it for this service"; check that the default list can't be hidden; hide and restore a list; see each change in Activity.
 
 **5d.2 — Church settings (US-11a)**
-- Settings screen: time zone (validated IANA name), service weekday, and branding (short name, team name, app name). Changes are logged.
+- Admin › Settings (`/admin/settings`): time zone (a list of IANA names grouped by region, with the current time there), service weekday, and branding (short name up to 8 characters, team name and app name up to 60; empty fields are left out of the display), with a live preview of the header and tab title. One Save for the whole form; Discard changes.
+- `PUT /api/admin/settings` saves only what changed. The time zone must be an IANA name (offsets like `+05:00` are refused, since they ignore daylight saving).
+- **Logged** in a new append-only `settings_events` table (migration `0006`, so local data is kept): who, when, and the before/after values of only the fields that changed, in the same transaction. Admin › Activity gets a **Settings** filter.
+- **Moving the current service:** a time zone or weekday change that changes the current service's date is confirmed first. The dialog names the old and new dates and how many tasks are checked on the old one; those stay with that date (and come back if the setting is changed back). The calendar maths moved to `src/shared/service-day.ts` so the screen previews the new date.
+- After a branding change the header and tab title update straight away; other people see it on their next page load.
+- **Test in the browser:** change the team name and see the preview, header and tab title follow; clear the short name; change the service day and confirm the move (the checklist shows the new date); see the three entries under Activity › Settings; confirm a Director gets 403 and sees "Admins only".
 
 **5d.3 — Service history (design.md §7)**
 - Each past service's check-offs (by the department and section snapshots) and activity log, read-only. Nothing in the admin area can edit or delete log entries.

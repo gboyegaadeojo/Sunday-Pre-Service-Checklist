@@ -7,6 +7,9 @@ import type {
   EditAction,
   EditEntity,
   EditPlace,
+  SettingField,
+  SettingsEditEvent,
+  SettingsEditsResponse,
 } from "../../shared/types";
 import { getJson, isAuthError } from "../api";
 import { Button } from "../components/ui/Button";
@@ -40,11 +43,20 @@ const EDIT: Record<EditAction, { label: string; tone: string }> = {
 
 const KIND: Record<EditEntity, string> = { list: "List", category: "Department", section: "Section", task: "Task" };
 
-type Filter = "all" | "checkoffs" | "edits";
+const SETTING: Record<SettingField, string> = {
+  timeZone: "Time zone",
+  serviceWeekday: "Service day",
+  shortName: "Short name",
+  teamName: "Team name",
+  appName: "App name",
+};
+
+type Filter = "all" | "checkoffs" | "edits" | "settings";
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "checkoffs", label: "Check-offs" },
   { value: "edits", label: "Checklist edits" },
+  { value: "settings", label: "Settings" },
 ];
 
 /** "9:42:10 AM" today in the church's time zone; "Oct 4, 9:42 AM" for older entries (edits can be from any day). */
@@ -115,12 +127,32 @@ function describeEdit(e: ChecklistEditEvent): string {
   }
 }
 
-type Entry = { type: "checkoff"; event: ActivityEvent } | { type: "edit"; event: ChecklistEditEvent };
+/** One settings value in words: a weekday by name, an empty branding value as "(none)". */
+function settingValue(field: SettingField, value: string | number | null | undefined): string {
+  if (field === "serviceWeekday") {
+    return typeof value === "number"
+      ? new Intl.DateTimeFormat(undefined, { weekday: "long", timeZone: "UTC" }).format(new Date(Date.UTC(1970, 0, 4 + value)))
+      : "(none)";
+  }
+  return value ? `“${value}”` : "(none)";
+}
+
+/** "Service day: Sunday → Saturday; Team name: “A” → “B”" (US-11a). */
+const describeSettings = (e: SettingsEditEvent) =>
+  (Object.keys(SETTING) as SettingField[])
+    .filter((f) => f in e.after)
+    .map((f) => `${SETTING[f]}: ${settingValue(f, e.before[f])} → ${settingValue(f, e.after[f])}`)
+    .join("; ");
+
+type Entry =
+  | { type: "checkoff"; event: ActivityEvent }
+  | { type: "edit"; event: ChecklistEditEvent }
+  | { type: "setting"; event: SettingsEditEvent };
 
 type State =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; checkoffs: ActivityResponse; edits: ChecklistEditsResponse };
+  | { status: "ready"; checkoffs: ActivityResponse; edits: ChecklistEditsResponse; settings: SettingsEditsResponse };
 
 // Admin-only activity: the append-only check-off log for the current service (Stage 4, US-07a) and the
 // append-only checklist edit log (Stage 5c, US-13b), newest first, with a filter. Read-only: entries can't be
@@ -133,11 +165,12 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [checkoffs, edits] = await Promise.all([
+      const [checkoffs, edits, settings] = await Promise.all([
         getJson<ActivityResponse>("/api/services/current/events"),
         getJson<ChecklistEditsResponse>("/api/admin/edits"),
+        getJson<SettingsEditsResponse>("/api/admin/settings/events"),
       ]);
-      setState({ status: "ready", checkoffs, edits });
+      setState({ status: "ready", checkoffs, edits, settings });
     } catch (err) {
       if (isAuthError(err)) return onAccessChanged();
       setState({ status: "error", message: (err as Error).message });
@@ -164,14 +197,18 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
   const { service } = state.checkoffs;
   const timeZone = service.timeZone;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+  const shows = (f: Exclude<Filter, "all">) => filter === "all" || filter === f;
   const entries: Entry[] = [
-    ...(filter === "edits" ? [] : state.checkoffs.events.map((event) => ({ type: "checkoff" as const, event }))),
-    ...(filter === "checkoffs" ? [] : state.edits.events.map((event) => ({ type: "edit" as const, event }))),
+    ...(shows("checkoffs") ? state.checkoffs.events.map((event) => ({ type: "checkoff" as const, event })) : []),
+    ...(shows("edits") ? state.edits.events.map((event) => ({ type: "edit" as const, event })) : []),
+    ...(shows("settings") ? state.settings.events.map((event) => ({ type: "setting" as const, event })) : []),
   ].sort((a, b) => b.event.at.localeCompare(a.event.at));
   // With more than one list in the feed, name the list of each department/section/task edit.
   const manyLists = new Set(state.edits.events.map((e) => e.list.id)).size > 1;
   const truncated =
-    (filter !== "edits" && state.checkoffs.truncated) || (filter !== "checkoffs" && state.edits.truncated);
+    (shows("checkoffs") && state.checkoffs.truncated) ||
+    (shows("edits") && state.edits.truncated) ||
+    (shows("settings") && state.settings.truncated);
 
   return (
     <main className="mx-auto max-w-app space-y-4 px-4 pt-4 pb-16 md:px-6 md:pt-6">
@@ -179,7 +216,8 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
         <div className="max-w-2xl">
           <h1 className="text-page font-semibold tracking-tight">Activity</h1>
           <p className="text-meta text-fg-muted">
-            Check-offs, resets and undos for {formatServiceDate(service.date)}, and changes to the checklist, newest first.
+            Check-offs, resets and undos for {formatServiceDate(service.date)}, and changes to the checklist and settings, newest
+            first.
             Entries can't be edited or deleted. Session and tab IDs show which sign-in and which browser tab made each change.
           </p>
         </div>
@@ -210,7 +248,9 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
           title={
             filter === "edits"
               ? "No checklist edits yet."
-              : filter === "checkoffs"
+              : filter === "settings"
+                ? "No settings changes yet."
+                : filter === "checkoffs"
                 ? "No check-offs yet for this service."
                 : "No activity yet."
           }
@@ -219,7 +259,12 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
         <Card className="overflow-hidden">
           <ol className="divide-y divide-line">
             {entries.map(({ type, event: e }) => {
-              const action = type === "checkoff" ? ACTION[(e as ActivityEvent).action] : EDIT[(e as ChecklistEditEvent).action];
+              const action =
+                type === "checkoff"
+                  ? ACTION[(e as ActivityEvent).action]
+                  : type === "edit"
+                    ? EDIT[(e as ChecklistEditEvent).action]
+                    : { label: "Changed settings", tone: "text-accent-soft" };
               return (
                 <li
                   key={`${type}-${e.id}`}
@@ -231,7 +276,11 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                     <span className="font-normal text-fg-muted md:block"> · {e.user}</span>
                   </span>
                   <span className="min-w-0 wrap-anywhere">
-                    {type === "checkoff" ? describeCheckoff(e as ActivityEvent) : describeEdit(e as ChecklistEditEvent)}
+                    {type === "checkoff"
+                      ? describeCheckoff(e as ActivityEvent)
+                      : type === "edit"
+                        ? describeEdit(e as ChecklistEditEvent)
+                        : describeSettings(e as SettingsEditEvent)}
                     {type === "edit" && manyLists && (e as ChecklistEditEvent).kind !== "list" && (
                       <span className="text-fg-muted"> · in “{(e as ChecklistEditEvent).list.name}”</span>
                     )}

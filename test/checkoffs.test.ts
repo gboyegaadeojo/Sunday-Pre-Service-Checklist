@@ -1,7 +1,7 @@
 import { env } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ChecklistResponse, ChecklistTask, CheckoffResponse } from "../src/shared/types";
-import { currentServiceDate } from "../src/worker/lib/service-day";
+import { currentServiceDate } from "../src/shared/service-day";
 import { request, signInAs, userIdOf, withCookie } from "./helpers";
 
 // Seed facts used below: task 1 "Verify all server rack devices…" is in section 1 of category 1

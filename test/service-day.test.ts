@@ -6,7 +6,7 @@ import {
   currentServiceDate,
   localDate,
   parseWeekday,
-} from "../src/worker/lib/service-day";
+} from "../src/shared/service-day";
 
 const SUNDAY = 0;
 const WEDNESDAY = 3;
