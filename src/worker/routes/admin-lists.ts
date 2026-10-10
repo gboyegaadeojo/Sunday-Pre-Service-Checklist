@@ -53,7 +53,7 @@ async function readListFields(c: Context<AppEnv>): Promise<ListFields> {
 export const adminListRoutes = new Hono<AppEnv>()
   .use(requireAdmin)
   .get("/lists", async (c) => {
-    return c.json<ListsResponse>(await getLists(c.env.DB, new Date()));
+    return c.json<ListsResponse>(await getLists(c.env.DB, new Date(), c.var.schedule));
   })
   .post("/lists", async (c) => {
     const fields = await readListFields(c);
@@ -77,7 +77,7 @@ export const adminListRoutes = new Hono<AppEnv>()
     const target = id(c);
     if (target === null) return notFound(c);
     const body = ((await c.req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
-    const service = body.applyToCurrentService === true ? await getCurrentService(c.env.DB, new Date()) : null;
+    const service = body.applyToCurrentService === true ? await getCurrentService(c.env.DB, new Date(), c.var.schedule) : null;
     const result = await setDefaultList(c.env.DB, actorFor(c), target, service?.id ?? null);
     if (!result.ok && result.reason === "already_default") return c.json<ApiErrorBody>({ error: "It's already the default list." }, 409);
     if (!result.ok) return notFound(c);
@@ -86,7 +86,7 @@ export const adminListRoutes = new Hono<AppEnv>()
   .delete("/lists/:id", async (c) => {
     const target = id(c);
     if (target === null) return notFound(c);
-    const service = await getCurrentService(c.env.DB, new Date());
+    const service = await getCurrentService(c.env.DB, new Date(), c.var.schedule);
     const result = await hideList(c.env.DB, actorFor(c), target, service?.id ?? null);
     if (result === "not_found") return notFound(c);
     if (result === "default") {

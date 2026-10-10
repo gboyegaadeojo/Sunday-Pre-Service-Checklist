@@ -18,7 +18,7 @@ async function run(c: Context<AppEnv>, action: Action, perform: typeof resetServ
   if (!Number.isInteger(serviceId)) return c.json<ApiErrorBody>({ error: "Not found" }, 404);
   const actor = actorFor(c);
 
-  const service = await getCurrentService(c.env.DB, new Date());
+  const service = await getCurrentService(c.env.DB, new Date(), c.var.schedule);
   if (!service || service.id !== serviceId) {
     await logRejectedAttempt(c.env.DB, { serviceId, taskId: null, action, outcome: "service_changed", actor });
     return c.json<ApiErrorBody>({ error: "That service is no longer current. Showing the current one.", code: "service_changed" }, 409);

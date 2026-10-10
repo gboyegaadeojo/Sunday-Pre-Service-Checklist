@@ -1,4 +1,3 @@
-import { currentServiceDate } from "../../shared/service-day";
 import type {
   HistoryCategory,
   HistoryCheckoff,
@@ -9,7 +8,7 @@ import type {
   ServiceSummary,
 } from "../../shared/types";
 import { ACTIVE } from "./checkoffs";
-import { getCalendarSettings } from "./services";
+import { currentServiceDay } from "./services";
 
 // Service history (Stage 5d.3, design.md §7, US-07). Read-only.
 // - Services with a record of their checklist (US-07b, migration 0007) show every task on it at the end of the
@@ -56,8 +55,8 @@ const toSummary = (r: SummaryRow): ServiceSummary => ({
 
 /** The current service date, worked out without creating the service row (unlike getCurrentService). */
 async function currentDate(db: D1Database, now: Date): Promise<{ date: string; timeZone: string }> {
-  const { timeZone, weekday } = await getCalendarSettings(db);
-  return { date: currentServiceDate(now, timeZone, weekday).date, timeZone };
+  const { date, timeZone } = await currentServiceDay(db, now);
+  return { date, timeZone };
 }
 
 /** Every service except the current one, newest date first. */

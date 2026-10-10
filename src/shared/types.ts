@@ -388,8 +388,11 @@ export type SettingField = keyof ChurchSettings;
 /** GET /api/admin/settings */
 export interface SettingsResponse {
   settings: ChurchSettings;
-  /** The current service and how many tasks are checked on it now, or null while the calendar settings are invalid. */
-  currentService: { date: string; checkedCount: number } | null;
+  /**
+   * The current service and how many tasks are checked on it now, or null while the calendar settings are invalid.
+   * fromPlan: its date comes from a published Planning Center plan, so the service day applies only without one (US-07).
+   */
+  currentService: { date: string; checkedCount: number; fromPlan: boolean } | null;
 }
 
 /** PUT /api/admin/settings: every field, as the form shows it. */

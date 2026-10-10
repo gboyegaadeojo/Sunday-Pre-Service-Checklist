@@ -1,5 +1,5 @@
-import { InvalidSettingError, currentServiceDate } from "../../shared/service-day";
-import { getCalendarSettings } from "./services";
+import { InvalidSettingError } from "../../shared/service-day";
+import { currentServiceDay } from "./services";
 
 // The record of each service's checklist (US-07b, migration 0007): every task that was on it while the service
 // was current, so history can show "X of Y done" and what wasn't checked. Only the *current* service's record is
@@ -49,8 +49,7 @@ const CURRENT = "SELECT id FROM services WHERE service_date = ?1 AND tasks_recor
 export async function syncRecordStatements(db: D1Database, now = new Date()): Promise<D1PreparedStatement[]> {
   let date: string;
   try {
-    const { timeZone, weekday } = await getCalendarSettings(db);
-    date = currentServiceDate(now, timeZone, weekday).date;
+    date = (await currentServiceDay(db, now)).date; // a published plan's date, or the service day (US-07)
   } catch (err) {
     if (err instanceof InvalidSettingError) return [];
     throw err;

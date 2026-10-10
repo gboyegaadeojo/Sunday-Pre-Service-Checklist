@@ -5,6 +5,7 @@
 
 import type { AdminListSummary, ListsResponse } from "../../shared/types";
 import { NOW, bindWithActor } from "./admin-structure";
+import type { ScheduleSource } from "../sources/schedule";
 import type { Actor } from "./checkoffs";
 import { restartRecordStatements } from "./service-record";
 import { getCalendarSettings, getCurrentService } from "./services";
@@ -52,9 +53,9 @@ interface ListRow {
 }
 
 /** All lists (live first: the default, then by name; then hidden ones) and the current service's list. */
-export async function getLists(db: D1Database, now: Date): Promise<ListsResponse> {
+export async function getLists(db: D1Database, now: Date, source: ScheduleSource | null): Promise<ListsResponse> {
   const { timeZone } = await getCalendarSettings(db);
-  const service = await getCurrentService(db, now);
+  const service = await getCurrentService(db, now, source); // a published plan decides it (US-07)
   const [lists, checkoffs] = await db.batch([
     db.prepare(
       `SELECT l.id, l.name, l.description, l.is_default, l.created_at, l.deleted_at,

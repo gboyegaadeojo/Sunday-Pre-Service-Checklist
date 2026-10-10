@@ -8,7 +8,7 @@ import type { AppEnv } from "../types";
 // cached schedule expires or an Admin presses "Refresh", as with a real change in Planning Center; switching it up or
 // down takes effect at once (the cache is cleared), so the outage screens can be tried straight away.
 //   GET /api/dev/schedule  the adjustments
-//   PUT /api/dev/schedule  { addedTeams?, addedPositions?, renamedPositions?, removedPositions?, unpublished?, down?, delayMs? }
+//   PUT /api/dev/schedule  { addedTeams?, addedPositions?, renamedPositions?, removedPositions?, unpublished?, extraPlans?, down?, delayMs? }
 //                          replaces the adjustments
 export const createDevScheduleRoutes = () =>
   new Hono<AppEnv>()

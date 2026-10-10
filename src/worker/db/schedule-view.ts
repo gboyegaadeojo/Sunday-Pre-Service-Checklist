@@ -1,6 +1,6 @@
 // What the schedule source says about a person, and what follows for the app (Stage 7b):
 // - membership (US-02): on a linked team → access; the check is stamped in users.team_verified_at.
-// - the plan for the current service (US-05, US-07): it's "published", and it says who is scheduled where.
+// - who is scheduled where in the current service's plan (US-05; the plan itself: getCurrentService, US-07).
 // - the department view (US-05): which departments the checklist shows a person first, or only.
 // Every source call is cached for a few minutes (sources/cache.ts). Nothing here limits what anyone may check off:
 // the view is a display choice, and the server accepts any live task from anyone with access.
@@ -8,7 +8,7 @@
 import type { ChecklistView } from "../../shared/types";
 import { cached } from "../sources/cache";
 import { ProviderUnavailableError } from "../sources/identity";
-import { PERSON_PROVIDER, type ScheduleSource, type SourceAssignment, type SourcePlan } from "../sources/schedule";
+import { PERSON_PROVIDER, type ScheduleSource, type SourceAssignment } from "../sources/schedule";
 import { getServiceTypeId } from "./mapping";
 import type { Service } from "./services";
 import type { User } from "./users";
@@ -78,36 +78,6 @@ export async function verifyMembership(db: D1Database, source: ScheduleSource | 
 }
 
 /**
- * The source's plan for the current service's date, recorded on the service (plan_source, plan_external_id): the
- * service is then "published" (US-05) and its assignments say who is scheduled. Unchanged without a plan.
- * The date itself still comes from the service-day setting; a plan on another date doesn't move the service.
- * `unavailable`: the source couldn't be reached (a plan recorded earlier still stands).
- */
-export async function attachPlan(
-  db: D1Database,
-  source: ScheduleSource | null,
-  service: Service,
-): Promise<{ service: Service; unavailable: boolean }> {
-  const serviceTypeId = source && (await getServiceTypeId(db, source));
-  if (!source || !serviceTypeId) return { service, unavailable: false };
-  const looked = await orUnavailable(async () => ({
-    plan: await cached<SourcePlan | null>(db, `${source.id}:plan:${serviceTypeId}:${service.date}`, () =>
-      source.nextPlan(serviceTypeId, service.date),
-    ),
-  }));
-  if (!looked) return { service, unavailable: true };
-  const { plan } = looked;
-  if (!plan || plan.date !== service.date) return { service, unavailable: false };
-  if (service.planExternalId !== plan.externalId) {
-    await db
-      .prepare("UPDATE services SET plan_source = ?2, plan_external_id = ?3 WHERE id = ?1")
-      .bind(service.id, source.id, plan.externalId)
-      .run();
-  }
-  return { service: { ...service, planExternalId: plan.externalId }, unavailable: false };
-}
-
-/**
  * US-05: which departments the checklist shows this person.
  * - "all": Admins, Directors, and anyone scheduled in a team or position marked "sees all departments". Their own
  *   departments (if scheduled) come first.
@@ -115,7 +85,7 @@ export async function attachPlan(
  * - "choose": everything, and they pick theirs. `note` says why: not scheduled for this service, or scheduled in a
  *   position nobody has linked yet; null when the schedule can't tell (nothing set up, no plan, source unreachable).
  * `categoryIds` are the service checklist's departments in display order; `own` follows that order.
- * When the source can't be reached (`unavailable`, or the assignments can't be loaded), everyone sees all
+ * When the source can't be reached (`unavailable`: Service.scheduleUnavailable, or the assignments can't be loaded), everyone sees all
  * departments and picks theirs, with note "schedule_unavailable" (US-04a).
  */
 export async function getChecklistView(

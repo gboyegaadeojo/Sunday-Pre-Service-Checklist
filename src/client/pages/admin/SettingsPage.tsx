@@ -151,7 +151,10 @@ function SettingsForm({
   const changed = !sameValues(values, saved);
   const complete = isTimeZone(values.timeZone) && values.serviceWeekday !== null;
   const oldDate = data.currentService?.date ?? null;
-  const newDate = serviceDateFor(values);
+  // A published plan decides the current service (US-07): the service day then applies only without one, so a change
+  // here doesn't move it.
+  const fromPlan = data.currentService?.fromPlan ?? false;
+  const newDate = fromPlan ? oldDate : serviceDateFor(values);
   const moves = newDate !== null && newDate !== oldDate;
   const preview = clean(values);
 
@@ -208,7 +211,9 @@ function SettingsForm({
           hint={
             oldDate === null && newDate === null
               ? null
-              : moves
+              : fromPlan && oldDate
+                ? `Current service: ${formatServiceDate(oldDate)}, from Planning Center's plan. The service day is used when no plan is published.`
+                : moves
                 ? `The current service will move from ${oldDate ? formatServiceDate(oldDate) : "—"} to ${formatServiceDate(newDate)}.`
                 : `Current service: ${formatServiceDate((newDate ?? oldDate) as string)}.`
           }

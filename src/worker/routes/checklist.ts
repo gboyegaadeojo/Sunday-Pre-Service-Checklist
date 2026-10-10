@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { ChecklistResponse } from "../../shared/types";
 import { getServiceChecklist } from "../db/checklist";
 import { getLatestReset } from "../db/resets";
-import { attachPlan, getChecklistView } from "../db/schedule-view";
+import { getChecklistView } from "../db/schedule-view";
 import { getCurrentService } from "../db/services";
 import type { User } from "../db/users";
 import { requireAccess } from "../middleware/auth";
@@ -14,9 +14,7 @@ import type { AppEnv } from "../types";
  * `view` says which departments this person sees first, or only, from the schedule (US-05, Stage 7b).
  */
 export const checklistRoutes = new Hono<AppEnv>().get("/", requireAccess, async (c) => {
-  const current = await getCurrentService(c.env.DB, new Date());
-  const planned = current && (await attachPlan(c.env.DB, c.var.schedule, current));
-  const service = planned?.service;
+  const service = await getCurrentService(c.env.DB, new Date(), c.var.schedule);
   const checklist = service && (await getServiceChecklist(c.env.DB, service));
   if (!service || !checklist) return c.json({ error: "No default checklist is set up yet." }, 404);
 
@@ -28,7 +26,7 @@ export const checklistRoutes = new Hono<AppEnv>().get("/", requireAccess, async 
     user,
     service,
     checklist.categories.map((d) => d.id),
-    planned?.unavailable,
+    service.scheduleUnavailable,
   );
   return c.json<ChecklistResponse>({ ...checklist, view });
 });

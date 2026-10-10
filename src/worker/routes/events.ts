@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import type { ActivityEvent, ActivityResponse, ApiErrorBody } from "../../shared/types";
-import { currentServiceDate } from "../../shared/service-day";
-import { getCalendarSettings, getCurrentService } from "../db/services";
+import { currentServiceDay, getCurrentService } from "../db/services";
 import { requireAdmin } from "../middleware/auth";
 import type { AppEnv } from "../types";
 
@@ -26,11 +25,10 @@ interface EventRow {
 // the check-off snapshot (US-06), so later edits don't rewrite the record; the current service shows today's text.
 export const eventRoutes = new Hono<AppEnv>().get("/:serviceId/events", requireAdmin, async (c) => {
   const param = c.req.param("serviceId");
-  const serviceId = param === "current" ? ((await getCurrentService(c.env.DB, new Date()))?.id ?? Number.NaN) : Number(param);
+  const serviceId = param === "current" ? ((await getCurrentService(c.env.DB, new Date(), c.var.schedule))?.id ?? Number.NaN) : Number(param);
   if (!Number.isInteger(serviceId)) return c.json<ApiErrorBody>({ error: "Not found" }, 404);
 
-  const { timeZone, weekday } = await getCalendarSettings(c.env.DB);
-  const today = currentServiceDate(new Date(), timeZone, weekday).date;
+  const { date: today, timeZone } = await currentServiceDay(c.env.DB, new Date());
   const [serviceResult, eventResult] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT id, service_date FROM services WHERE id = ?").bind(serviceId),
     c.env.DB

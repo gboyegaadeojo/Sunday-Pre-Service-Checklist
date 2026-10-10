@@ -15,7 +15,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-10-09T17:00:00Z"));
   data = {
     settings: { timeZone: "America/Winnipeg", serviceWeekday: 0, shortName: "IFC", teamName: "IFC Production", appName: "Pre-Service Checklist" },
-    currentService: { date: "2026-10-11", checkedCount: 0 },
+    currentService: { date: "2026-10-11", checkedCount: 0, fromPlan: false },
   };
   puts = [];
   onBrandingChanged.mockReset();
@@ -65,8 +65,21 @@ describe("Settings page", () => {
     await waitFor(() => expect(save().disabled).toBe(true)); // the form starts over from the saved values
   });
 
+  it("doesn't predict a move when a published plan decides the current service (US-07)", async () => {
+    data.currentService = { date: "2026-10-11", checkedCount: 5, fromPlan: true };
+    await renderPage();
+    fireEvent.change(screen.getByLabelText("Service day"), { target: { value: "6" } });
+    expect(
+      screen.getByText("Current service: Sunday, October 11, 2026, from Planning Center's plan. The service day is used when no plan is published."),
+    ).toBeTruthy();
+    fireEvent.click(save());
+    // No "Move the current service?" confirmation: saved straight away.
+    await waitFor(() => expect(puts).toHaveLength(1));
+    expect(screen.queryByRole("dialog", { name: "Move the current service?" })).toBeNull();
+  });
+
   it("confirms before moving the current service, and warns about its check-offs", async () => {
-    data.currentService = { date: "2026-10-11", checkedCount: 5 };
+    data.currentService = { date: "2026-10-11", checkedCount: 5, fromPlan: false };
     await renderPage();
     fireEvent.change(screen.getByLabelText("Service day"), { target: { value: "6" } });
     expect(screen.getByText("The current service will move from Sunday, October 11, 2026 to Saturday, October 10, 2026.")).toBeTruthy();

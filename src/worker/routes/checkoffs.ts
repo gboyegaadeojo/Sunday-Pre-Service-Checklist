@@ -20,7 +20,7 @@ async function resolve(c: Context<AppEnv>, action: "check" | "uncheck"): Promise
   if (!Number.isInteger(serviceId) || !Number.isInteger(taskId)) return c.json<ApiErrorBody>({ error: "Not found" }, 404);
 
   const actor = actorFor(c);
-  const service = await getCurrentService(c.env.DB, new Date());
+  const service = await getCurrentService(c.env.DB, new Date(), c.var.schedule);
   if (!service || service.id !== serviceId) {
     await logRejectedAttempt(c.env.DB, { serviceId, taskId, action, outcome: "service_changed", actor });
     return c.json<ApiErrorBody>(

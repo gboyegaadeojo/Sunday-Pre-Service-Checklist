@@ -7,6 +7,7 @@
 // Developers and tests can adjust it (teams added; positions added, renamed or removed; no plan published; down or slow) through /api/dev/schedule, stored
 // in the dev_state table so the changes survive dev-server restarts.
 
+import { addDays } from "../../shared/service-day";
 import { ProviderUnavailableError } from "../sources/identity";
 import type { ScheduleSource, SourceAssignment, SourceServiceType, SourceTeam } from "../sources/schedule";
 
@@ -89,8 +90,10 @@ export interface FakeScheduleState {
   renamedPositions?: Record<string, string>;
   /** Position IDs removed, as if deleted in Planning Center. */
   removedPositions?: string[];
-  /** No plan is published, as before Planning Center has the service (US-05 note). */
+  /** No plan is published on service days, as before Planning Center has the service (US-05 note). */
   unpublished?: boolean;
+  /** Extra plans on other dates ("YYYY-MM-DD"), e.g. a Saturday special service (US-07). */
+  extraPlans?: { date: string }[];
   /** Planning Center is down: every call fails, and sign-in through it is unavailable (US-04a, US-04b). */
   down?: boolean;
   /** Every call takes this long to answer, to try the 5-second limit (US-04a). */
@@ -107,6 +110,14 @@ export const writeFakeScheduleState = (db: D1Database, state: FakeScheduleState)
     .prepare("INSERT INTO dev_state (key, json) VALUES (?1, ?2) ON CONFLICT (key) DO UPDATE SET json = excluded.json")
     .bind(FAKE_SCHEDULE_STATE_KEY, JSON.stringify(state))
     .run();
+
+/** The first date on or after `fromDate` that falls on the church's service day (the service_weekday setting). */
+async function nextServiceDay(db: D1Database, fromDate: string): Promise<string> {
+  const row = await db.prepare("SELECT value FROM settings WHERE key = 'service_weekday'").first<{ value: string }>();
+  const weekday = Number(row?.value);
+  const from = new Date(`${fromDate}T00:00:00Z`).getUTCDay();
+  return addDays(fromDate, (weekday - from + 7) % 7);
+}
 
 /** The adjustments, after any delay; throws as an unreachable source would while "down". */
 async function answer(db: D1Database): Promise<FakeScheduleState> {
@@ -142,10 +153,16 @@ export function createFakeScheduleSource(db: D1Database): ScheduleSource {
       await answer(db);
       return FAKE_ROSTERS[person] ?? [];
     },
-    // A plan is published on whatever date is asked for (so it follows the church's service day), in every Service
-    // Type, unless a developer marked the schedule unpublished.
-    nextPlan: async (serviceTypeExternalId, fromDate) =>
-      (await answer(db)).unpublished || !FAKE_TEAMS[serviceTypeExternalId] ? null : { externalId: `plan-${serviceTypeExternalId}-${fromDate}`, date: fromDate },
+    // Plans are published on every service day (the church's setting), unless a developer marked them unpublished,
+    // plus any extra plans a developer added on other dates. The earliest on or after fromDate comes back (US-07).
+    nextPlan: async (serviceTypeExternalId, fromDate) => {
+      const state = await answer(db);
+      if (!FAKE_TEAMS[serviceTypeExternalId]) return null;
+      const dates = [...(state.unpublished ? [] : [await nextServiceDay(db, fromDate)]), ...(state.extraPlans ?? []).map((p) => p.date)]
+        .filter((d) => d >= fromDate)
+        .sort();
+      return dates[0] ? { externalId: `plan-${serviceTypeExternalId}-${dates[0]}`, date: dates[0] } : null;
+    },
     assignments: async (_plan, person) => {
       await answer(db);
       return FAKE_ASSIGNMENTS[person] ?? [];

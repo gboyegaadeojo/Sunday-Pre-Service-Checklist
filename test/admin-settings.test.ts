@@ -77,7 +77,8 @@ describe("reading and saving", () => {
   it("returns the seeded settings and the current service", async () => {
     const s = await get();
     expect(s.settings).toEqual(SEED);
-    expect(s.currentService).toEqual({ date: currentServiceDate(new Date(), "America/Winnipeg", 0).date, checkedCount: 0 });
+    // No service yet, so no plan recorded: the service day decides (US-07).
+    expect(s.currentService).toEqual({ date: currentServiceDate(new Date(), "America/Winnipeg", 0).date, checkedCount: 0, fromPlan: false });
   });
 
   it("saves and logs only what changed, trimmed, with who made the change", async () => {

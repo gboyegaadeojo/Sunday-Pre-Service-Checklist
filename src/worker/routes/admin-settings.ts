@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { currentServiceDate, isTimeZone } from "../../shared/service-day";
+import { isTimeZone } from "../../shared/service-day";
 import {
   type ApiErrorBody,
   BRANDING_MAX,
@@ -9,6 +9,7 @@ import {
   type SettingsResponse,
   type UpdateSettingsResponse,
 } from "../../shared/types";
+import { currentServiceDay } from "../db/services";
 import { getChurchSettings, getSettingsEvents, updateChurchSettings } from "../db/settings";
 import { actorFor } from "../lib/actor";
 import { requireAdmin } from "../middleware/auth";
@@ -48,7 +49,8 @@ export const adminSettingsRoutes = new Hono<AppEnv>()
     // Read only: the current service row is created by the checklist, not by looking at settings.
     let currentService: SettingsResponse["currentService"] = null;
     if (isTimeZone(settings.timeZone) && settings.serviceWeekday !== null) {
-      const { date } = currentServiceDate(new Date(), settings.timeZone, settings.serviceWeekday);
+      // A published plan's date, or the service day (US-07).
+      const { date, fromPlan } = await currentServiceDay(db, new Date());
       // Active check-offs only: unchecked and reset ones aren't progress anyone would lose sight of.
       const row = await db
         .prepare(
@@ -57,7 +59,7 @@ export const adminSettingsRoutes = new Hono<AppEnv>()
         )
         .bind(date)
         .first<{ n: number }>();
-      currentService = { date, checkedCount: row?.n ?? 0 };
+      currentService = { date, checkedCount: row?.n ?? 0, fromPlan };
     }
     return c.json<SettingsResponse>({ settings, currentService });
   })
@@ -66,7 +68,7 @@ export const adminSettingsRoutes = new Hono<AppEnv>()
     const fields = readSettings(body);
     if ("error" in fields) return c.json<ApiErrorBody>({ error: fields.error }, 400);
     const changed = await updateChurchSettings(c.env.DB, actorFor(c), fields);
-    const { date } = currentServiceDate(new Date(), fields.timeZone, fields.serviceWeekday);
+    const { date } = await currentServiceDay(c.env.DB, new Date());
     return c.json<UpdateSettingsResponse>({ changed, currentServiceDate: date });
   })
   .get("/events", async (c) => c.json<SettingsEditsResponse>(await getSettingsEvents(c.env.DB)));

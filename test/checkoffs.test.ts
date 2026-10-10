@@ -60,10 +60,17 @@ describe("GET /api/checklist: current service (US-07)", () => {
     expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM services").first<{ n: number }>())?.n).toBe(1);
   });
 
-  it("follows the service weekday setting (US-11a)", async () => {
+  it("follows the service weekday setting when no plan is published (US-07, US-11a)", async () => {
+    // A published plan decides the date (test/current-service.test.ts); the setting applies without one.
+    const schedule = (state: unknown) =>
+      request("/api/dev/schedule", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state) });
+    await schedule({ unpublished: true });
+    await env.DB.prepare("DELETE FROM source_cache").run();
     await env.DB.prepare("UPDATE settings SET value = '3' WHERE key = 'service_weekday'").run();
     const body = await getChecklist();
     expect(body.service.date).toBe(currentServiceDate(new Date(), "America/Winnipeg", 3).date);
+    expect(body.service.published).toBe(false);
+    await schedule({});
   });
 
   it("fails loudly instead of guessing when the calendar settings are invalid", async () => {
