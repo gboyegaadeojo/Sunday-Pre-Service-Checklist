@@ -7,7 +7,7 @@ import { FAKE_USERS } from "../dev/fake-users";
 import { startSession } from "../middleware/auth";
 import type { AppEnv } from "../types";
 
-/** US-04b. Stage 8's Planning Center sign-in shows the same message when it can't reach Planning Center. */
+/** US-04b. Stage 9's Planning Center sign-in shows the same message when it can't reach Planning Center. */
 const SIGN_IN_UNAVAILABLE = "Planning Center sign-in is temporarily unavailable. Please try again shortly.";
 
 // Fake sign-in, local development only. A factory rather than a module-level router so that the

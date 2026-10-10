@@ -9,7 +9,7 @@ export interface AppEnv {
     user: User | null;
     /** The signed-in session's ID (fixed at sign-in), or null. Recorded in the check-off log. */
     sessionId: string | null;
-    /** The schedule source in use (requirements C22), or null when none is connected (production before Stage 8). */
+    /** The schedule source in use (requirements C22), or null when none is connected (production before Stage 9). */
     schedule: ScheduleSource | null;
   };
 }

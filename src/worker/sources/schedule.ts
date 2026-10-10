@@ -1,10 +1,10 @@
 // Schedule sources (requirements C22): service types, teams and positions, team membership, plans and who
-// is scheduled. Planning Center is one implementation (Stage 8); a fake one is used for development and
+// is scheduled. Planning Center is one implementation (Stage 9); a fake one is used for development and
 // tests (Stage 7). Nothing else in the app knows which source is in use. Outside IDs are stored with the
 // source's name (team_links.source, services.plan_source), never in Planning Center–named columns.
 //
 // The source in use is c.var.schedule (src/worker/index.ts): the fake one in local development and tests,
-// Planning Center from Stage 8, and null in production until then.
+// Planning Center from Stage 9, and null in production until then.
 
 import type { IdentityProviderId } from "./identity";
 

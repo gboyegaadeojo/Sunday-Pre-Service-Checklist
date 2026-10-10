@@ -6,7 +6,7 @@ const initials = (name: string) =>
     .map((part) => part[0]?.toUpperCase())
     .join("");
 
-/** Planning Center avatar when available (Stage 8), otherwise initials. Decorative: the name is always shown nearby. */
+/** Planning Center avatar when available (Stage 9), otherwise initials. Decorative: the name is always shown nearby. */
 export function Avatar({ name, url, className = "size-8" }: { name: string; url: string | null; className?: string }) {
   if (url) return <img src={url} alt="" className={`shrink-0 rounded-full object-cover ${className}`} />;
   return (

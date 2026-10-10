@@ -255,7 +255,7 @@ Built in parts, each approved and committed on its own. The server rejects every
 - Check-offs, resets, `checkoff_events` and `checklist_events` store `*_user_id` (internal) instead of `*_pco_id`. `CurrentUser.id` sent to the browser becomes the internal ID.
 - Test sign-in becomes the first `IdentityProvider` (`dev`, subject = test-user key). Sign-in goes through one function: find the identity, or create user and identity together. Roles are still never overwritten at sign-in.
 - Provider-neutral names for the not-yet-used Planning Center tables and columns: `team_links` (`source`, `team_external_id`, …), `services.plan_source`/`plan_external_id`, `source_cache`.
-- `src/worker/sources/` holds the `IdentityProvider` and `ScheduleSource` interfaces (types only until Stage 7). Planning Center wording in the UI stays where it describes today's setup (the sign-in button, "No service is published in Planning Center"). In Stage 8 the sign-in screen gets its button label from the server's provider list, and the schedule-source wording follows the configured source.
+- `src/worker/sources/` holds the `IdentityProvider` and `ScheduleSource` interfaces (types only until Stage 7). Planning Center wording in the UI stays where it describes today's setup (the sign-in button, "No service is published in Planning Center"). In Stage 9 the sign-in screen gets its button label from the server's provider list, and the schedule-source wording follows the configured source.
 - **Migration approach (to confirm):** nothing is deployed yet, so the recommended option rewrites `0001`, `0004` and `0005` in place and resets local databases once. That gives a clean schema, and the append-only logs are never rewritten. The alternative is a new `0006` that rebuilds the affected tables and keeps local data, but it has to drop and recreate the log triggers to copy the log rows.
 - **Test in the browser:** sign in as each test user and confirm roles, check-offs, reset/undo and both logs work as before. The Activity view shows the same names.
 
@@ -318,7 +318,7 @@ Built, shown and committed in parts: **7a** the fake schedule source and the map
 
 **7a — Fake schedule source and team mapping (US-15, requirements v1.18)**
 - `src/worker/dev/fake-schedule.ts` (dev-only, dropped from production builds like the test users): Service Types "Sunday Service" and "Special Events"; a Production team with the church's real position names and a Worship Band (not a media team). Developers and tests adjust it through `PUT /api/dev/schedule` (positions added, renamed, removed), stored in `dev_state`.
-- The source in use is `c.var.schedule`: the fake one under `import.meta.env.DEV`, none in production until Stage 8 (the mapping screen says Planning Center isn't connected yet). Responses are cached in `source_cache` for 5 minutes (`sources/cache.ts`).
+- The source in use is `c.var.schedule`: the fake one under `import.meta.env.DEV`, none in production until Stage 9 (the mapping screen says Planning Center isn't connected yet). Responses are cached in `source_cache` for 5 minutes (`sources/cache.ts`).
 - Admin › **Team mapping** (`/admin/mapping`): choose the Service Type (settings `schedule_source` + `schedule_service_type`), then link the whole team and/or each position to a department of the default list, and mark "Sees all departments". Statuses: Linked, Follows the team, Not linked. Links are stored by the source's IDs; names are only kept for display.
 - **Refresh from Planning Center** clears the source's cache and fetches again. A **notice** lists positions on media teams that lead to no department, and links to things gone from the source (with Remove link); the Team mapping tab shows the count from anywhere in the Admin area.
 - **New teams:** a team with no links that nobody has reviewed gets an informational note ("New team in Planning Center: …") and a quiet "new" on the tab. "Not a media team" marks it once (the Worship Band, say) and folds it to one line with Undo; marked teams can't be linked, and linked teams can't be marked. Fake teams can be added through `PUT /api/dev/schedule` (`addedTeams`).
@@ -337,7 +337,7 @@ Built, shown and committed in parts: **7a** the fake schedule source and the map
 - **5 seconds:** every source call goes through `sources/cache.ts`, which gives up after 5 seconds (`SOURCE_TIMEOUT_MS`) and then treats the source as unreachable for a minute (an `<source>:unavailable` row in `source_cache`), so page loads don't each wait out the timeout. "Refresh from Planning Center" clears it.
 - **Access:** a confirmed media team membership counts for **90 days** (`VERIFIED_FOR_DAYS`); while the source is up it's renewed on every page load. During an outage, people confirmed in the last 90 days carry on; anyone else sees "We couldn't reach Planning Center to confirm your team. Please try again in a few minutes." with Try again (`/me` sends `unreachable`). Admins and Directors always get in.
 - **Checklist:** everyone sees every department and picks theirs (remembered for the day), with the banner "We couldn't load your schedule from Planning Center. Please select your department." (view note `schedule_unavailable`). Check-offs, Progress, reset and undo work as usual. A plan recorded before the outage still marks the service published; otherwise the "no service is published" note is hidden rather than claimed.
-- **Sign-in down (US-04b):** the "Sign in with Planning Center" button says "Planning Center sign-in is temporarily unavailable. Please try again shortly."; existing sessions carry on. Stage 8's real sign-in uses the same message.
+- **Sign-in down (US-04b):** the "Sign in with Planning Center" button says "Planning Center sign-in is temporarily unavailable. Please try again shortly."; existing sessions carry on. Stage 9's real sign-in uses the same message.
 - **Test in the browser:** sign in as Test Camera Operator, then switch Planning Center down: the banner shows, all departments show, and checking off works; Progress still updates. Sign out and try the main button: the US-04b message. Make a volunteer's confirmation older than 90 days (local SQL) and see the try-again page; switch back up and they're in on the next load.
 
 **7d — The current service's date from plans (US-07)**: when a plan is published on a day other than the service day, it becomes the current service. Kept apart from 7b because it changes how the history, the service record and the activity log find "the current service".
@@ -374,8 +374,8 @@ Built, shown and committed in parts: **7a** the fake schedule source and the map
   - Mark Technical Director "sees all departments" and sign in as a fake Technical Director: all departments show, Technical Director first. Do the same as the Admin and the Director.
   - Switch Planning Center to "down" and check the banner, the manual pick and the never-verified message.
 
-### Stage 7b — Design review
-Every screen is built by now, with the fake sources, so this is the point to look at the app as a whole before real Planning Center and deployment. Numbered 7b so Stages 8 and 9 keep their numbers.
+### Stage 8 — Design review
+Every screen is built by now, with the fake sources, so this is the point to look at the app as a whole before real Planning Center (Stage 9) and deployment (Stage 10).
 - **Review every screen against `docs/design.md`** at **375px, 768px and desktop** widths: sign-in and the developer box, no access, checklist (scheduled, unscheduled, "Show all departments", fallback banner, no published service), Progress (as Volunteer and as Director/Admin, with reset and undo), the name menu and Settings, and each Admin section (Checklist, Hidden items, Lists, Users, Team mapping, Activity, History). Include loading, empty, error and confirmation states.
 - **Look for:**
   - **Consistency:** the same components, spacing, wording and states for the same things across screens.
@@ -384,14 +384,14 @@ Every screen is built by now, with the fake sources, so this is the point to loo
 - **List the problems and propose fixes before changing anything.** Each problem gets the screen, the width, what's wrong, which part of `design.md` or the requirements it falls short of, how much it matters, and the proposed fix, with screenshots. The project owner chooses which fixes to make; they're then built, shown and committed like any other stage.
 - No new features here, and no change to the design direction, colours or typography without the project owner's say-so.
 
-### Stage 8 — Real Planning Center
+### Stage 9 — Real Planning Center
 - The Planning Center `ScheduleSource` uses the church-level token (read-only) for teams, positions, rosters and plans, with a 5-second timeout (US-04a, US-17).
 - Planning Center OAuth sign-in, as an `IdentityProvider`: the code exchange happens in the Worker, the volunteer's token is discarded after identifying them, and there are clear error messages when Planning Center is down (US-01, US-04b).
 - The sign-in button starts the real Planning Center flow. The developer-only test-user control stays local-only, and production builds already exclude it (Stage 2).
 - You'll need: an OAuth app and a church token registered at api.planningcenteronline.com (Q7), stored in `.dev.vars`.
 - **Test in the browser:** sign in with your real Planning Center account locally, link real teams and confirm your real schedule is highlighted.
 
-### Stage 9 — Cloudflare deployment
+### Stage 10 — Cloudflare deployment
 - Create the remote D1 database and run migrations. Set Worker secrets with `wrangler secret put` (US-16). Seed the first admin: a `users` row with Admin set, plus a `user_identities` row linking their Planning Center person ID (US-03a).
 - **Set up team mapping before sharing the app with volunteers.** Until an Admin has chosen the Service Type and linked the teams and positions (Admin › Team mapping), only Admins and Directors can get in; everyone else sees "The app is being set up" (US-02).
 - Connect GitHub so pushes to `main` deploy automatically (US-18).

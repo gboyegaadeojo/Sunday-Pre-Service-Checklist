@@ -6,7 +6,7 @@
 > - **The requirements are in `docs/requirements.md` (currently v1.17). Where this brief and the requirements disagree, the requirements win.** This brief was brought in line with them in October 2026; later requirement changes apply even before the brief catches up.
 > - Build the reusable components and design tokens from section 10 as screens need them.
 > - If a stage doesn't have the data yet (progress counts, user name, completion times), leave that part of the UI out rather than showing made-up numbers. Add it in the stage that provides the data.
-> - The fake login and fake schedule source in the approved build plan are allowed until Stages 8–9. "No mock data" means no made-up numbers or placeholder content in the UI.
+> - The fake login and fake schedule source in the approved build plan are allowed until Stages 9–10 (real Planning Center, then deployment). "No mock data" means no made-up numbers or placeholder content in the UI.
 > - **Nothing church-specific is fixed in the design.** Department names and how many there are, sections, tasks, the service day, the time zone and the branding all come from the app's data and settings, and Admins can change them. Names used as examples in this brief (e.g. "Presentation / Computer Graphics") are the current starting data, not part of the design.
 > - The sign-in screen shows exactly one sign-in option, "Sign in with Planning Center". Users never choose a role. Local development may add a separate, clearly labelled developer-only test-user control, which never exists in production builds.
 

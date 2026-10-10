@@ -23,7 +23,7 @@ const app = new Hono<AppEnv>();
 app.use("/api/*", loadSession);
 
 // The schedule source (requirements C22): the fake one in local development and tests, none in production until
-// Planning Center is connected (Stage 8). The fake is created only when import.meta.env.DEV is true, so
+// Planning Center is connected (Stage 9). The fake is created only when import.meta.env.DEV is true, so
 // `vite build` drops it and its sample data (test/production-build.test.ts).
 app.use("/api/*", async (c, next) => {
   c.set("schedule", import.meta.env.DEV ? createFakeScheduleSource(c.env.DB) : null);

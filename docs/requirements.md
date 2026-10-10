@@ -544,6 +544,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - **A list for a specific service date** (e.g. Christmas): choosing which list a given date uses, instead of only switching the default. For Version 1, admins switch the default list before a special service and switch it back afterward (US-11).
 - **Planning Center links on copied lists:** when a list is copied, its team/position links come with it (copied, or matched by department name), so volunteers still get their department highlighted on the copy. In Version 1 a copy starts with no links.
 - **"Choose your position" screen** as the normal way to pick a checklist when no scheduling system is used: the user picks their position(s) for the service and sees those departments first. The US-04a fallback (manual department pick, remembered for the day) is the starting point.
+- **The last known schedule during an outage:** when Planning Center can't be reached, use the last successfully loaded schedule for the current service, with a note saying when it was loaded, so scheduled volunteers keep their own department view. In Version 1 everyone picks their department during an outage (US-04a).
 
 ---
 

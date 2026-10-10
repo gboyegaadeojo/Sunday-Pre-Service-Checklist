@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "sunday-pre-service-checklist",
-      // Placeholder for local development. Replaced with the real ID in Stage 9.
+      // Placeholder for local development. Replaced with the real ID in Stage 10.
       "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }

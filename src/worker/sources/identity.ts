@@ -3,7 +3,7 @@
 // src/worker/sources/ (and the dev-only test sign-in) knows which provider is in use.
 //
 // Implementations: local test users ("dev", src/worker/routes/dev-auth.ts, never in production builds);
-// Planning Center OAuth (Stage 8). Google could be added later (requirements §4, Later).
+// Planning Center OAuth (Stage 9). Google could be added later (requirements §4, Later).
 
 /** Provider names as stored in user_identities.provider. */
 export type IdentityProviderId = "planning_center" | "dev";
