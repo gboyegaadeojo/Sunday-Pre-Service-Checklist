@@ -7,6 +7,8 @@ import type {
   EditAction,
   EditEntity,
   EditPlace,
+  MappingEditEvent,
+  MappingEditsResponse,
   RoleEditEvent,
   RoleEditsResponse,
   RoleField,
@@ -42,13 +44,14 @@ const SETTING: Record<SettingField, string> = {
   appName: "App name",
 };
 
-type Filter = "all" | "checkoffs" | "edits" | "settings" | "roles";
+type Filter = "all" | "checkoffs" | "edits" | "settings" | "roles" | "mapping";
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "checkoffs", label: "Check-offs" },
   { value: "edits", label: "Checklist edits" },
   { value: "settings", label: "Settings" },
   { value: "roles", label: "Roles" },
+  { value: "mapping", label: "Mapping" },
 ];
 
 /** "Audio Engineer › Power On" (the department and section as named at the time). */
@@ -129,16 +132,38 @@ const describeRoles = (e: RoleEditEvent) =>
     .map((f) => `${ROLE[f]} ${e.after[f] ? "added" : "removed"}`)
     .join("; ")}`;
 
+/** A team-mapping change in words (Stage 7a, US-15). */
+function describeMapping(e: MappingEditEvent): string {
+  const { before, after } = e;
+  switch (e.action) {
+    case "service_type":
+      return `Service Type: ${before?.serviceType ?? "(none)"} → ${after?.serviceType}`;
+    case "link": {
+      const was = before?.department ? ` (was ${before.department.name})` : "";
+      return `${e.target} → ${after?.department?.name}${after?.seesAll ? ", sees all departments" : ""}${was}`;
+    }
+    case "unlink":
+      return `${e.target}: link removed (was ${before?.department?.name})`;
+    case "sees_all":
+      return `${e.target}: ${after?.seesAll ? "now sees" : "no longer sees"} all departments`;
+    case "not_media":
+      return `${e.target}: ${after?.notMediaTeam ? "marked not a media team" : "no longer marked as not a media team"}`;
+    default:
+      return e.target;
+  }
+}
+
 type Entry =
   | { type: "checkoff"; event: ActivityEvent }
   | { type: "edit"; event: ChecklistEditEvent }
   | { type: "setting"; event: SettingsEditEvent }
-  | { type: "role"; event: RoleEditEvent };
+  | { type: "role"; event: RoleEditEvent }
+  | { type: "mapping"; event: MappingEditEvent };
 
 type State =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; checkoffs: ActivityResponse; edits: ChecklistEditsResponse; settings: SettingsEditsResponse; roles: RoleEditsResponse };
+  | { status: "ready"; checkoffs: ActivityResponse; edits: ChecklistEditsResponse; settings: SettingsEditsResponse; roles: RoleEditsResponse; mapping: MappingEditsResponse };
 
 // Admin-only activity: the append-only check-off log for the current service (Stage 4, US-07a) and the
 // append-only checklist edit log (Stage 5c, US-13b), newest first, with a filter. Read-only: entries can't be
@@ -151,13 +176,14 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [checkoffs, edits, settings, roles] = await Promise.all([
+      const [checkoffs, edits, settings, roles, mapping] = await Promise.all([
         getJson<ActivityResponse>("/api/services/current/events"),
         getJson<ChecklistEditsResponse>("/api/admin/edits"),
         getJson<SettingsEditsResponse>("/api/admin/settings/events"),
         getJson<RoleEditsResponse>("/api/admin/users/events"),
+        getJson<MappingEditsResponse>("/api/admin/mapping/events"),
       ]);
-      setState({ status: "ready", checkoffs, edits, settings, roles });
+      setState({ status: "ready", checkoffs, edits, settings, roles, mapping });
     } catch (err) {
       if (isAuthError(err)) return onAccessChanged();
       setState({ status: "error", message: (err as Error).message });
@@ -190,6 +216,7 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
     ...(shows("edits") ? state.edits.events.map((event) => ({ type: "edit" as const, event })) : []),
     ...(shows("settings") ? state.settings.events.map((event) => ({ type: "setting" as const, event })) : []),
     ...(shows("roles") ? state.roles.events.map((event) => ({ type: "role" as const, event })) : []),
+    ...(shows("mapping") ? state.mapping.events.map((event) => ({ type: "mapping" as const, event })) : []),
   ].sort((a, b) => b.event.at.localeCompare(a.event.at));
   // With more than one list in the feed, name the list of each department/section/task edit.
   const manyLists = new Set(state.edits.events.map((e) => e.list.id)).size > 1;
@@ -197,7 +224,8 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
     (shows("checkoffs") && state.checkoffs.truncated) ||
     (shows("edits") && state.edits.truncated) ||
     (shows("settings") && state.settings.truncated) ||
-    (shows("roles") && state.roles.truncated);
+    (shows("roles") && state.roles.truncated) ||
+    (shows("mapping") && state.mapping.truncated);
 
   return (
     <main className="mx-auto max-w-app space-y-4 px-4 pt-4 pb-16 md:px-6 md:pt-6">
@@ -205,7 +233,7 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
         <div className="max-w-2xl">
           <h1 className="text-page font-semibold tracking-tight">Activity</h1>
           <p className="text-meta text-fg-muted">
-            Check-offs, resets and undos for {formatServiceDate(service.date)}, and changes to the checklist, settings and roles, newest
+            Check-offs, resets and undos for {formatServiceDate(service.date)}, and changes to the checklist, settings, roles and team mapping, newest
             first.
             Entries can't be edited or deleted. Session and tab IDs show which sign-in and which browser tab made each change.
           </p>
@@ -241,6 +269,8 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                 ? "No settings changes yet."
                 : filter === "roles"
                 ? "No role changes yet."
+                : filter === "mapping"
+                ? "No mapping changes yet."
                 : filter === "checkoffs"
                 ? "No check-offs yet for this service."
                 : "No activity yet."
@@ -257,7 +287,9 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                     ? EDIT[(e as ChecklistEditEvent).action]
                     : type === "setting"
                       ? { label: "Changed settings", tone: "text-accent-soft" }
-                      : { label: "Changed roles", tone: "text-warning" };
+                      : type === "role"
+                        ? { label: "Changed roles", tone: "text-warning" }
+                        : { label: "Changed mapping", tone: "text-accent-soft" };
               return (
                 <li
                   key={`${type}-${e.id}`}
@@ -275,7 +307,9 @@ export function ActivityPage({ onAccessChanged }: { onAccessChanged: () => void 
                         ? describeEdit(e as ChecklistEditEvent)
                         : type === "setting"
                           ? describeSettings(e as SettingsEditEvent)
-                          : describeRoles(e as RoleEditEvent)}
+                          : type === "role"
+                            ? describeRoles(e as RoleEditEvent)
+                            : describeMapping(e as MappingEditEvent)}
                     {type === "edit" && manyLists && (e as ChecklistEditEvent).kind !== "list" && (
                       <span className="text-fg-muted"> · in “{(e as ChecklistEditEvent).list.name}”</span>
                     )}

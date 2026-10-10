@@ -2,7 +2,15 @@ import type { ChurchSettings, SettingField, SettingsEditsResponse } from "../../
 import { type Actor, actorValues } from "./checkoffs";
 
 /** Church-specific settings. Values live in the `settings` table and are edited by admins; never default them in code. */
-export type SettingKey = "church_short_name" | "team_name" | "app_name" | "time_zone" | "service_weekday";
+export type SettingKey =
+  | "church_short_name"
+  | "team_name"
+  | "app_name"
+  | "time_zone"
+  | "service_weekday"
+  // The schedule source and the Service Type the app follows (Stage 7a, US-15), set on the mapping screen.
+  | "schedule_source"
+  | "schedule_service_type";
 
 /** The requested settings; a key with no row maps to null. */
 export async function getSettings<K extends SettingKey>(db: D1Database, keys: readonly K[]): Promise<Record<K, string | null>> {

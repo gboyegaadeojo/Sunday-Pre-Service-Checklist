@@ -21,3 +21,14 @@ export function AlertIcon({ className = "size-4" }: { className?: string }) {
     </svg>
   );
 }
+
+export function InfoIcon({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className={className}>
+      <path
+        fill="currentColor"
+        d="M10 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 3.5a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4ZM10 9a1 1 0 0 1 1 1v4a1 1 0 1 1-2 0v-4a1 1 0 0 1 1-1Z"
+      />
+    </svg>
+  );
+}

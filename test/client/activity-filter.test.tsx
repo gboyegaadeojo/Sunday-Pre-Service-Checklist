@@ -2,7 +2,7 @@
 // read as before → after (US-07a, US-13b).
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ActivityResponse, ChecklistEditEvent, ChecklistEditsResponse, RoleEditsResponse, SettingsEditsResponse } from "../../src/shared/types";
+import type { ActivityResponse, ChecklistEditEvent, ChecklistEditsResponse, MappingEditsResponse, RoleEditsResponse, SettingsEditsResponse } from "../../src/shared/types";
 import { ActivityPage } from "../../src/client/pages/ActivityPage";
 
 const actor = { user: "Test Admin", sessionId: "sess1234abcd", tabId: "tab1234abcd" };
@@ -44,15 +44,17 @@ const edits: ChecklistEditsResponse = {
 
 const settings: SettingsEditsResponse = { events: [], truncated: false };
 const roles: RoleEditsResponse = { events: [], truncated: false };
+const mapping: MappingEditsResponse = { events: [], truncated: false };
 
 beforeEach(() => {
   settings.events = [];
   roles.events = [];
+  mapping.events = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const path = String(input);
-      const body = path === "/api/services/current/events" ? checkoffs : path === "/api/admin/settings/events" ? settings : path === "/api/admin/users/events" ? roles : edits;
+      const body = path === "/api/services/current/events" ? checkoffs : path === "/api/admin/settings/events" ? settings : path === "/api/admin/users/events" ? roles : path === "/api/admin/mapping/events" ? mapping : edits;
       return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
     }),
   );
@@ -139,5 +141,18 @@ describe("Activity", () => {
     fireEvent.click(screen.getByRole("button", { name: "Roles" }));
     expect(rows()).toHaveLength(1);
     expect(rows()[0]).toContain("Changed roles");
+  });
+
+  it("shows team mapping changes in words, under their own filter (US-15)", async () => {
+    mapping.events = [
+      { id: 2, at: "2026-10-11T17:40:00.000Z", action: "link", target: "Production › Camera 2", before: null, after: { department: { id: 3, name: "Camera Operators" }, seesAll: false }, ...actor },
+      { id: 1, at: "2026-10-11T17:39:00.000Z", action: "service_type", target: "Sunday Service", before: { serviceType: null }, after: { serviceType: "Sunday Service" }, ...actor },
+    ];
+    render(<ActivityPage onAccessChanged={() => {}} />);
+    await screen.findByText("Open ProPresenter");
+    expect(screen.getByText("Production › Camera 2 → Camera Operators")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mapping" }));
+    expect(rows()).toHaveLength(2);
+    expect(rows()[1]).toContain("Service Type: (none) → Sunday Service");
   });
 });

@@ -6,6 +6,7 @@ import { Card } from "../../components/ui/Card";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
+import { Switch } from "../../components/ui/Switch";
 import type { Navigate } from "../../lib/router";
 import { useUsers } from "../../lib/useAdminList";
 
@@ -124,10 +125,10 @@ export function UsersPage({ me, onAccessChanged, onNavigate }: Props) {
                   </div>
                   <div className="flex gap-2">
                     {(["isAdmin", "isDirector"] as const).map((field) => (
-                      <RoleSwitch
+                      <Switch
                         key={field}
                         label={ROLE_LABEL[field]}
-                        person={u.name}
+                        ariaLabel={`${ROLE_LABEL[field]}: ${u.name}`}
                         on={u[field]}
                         disabled={busyId !== null || (field === "isAdmin" && onlyAdmin)}
                         onToggle={() => toggle(u, field)}
@@ -160,27 +161,5 @@ export function UsersPage({ me, onAccessChanged, onNavigate }: Props) {
       <ErrorFeedback message={users.error} onDismiss={users.dismissError} />
       <NoticeFeedback message={notice} onDismiss={dismissNotice} />
     </main>
-  );
-}
-
-/** An on/off switch with its role name visible; 44px tall (design.md §10). */
-function RoleSwitch({ label, person, on, disabled, onToggle }: { label: string; person: string; on: boolean; disabled: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={`${label}: ${person}`}
-      disabled={disabled}
-      onClick={onToggle}
-      className={`flex min-h-11 items-center gap-2 rounded-control border px-3 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-        on ? "border-accent bg-accent/15 text-fg" : "border-line bg-card text-fg-muted hover:bg-hover"
-      }`}
-    >
-      <span aria-hidden="true" className={`relative h-4 w-7 rounded-full transition-colors ${on ? "bg-accent" : "bg-line"}`}>
-        <span className={`absolute top-0.5 size-3 rounded-full bg-white transition-[left] ${on ? "left-3.5" : "left-0.5"}`} />
-      </span>
-      {label}
-    </button>
   );
 }

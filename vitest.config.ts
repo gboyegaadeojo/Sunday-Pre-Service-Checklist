@@ -6,6 +6,9 @@ export default defineConfig(async () => {
   const migrations = await readD1Migrations("./migrations");
   return {
     test: {
+      // How many test files run at once. Each server test file gets its own Workers runtime and local D1, and the
+      // default (one per CPU core) ran this 16-core, 16 GB machine out of memory. TEST_WORKERS overrides it.
+      maxWorkers: Number(process.env.TEST_WORKERS) || 4,
       projects: [
         {
           // Server: the Worker inside the Workers runtime with a fresh local D1.

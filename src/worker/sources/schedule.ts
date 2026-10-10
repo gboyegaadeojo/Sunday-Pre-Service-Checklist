@@ -3,7 +3,8 @@
 // tests (Stage 7). Nothing else in the app knows which source is in use. Outside IDs are stored with the
 // source's name (team_links.source, services.plan_source), never in Planning Center–named columns.
 //
-// Types only for now: Stage 7 adds the fake source and the code that uses it.
+// The source in use is c.var.schedule (src/worker/index.ts): the fake one in local development and tests,
+// Planning Center from Stage 8, and null in production until then.
 
 /** Source names as stored in team_links.source and services.plan_source. */
 export type ScheduleSourceId = "planning_center" | "fake";
@@ -38,6 +39,8 @@ export interface SourceAssignment {
  */
 export interface ScheduleSource {
   readonly id: ScheduleSourceId;
+  /** How it's named on screen, e.g. in "Refresh from Planning Center". */
+  readonly label: string;
   listServiceTypes(): Promise<SourceServiceType[]>;
   listTeams(serviceTypeExternalId: string): Promise<SourceTeam[]>;
   /** Teams the person is a member of (roster, not just this week's schedule: US-02). */

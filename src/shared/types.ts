@@ -512,3 +512,119 @@ export interface RoleEditsResponse {
   events: RoleEditEvent[];
   truncated: boolean;
 }
+
+/** A team's or position's link to a checklist department (Stage 7a, US-15). */
+export interface MappingLink {
+  department: { id: number; name: string };
+  /** People scheduled here see every department by default (US-05), e.g. Technical Director. */
+  seesAll: boolean;
+  /** The department isn't in the default list (the default changed since it was linked). */
+  outsideDefaultList: boolean;
+}
+
+export interface MappingPosition {
+  externalId: string;
+  name: string;
+  /** Its own link, or null. */
+  link: MappingLink | null;
+  /** "linked": its own link; "team": follows its team's link; "unlinked": neither. */
+  status: "linked" | "team" | "unlinked";
+}
+
+export interface MappingTeam {
+  externalId: string;
+  name: string;
+  link: MappingLink | null;
+  positions: MappingPosition[];
+  /** Has at least one link, so its members can use the app (US-02, US-15). */
+  isMediaTeam: boolean;
+  /** An Admin marked it "Not a media team": it can't be linked, and it isn't shown as new. */
+  notMediaTeam: boolean;
+}
+
+/** A link whose team or position is no longer in the schedule source (deleted there): flagged for the Admin. */
+export interface MissingLink {
+  teamExternalId: string;
+  positionExternalId: string | null;
+  /** Names as they were when linked. */
+  teamName: string;
+  positionName: string | null;
+  department: { id: number; name: string };
+}
+
+/** GET /api/admin/mapping (and POST /api/admin/mapping/refresh). */
+export interface MappingResponse {
+  /** The schedule source in use, or null when none is connected yet. */
+  source: { label: string } | null;
+  serviceTypes: { externalId: string; name: string }[];
+  /** The Service Type the app follows, or null when none is chosen yet. */
+  serviceTypeId: string | null;
+  /** The default list, whose departments teams and positions link to. */
+  list: { id: number; name: string } | null;
+  departments: { id: number; name: string }[];
+  teams: MappingTeam[];
+  missing: MissingLink[];
+  /** Positions in media teams that lead to no department yet: the Admin should link them. */
+  unlinked: { team: string; position: string }[];
+  /** Teams with no links that nobody has marked "Not a media team" yet: link them, or mark them. */
+  newTeams: { externalId: string; name: string }[];
+  /** When the teams and positions were fetched from the source (cached for a few minutes). */
+  fetchedAt: string | null;
+  timeZone: string;
+}
+
+/** PUT /api/admin/mapping/service-type */
+export interface SetServiceTypeRequest {
+  externalId: string;
+}
+
+/** PUT /api/admin/mapping/link: departmentId null removes the link. */
+export interface SetLinkRequest {
+  teamExternalId: string;
+  /** null for the team itself. */
+  positionExternalId: string | null;
+  departmentId: number | null;
+  seesAll: boolean;
+}
+
+/** PUT /api/admin/mapping/team-review: mark a team with no links "Not a media team", or undo it. */
+export interface SetTeamReviewRequest {
+  teamExternalId: string;
+  notMediaTeam: boolean;
+}
+
+/** GET /api/admin/mapping/status: for the notice on the Admin tabs. */
+export interface MappingStatusResponse {
+  /** Positions in media teams with no department, or 0 when no source or Service Type is set up. */
+  unlinked: number;
+  missing: number;
+  /** Teams not reviewed yet (informational). */
+  newTeams: number;
+}
+
+export interface MappingEditValues {
+  department?: { id: number; name: string } | null;
+  seesAll?: boolean;
+  serviceType?: string | null;
+  notMediaTeam?: boolean;
+}
+
+/** One entry of the append-only mapping log (Stage 7a). */
+export interface MappingEditEvent {
+  id: number;
+  at: string;
+  action: "link" | "unlink" | "sees_all" | "service_type" | "not_media";
+  /** "Team › Position", "Team", or the Service Type's name. */
+  target: string;
+  before: MappingEditValues | null;
+  after: MappingEditValues | null;
+  user: string;
+  sessionId: string | null;
+  tabId: string | null;
+}
+
+/** GET /api/admin/mapping/events, newest first. */
+export interface MappingEditsResponse {
+  events: MappingEditEvent[];
+  truncated: boolean;
+}

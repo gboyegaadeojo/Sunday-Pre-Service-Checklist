@@ -40,7 +40,9 @@
 │   ├── 0004–0006                     # check-off log, checklist edit log, settings log (append-only)
 │   ├── 0007_service_tasks.sql        # the record of each service's checklist (US-07b)
 │   ├── 0008_role_events.sql          # role change log (append-only, Stage 6)
-│   └── 0009_keep_an_admin.sql        # trigger: never zero Admins (US-03)
+│   ├── 0009_keep_an_admin.sql        # trigger: never zero Admins (US-03)
+│   ├── 0010_team_mapping.sql         # team_links.sees_all, mapping log, dev_state (Stage 7a)
+│   └── 0011_team_reviews.sql         # non_media_teams; mapping log gains 'not_media'
 ├── src/
 │   ├── worker/
 │   │   ├── index.ts          # Hono app: mounts routes and middleware
@@ -148,6 +150,14 @@ A check-off is *active* when `unchecked_at IS NULL AND reset_id IS NULL`. A part
 **service_tasks** (migration `0007`, Stage 5d.4, US-07b): the record of each service's checklist. One row per service and task: `text`, `category_id`/`category_name`/`category_order`, `section_id`/`section_name`/`section_order`, `task_order` (as at the end of the service, or when removed), `added_at`, `removed_at` (hidden during the service; NULL = on the checklist). `services.tasks_recorded_from` says when recording started (NULL = no record: services from before `0007`). Triggers refuse inserts and updates once a service is more than a day past in UTC (a safety net; SQL can't know the church's time zone). Rows cascade-delete with their service or task, which only tests do.
 
 **role_events** (migration `0008`, Stage 6): append-only log of Admin and Director changes (US-03). Columns: `target_user_id`/`target_name` (whose roles changed, name at the time), `before_json`, `after_json` (only the roles that changed, e.g. `{"isDirector": false}`), then the actor columns as in `settings_events`. Same transaction and triggers as the other logs.
+
+**team_links.sees_all** (migration `0010`, Stage 7a): people scheduled in that team or position see all departments by default (US-05).
+
+**mapping_events** (migration `0010`, Stage 7a): append-only log of mapping changes: `action` (link, unlink, sees_all, service_type), `source`, `team_external_id`, `position_external_id`, `target_name` ("Team › Position" at the time), `before_json`/`after_json`, then the actor columns. Same transaction and triggers as the other logs.
+
+**non_media_teams** (migration `0011`, Stage 7a): teams an Admin marked "Not a media team" (`source`, `team_external_id`, `team_name`, `marked_at`). 0011 also rebuilds `mapping_events` to allow the `not_media` action, keeping its rows and triggers.
+
+**dev_state** (migration `0010`): local development only. The fake schedule source's adjustments (positions added, renamed, removed; "down" in 7c). Production code never reads or writes it.
 
 **settings_events** (migration `0006`, Stage 5d.2): append-only log of church settings changes (US-11a). Columns: `before_json`, `after_json` (only the fields that changed, e.g. `{"serviceWeekday": 0}`), `user_id` (internal), `user_name`, `session_id`, `tab_id`, `user_agent`, `created_at`. Same transaction and triggers as the other logs.
 
@@ -304,6 +314,17 @@ Built in parts, each approved and committed on its own. The server rejects every
 - **Test in the browser:** as Admin, make the fake Volunteer a Director. Reload as that Volunteer and see the reset controls appear. Try to remove the only Admin; see the change under Activity › Roles; confirm a Director has no Users tab and gets 403.
 
 ### Stage 7 — Team mapping and access, with the fake schedule source
+Built, shown and committed in three parts: **7a** the fake schedule source and the mapping screen, **7b** access and the department view, **7c** outage fallbacks. The bullets below are the whole stage.
+
+**7a — Fake schedule source and team mapping (US-15, requirements v1.18)**
+- `src/worker/dev/fake-schedule.ts` (dev-only, dropped from production builds like the test users): Service Types "Sunday Service" and "Special Events"; a Production team with the church's real position names and a Worship Band (not a media team). Developers and tests adjust it through `PUT /api/dev/schedule` (positions added, renamed, removed), stored in `dev_state`.
+- The source in use is `c.var.schedule`: the fake one under `import.meta.env.DEV`, none in production until Stage 8 (the mapping screen says Planning Center isn't connected yet). Responses are cached in `source_cache` for 5 minutes (`sources/cache.ts`).
+- Admin › **Team mapping** (`/admin/mapping`): choose the Service Type (settings `schedule_source` + `schedule_service_type`), then link the whole team and/or each position to a department of the default list, and mark "Sees all departments". Statuses: Linked, Follows the team, Not linked. Links are stored by the source's IDs; names are only kept for display.
+- **Refresh from Planning Center** clears the source's cache and fetches again. A **notice** lists positions on media teams that lead to no department, and links to things gone from the source (with Remove link); the Team mapping tab shows the count from anywhere in the Admin area.
+- **New teams:** a team with no links that nobody has reviewed gets an informational note ("New team in Planning Center: …") and a quiet "new" on the tab. "Not a media team" marks it once (the Worship Band, say) and folds it to one line with Undo; marked teams can't be linked, and linked teams can't be marked. Fake teams can be added through `PUT /api/dev/schedule` (`addedTeams`).
+- Logged in `mapping_events`; Activity gets a **Mapping** filter.
+- **Test in the browser:** choose Sunday Service, enter the expected mapping below (Technical Director "sees all departments"), add a position through the dev route and see it appear as unlinked after Refresh, with the notice and tab count; mark the Worship Band "Not a media team"; add a team through the dev route and see the new-team note after Refresh; rename and delete positions and see links keep working or get flagged.
+
 - The fake `ScheduleSource` (standing in for Planning Center) provides sample Service Types, teams, positions, rosters, plans and schedules, and it can be switched to "down" from the developer-only box on the sign-in page. Its sample data, including the church's real position names (below), lives in a **dev-only data file** under `src/worker/dev/`. Production builds drop it, as with the test users, and the production-build test checks those names are absent. **Nothing is mapped automatically:** admins link every team or position in the mapping screen, with the fake data as with real data.
 - Admin mapping screen: pick a Service Type, then link teams or positions to categories. Unlinked items are marked, position links override team links, and items that have gone missing are flagged (US-15).
 - Access is based on linked-team membership and the `team_verified_at` stamp (US-02).

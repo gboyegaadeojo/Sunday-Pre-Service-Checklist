@@ -3,6 +3,7 @@
 import { createExecutionContext, env, waitOnExecutionContext } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import bundleSource from "../dist/sunday_pre_service_checklist/index.js?raw";
+import { FAKE_SERVICE_TYPES } from "../src/worker/dev/fake-schedule";
 import { FAKE_USERS } from "../src/worker/dev/fake-users";
 
 const clientChunks = import.meta.glob<string>("../dist/client/assets/*.js", {
@@ -30,6 +31,13 @@ describe("production build", () => {
       expect(bundleSource).not.toContain(u.description);
       expect(bundleSource).not.toContain(u.name);
     }
+  });
+
+  it("Worker bundle contains no fake schedule source or its sample data (Stage 7)", () => {
+    expect(bundleSource).not.toContain("fake_schedule");
+    expect(bundleSource).not.toContain("sample data");
+    for (const t of FAKE_SERVICE_TYPES) expect(bundleSource).not.toContain(t.externalId);
+    for (const name of ["Production Director", "Camera 2", "Worship Band", "team-production"]) expect(bundleSource).not.toContain(name);
   });
 
   it("client bundle has the single sign-in button and no developer sign-in", () => {

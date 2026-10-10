@@ -16,7 +16,7 @@ A checklist app for the IFC media team. They use it to prepare and verify the pr
 npm run dev          # applies local D1 migrations, then serves the app at http://localhost:5173
 npm run check        # lint + typecheck + tests + build: everything the pre-commit hook runs
 npm run lint         # Biome (lint only, no formatter). Warnings count as failures
-npm test             # production build, then Vitest inside the Workers runtime against a fresh local D1
+npm test             # production build, then Vitest inside the Workers runtime against a fresh local D1 (4 files at a time; TEST_WORKERS=n to change)
 npx vitest run test/checklist.test.ts -t "hides deleted"   # single file / single test (no rebuild; production-build test uses the last dist/)
 npx vitest run --project client   # browser-code tests only (happy-dom; test/client/*.test.tsx). --project worker for the rest
 npm run typecheck    # regenerates worker-configuration.d.ts (wrangler types), then tsc on client and worker
@@ -86,6 +86,7 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
 - **Tests** (`test/`):
   - Use the helpers in `test/helpers.ts`: `request()` calls the Hono app with the test bindings, and `signInAs("volunteer" | "admin" | "director" | "outsider")` returns a session cookie.
   - `vitest.config.ts` supplies `SESSION_SECRET` (random per run) and `DEV_AUTH`. Migrations are applied in `test/apply-migrations.ts`.
+  - Each server test file runs in its own Workers runtime with its own D1, so `maxWorkers` is capped at 4 (`TEST_WORKERS` overrides). The default (one per core) ran this 16-core machine out of memory and broke the pre-commit hook.
   - Tests that modify data reset it in `beforeEach`.
 - **UI**:
   - React + Tailwind v4, dark-only (booth use).
@@ -118,6 +119,7 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   | Activity log (`/admin/activity`, `GET /api/services/:id|current/events`, `GET /api/admin/edits`) | Admins only | `requireAdmin` |
 | Service history (`/admin/history`, `GET /api/admin/history`, `/api/admin/history/:id`) | Admins only | `requireAdmin` |
 | Users and roles (`/admin/users`, `/api/admin/users`, `PUT /api/admin/users/:id/roles`, `/api/admin/users/events`) | Admins only | `requireAdmin` |
+| Team mapping (`/admin/mapping`, `/api/admin/mapping`, `/status`, `/refresh`, `/service-type`, `/link`, `/events`) | Admins only | `requireAdmin` |
   | Checklist editor, Hidden items, Lists and Settings (`/admin/checklist`, `/admin/checklist/hidden`, `/admin/lists`, `/settings`, `/api/admin/*`) | Admins only | `requireAdmin` on each admin router |
 
   `GET /api/checklist` adds `service.reset` only for staff. The UI hides what a role can't use (`AppNav`, `ProgressPage`), and `test/client/stage4-roles.test.tsx` checks that it never offers what the server refuses.
@@ -125,7 +127,7 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - Reset archives active check-offs under a new `resets` row, storing `archived_count`. It's refused when nothing is checked, so an extra reset can't take away the chance to undo the real one.
   - Undo restores only the latest reset, and only once. Tasks checked since the reset keep the newer check-off (D3).
   - Both confirm first in the UI (`ConfirmDialog`, native `<dialog>`).
-- **Admin workspace** (design.md §7): the header's **Admin** tab leads to sub-tabs (`AdminTabs`), currently Checklist, Lists, Users, Activity and History. Only list sections that exist. Settings is not a tab; it's in the user menu. Hidden items is reached from the editor and keeps the Checklist tab active.
+- **Admin workspace** (design.md §7): the header's **Admin** tab leads to sub-tabs (`AdminTabs`), currently Checklist, Lists, Team mapping, Users, Activity and History. The Team mapping tab shows a count of what needs linking (`/api/admin/mapping/status`, re-checked on section change and on the `MAPPING_CHANGED` window event). Only list sections that exist. Settings is not a tab; it's in the user menu. Hidden items is reached from the editor and keeps the Checklist tab active.
 - **Checklist editor** (Stage 5):
   - The server side is `routes/admin-structure.ts` and `db/admin-structure.ts`. Every write requires the item and its whole ancestry (up to the list) to be live (`LIVE_*` guards). New items get the next `sort_order`.
   - Hiding sets `deleted_at` and never erases. Hiding a department also deletes its `team_links` in the same transaction.
@@ -147,9 +149,11 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - Append-only like `checkoff_events` (triggers abort `UPDATE`/`DELETE`); tests read rows after a marker ID.
   - `GET /api/admin/edits` (Admin, all lists) feeds the Activity view, which merges it with the current service's check-off log behind an All / Check-offs / Checklist edits filter.
   - Tests use their own list (ID 77) so the seed checklist stays untouched: call `setUpAdminFixture()` from `test/admin-fixture.ts`.
-- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist`, `/admin/checklist/hidden`, `/admin/lists`, `/admin/users`, `/admin/activity`, `/admin/history` and `/settings`, plus a query string (`navigate(route, "?list=5")`, `RouteLink search=…`; the editor and Hidden items read `?list=` via `listRefFrom`, default list when absent; History reads `?service=`), with aliases `/admin`, `/activity` and `/admin/settings` (the address bar switches to the canonical path). The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
+- **Client routing:** `lib/router.ts` handles the path routes `/`, `/progress`, `/admin/checklist`, `/admin/checklist/hidden`, `/admin/lists`, `/admin/mapping`, `/admin/users`, `/admin/activity`, `/admin/history` and `/settings`, plus a query string (`navigate(route, "?list=5")`, `RouteLink search=…`; the editor and Hidden items read `?list=` via `listRefFrom`, default list when absent; History reads `?service=`), with aliases `/admin`, `/activity` and `/admin/settings` (the address bar switches to the canonical path). The Worker's SPA fallback serves them. The progress view refreshes every 30 seconds while the tab is visible (`lib/useProgress.ts`).
 - **Replaceable sources (requirements C22):** Planning Center is reached only through the interfaces in `src/worker/sources/`: `IdentityProvider` (sign-in) and `ScheduleSource` (teams, positions, membership, plans). Code outside `sources/` must not know which provider is in use. Outside IDs are stored as a source name plus that source's ID (`team_links.source`/`team_external_id`/…, `services.plan_source`/`plan_external_id`, `source_cache`); never add Planning Center–named columns.
-- **Planned, not built yet** (see build plan): the fake and Planning Center implementations of those interfaces (Stages 7–8), using the D1 `source_cache`. The Workers Cache API doesn't work on `*.workers.dev`.
+- **Schedule source in use:** `c.var.schedule` (set in `src/worker/index.ts`): the fake source (`src/worker/dev/fake-schedule.ts`, factory `createFakeScheduleSource`) only inside `import.meta.env.DEV`, so production builds drop it and its sample data (`test/production-build.test.ts` checks); `null` in production until Stage 8. Each source names itself (`label`). Its responses are cached in D1 `source_cache` (`sources/cache.ts`, 5 minutes; keys start with the source ID, which "Refresh" clears). The Workers Cache API doesn't work on `*.workers.dev`. Dev-only adjustments to the fake: `PUT /api/dev/schedule` (same two locks as the fake sign-in), stored in `dev_state`.
+- **Team mapping** (Stage 7a, US-15; `db/mapping.ts`, `routes/admin-mapping.ts`, `pages/admin/MappingPage.tsx`): links in `team_links` by source + external IDs, to live departments of the default list, with `sees_all`. Never automatic. `setLink` logs to append-only `mapping_events` first, guarded on the link as read, then changes `WHERE changes() = 1`. "Unlinked" means a position on a media team (a team with any link) with no link of its own and none on its team. A team with no links is "new" until linked or marked "Not a media team" (`non_media_teams`, `setNotMediaTeam`, logged as `not_media`); marked teams can't be linked.
+- **Planned, not built yet** (see build plan): access and the department view (7b), outage fallbacks (7c), and the Planning Center implementations (Stage 8).
 
 ## Rules from the requirements
 

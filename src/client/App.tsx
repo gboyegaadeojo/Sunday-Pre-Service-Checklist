@@ -11,6 +11,7 @@ import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
 import { HiddenItemsPage } from "./pages/admin/HiddenItemsPage";
 import { HistoryPage } from "./pages/admin/HistoryPage";
 import { ListsPage } from "./pages/admin/ListsPage";
+import { MappingPage } from "./pages/admin/MappingPage";
 import { SettingsPage } from "./pages/admin/SettingsPage";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { listRefFrom } from "./lib/useAdminList";
@@ -132,6 +133,7 @@ export function App() {
       case "admin-hidden":
       case "admin-lists":
       case "admin-users":
+      case "admin-mapping":
       case "admin-activity":
       case "admin-history":
       case "settings":
@@ -154,6 +156,8 @@ export function App() {
             ) : route === "admin-history" ? (
               // Keyed by the query, so opening another service starts fresh.
               <HistoryPage key={search} search={search} onAccessChanged={onAccessChanged} onNavigate={navigate} />
+            ) : route === "admin-mapping" ? (
+              <MappingPage onAccessChanged={onAccessChanged} />
             ) : route === "admin-users" ? (
               <UsersPage me={user} onAccessChanged={onAccessChanged} onNavigate={navigate} />
             ) : route === "admin-lists" ? (

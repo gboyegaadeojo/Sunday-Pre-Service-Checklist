@@ -4,6 +4,8 @@ import type {
   CreateListRequest,
   HiddenItemsResponse,
   ListsResponse,
+  MappingResponse,
+  SetLinkRequest,
   SettingsResponse,
   StructureKind,
   UpdateRolesRequest,
@@ -111,5 +113,20 @@ export function useUsers({ onAccessChanged }: { onAccessChanged: () => void }) {
   return {
     ...rest,
     setRoles: (id: number, roles: UpdateRolesRequest) => run(() => putJson<UpdateRolesResponse>(`/api/admin/users/${id}/roles`, roles)),
+  };
+}
+
+/** Team mapping (Stage 7a, US-15): the Service Type, links, and "Refresh from Planning Center". */
+export function useMapping({ onAccessChanged }: { onAccessChanged: () => void }) {
+  const { run, ...rest } = useServerFirst<MappingResponse>("/api/admin/mapping", { onAccessChanged });
+  return {
+    ...rest,
+    setServiceType: (externalId: string) => run(() => putJson("/api/admin/mapping/service-type", { externalId })),
+    setLink: (body: SetLinkRequest) => run(() => putJson("/api/admin/mapping/link", body)),
+    /** Marks a team with no links "Not a media team", or undoes it. */
+    setNotMediaTeam: (teamExternalId: string, notMediaTeam: boolean) =>
+      run(() => putJson("/api/admin/mapping/team-review", { teamExternalId, notMediaTeam })),
+    /** Fetches the teams and positions anew from the source, then shows them. */
+    refresh: () => run(() => postJson("/api/admin/mapping/refresh")),
   };
 }

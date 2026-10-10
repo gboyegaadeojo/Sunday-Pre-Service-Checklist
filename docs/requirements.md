@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.17 · **Date:** October 2026  
+> **Version:** 1.18 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.17
+## 0. Changes in Version 1.18
+
+| # | Change | Why |
+|---|--------|-----|
+| C29 | **Team mapping keeps Admins up to date** (US-15): a "Refresh from Planning Center" button fetches teams and positions straight away instead of waiting for the cache, and Admins see a notice, on the mapping screen and on its tab, when a position on a media team isn't linked to a department or a link points to something deleted in Planning Center. A team with no links shows an informational "new team" note until an Admin links it or marks it "Not a media team" (once per team; undoable). Mapping changes are logged like other admin changes. | A position added in Planning Center should be linked before Sunday, not discovered when a volunteer can't find their department. |
+
+## Changes in Version 1.17
 
 | # | Change | Why |
 |---|--------|-----|
@@ -437,6 +443,10 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Teams or positions with no link are clearly marked as unlinked.
 - If a team or position is renamed in Planning Center, the link still works (links use Planning Center IDs, not names).
 - If a linked team or position is deleted in Planning Center, the admin screen flags it as missing.
+- A **"Refresh from Planning Center"** button fetches the teams and positions again at once, so a position just added in Planning Center shows up without waiting for the cache to expire.
+- Admins see a **notice**, on the mapping screen and on its tab in the Admin area, while any position on a media team leads to no department (no link of its own and none on its team), or a link points to a team or position deleted in Planning Center. Teams with no links at all are not media teams and are not counted.
+- A team with no links that nobody has reviewed shows an **informational note** (not a warning): "New team in Planning Center: link it if it's a media team." An Admin can mark such a team **"Not a media team"** once (e.g. a worship band), which stops the note. A marked team can't be linked until the mark is undone, and a team with links can't be marked.
+- Every mapping change (link, unlink, "sees all departments", "Not a media team", Service Type) is logged with who and when, append-only, like other admin changes.
 - Links are stored with their source (Planning Center today) and that source's IDs, in provider-neutral columns, so another scheduling source could be added without changing the rest of the app (C22).
 
 ---
@@ -804,4 +814,4 @@ Nothing outside these modules knows it is talking to Planning Center. The databa
 
 ---
 
-*End of Requirements — Version 1.17*
+*End of Requirements — Version 1.18*
