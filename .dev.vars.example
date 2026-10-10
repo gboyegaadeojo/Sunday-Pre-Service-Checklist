@@ -1,4 +1,5 @@
 # Copy to .dev.vars for local development. .dev.vars is gitignored and must never be committed (US-16).
+# The dev server reads it only at startup: restart `npm run dev` after changing it.
 
 # Signs the session cookie. Generate one with:
 #   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
@@ -6,3 +7,22 @@ SESSION_SECRET=
 
 # Enables the fake test-user sign-in locally. NEVER set DEV_AUTH in Cloudflare; production builds ignore it.
 DEV_AUTH=true
+
+# --- Planning Center (Stage 9) ---------------------------------------------------------------------------------
+# Leave these empty to keep using the sample schedule and test users. In Cloudflare they're Worker secrets (Stage 10).
+
+# Personal Access Token for reading the church's schedule (teams, positions, rosters, plans). The app only reads with
+# it. Create it at https://api.planningcenteronline.com under "Personal Access Tokens": it shows an Application ID
+# and a Secret. For now it's from the Admin who manages the church's Planning Center account; it could later move to
+# a dedicated "Media App" account with view-only Services access.
+PCO_PAT_ID=
+PCO_PAT_SECRET=
+
+# OAuth application volunteers sign in through (People scope only). Create it under "OAuth Applications" with the
+# redirect address http://localhost:5173/api/auth/planning-center/callback (the live address is added in Stage 10).
+PCO_CLIENT_ID=
+PCO_CLIENT_SECRET=
+
+# Local only: which schedule to use. "planning_center" reads the real one with the token above; leave it empty for
+# the sample schedule (the tests use that). Production always uses Planning Center when the token is set.
+SCHEDULE_SOURCE=

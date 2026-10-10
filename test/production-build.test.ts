@@ -38,6 +38,8 @@ describe("production build", () => {
     expect(bundleSource).not.toContain("sample data");
     for (const t of FAKE_SERVICE_TYPES) expect(bundleSource).not.toContain(t.externalId);
     for (const name of ["Production Director", "Camera 2", "Worship Band", "team-production"]) expect(bundleSource).not.toContain(name);
+    // Nor the local switch between the sample and the real schedule (Stage 9): production always uses Planning Center.
+    expect(bundleSource).not.toContain("SCHEDULE_SOURCE");
   });
 
   it("client bundle has the single sign-in button and no developer sign-in", () => {

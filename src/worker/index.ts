@@ -15,6 +15,7 @@ import { resetRoutes } from "./routes/resets";
 import { createFakeScheduleSource } from "./dev/fake-schedule";
 import { createDevAuthRoutes } from "./routes/dev-auth";
 import { createDevScheduleRoutes } from "./routes/dev-schedule";
+import { wantsRealScheduleLocally } from "./sources/planning-center/config";
 import type { AppEnv } from "./types";
 
 // Only /api/* reaches the Worker; pages are static assets (see wrangler.jsonc).
@@ -22,11 +23,18 @@ const app = new Hono<AppEnv>();
 
 app.use("/api/*", loadSession);
 
-// The schedule source (requirements C22): the fake one in local development and tests, none in production until
-// Planning Center is connected (Stage 9). The fake is created only when import.meta.env.DEV is true, so
-// `vite build` drops it and its sample data (test/production-build.test.ts).
+// The schedule source (requirements C22, Stage 9):
+// - Production: Planning Center when its token is configured (sources/planning-center/config.ts), otherwise none.
+//   The fake can never be chosen there: it sits inside import.meta.env.DEV, which `vite build` makes false, so the
+//   fake, its sample data and the local SCHEDULE_SOURCE switch are all dropped (test/production-build.test.ts).
+// - Local development and tests: the fake sample schedule, unless .dev.vars sets SCHEDULE_SOURCE=planning_center.
 app.use("/api/*", async (c, next) => {
-  c.set("schedule", import.meta.env.DEV ? createFakeScheduleSource(c.env.DB) : null);
+  c.set(
+    "schedule",
+    import.meta.env.DEV && !wantsRealScheduleLocally(c.env)
+      ? createFakeScheduleSource(c.env.DB)
+      : null, // Planning Center's schedule source arrives in Stage 9b
+  );
   await next();
 });
 

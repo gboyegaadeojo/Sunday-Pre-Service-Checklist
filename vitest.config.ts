@@ -21,6 +21,13 @@ export default defineConfig(async () => {
                   // A fresh random key per run, so no secret is ever written into the repo.
                   SESSION_SECRET: crypto.randomUUID(),
                   DEV_AUTH: "true",
+                  // Tests never reach the real Planning Center, whatever a developer's .dev.vars holds: the sample
+                  // schedule and test users only (tests that need Planning Center fake its responses).
+                  SCHEDULE_SOURCE: "",
+                  PCO_PAT_ID: "",
+                  PCO_PAT_SECRET: "",
+                  PCO_CLIENT_ID: "",
+                  PCO_CLIENT_SECRET: "",
                 },
               },
             }),
