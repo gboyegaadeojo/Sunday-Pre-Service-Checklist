@@ -5,7 +5,7 @@ import { roleLabel } from "../../lib/roles";
 import { usePopover } from "../../lib/usePopover";
 import { Avatar } from "../ui/Avatar";
 import { Chevron } from "../ui/Chevron";
-import { OverviewIcon, SignOutIcon } from "../ui/Icons";
+import { OverviewIcon, PreferencesIcon, SignOutIcon } from "../ui/Icons";
 import { RouteLink } from "./RouteLink";
 
 interface Props {
@@ -21,8 +21,8 @@ const ITEM =
   "flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-left text-sm transition-colors outline-offset-[-2px] hover:bg-hover focus-visible:bg-hover disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
- * The menu under the person's name (design.md §3A, requirements v1.20): who they are, then Administrative Settings
- * for Admins only (the server refuses everyone else too), then Sign out, set apart. A real menu for keyboards: focus
+ * The menu under the person's name (design.md §3A, requirements v1.20): who they are, then My Preferences for
+ * everyone and Administrative Settings for Admins only (the server refuses everyone else too), then Sign out, set apart. A real menu for keyboards: focus
  * moves into it on opening, arrow keys and Home/End move between items, Escape or Tab closes it and Escape returns
  * focus to the button.
  */
@@ -90,8 +90,18 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
             </div>
           </div>
 
-          {user.isAdmin && (
-            <div role="none" className="mt-0.5 border-t border-line py-1.5">
+          <div role="none" className="mt-0.5 space-y-0.5 border-t border-line py-1.5">
+            <RouteLink
+              to="preferences"
+              current={route === "preferences"}
+              onNavigate={go}
+              role="menuitem"
+              className={`${ITEM} ${route === "preferences" ? "font-medium text-fg" : "text-fg-muted hover:text-fg"}`}
+            >
+              <PreferencesIcon className={`size-5 shrink-0 ${route === "preferences" ? "text-accent-soft" : ""}`} />
+              My Preferences
+            </RouteLink>
+            {user.isAdmin && (
               <RouteLink
                 to="admin-overview"
                 current={isAdminRoute(route)}
@@ -102,8 +112,8 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
                 <OverviewIcon className={`size-5 shrink-0 ${isAdminRoute(route) ? "text-accent-soft" : ""}`} />
                 Administrative Settings
               </RouteLink>
-            </div>
-          )}
+            )}
+          </div>
 
           <div role="none" className="mt-0.5 border-t border-line pt-1.5">
             {signOutError && (

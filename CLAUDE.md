@@ -89,8 +89,9 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - Each server test file runs in its own Workers runtime with its own D1, so `maxWorkers` is capped at 4 (`TEST_WORKERS` overrides). The default (one per core) ran this 16-core machine out of memory and broke the pre-commit hook.
   - Tests that modify data reset it in `beforeEach`.
 - **UI**:
-  - React + Tailwind v4, dark-only (booth use).
-  - Design tokens are defined in `@theme` in `src/client/styles.css`. Tailwind's default palette is switched off, so use only the token colours.
+  - React + Tailwind v4. **Dark by default** (booth use), with Light and System per device (US-08a, requirements v1.20).
+  - Design tokens are defined in `src/client/styles.css`: `@theme inline` maps each colour (`bg-card`, `text-fg-muted`…) to a `--c-*` variable, set for Dark on `:root`/`[data-theme="dark"]` and for Light on `[data-theme="light"]`. Tailwind's default palette is switched off, so use only the token colours, never a hex value in a component (the only fixed colour is `white`, on the purple and in the switch knob). Light has darker status colours so they pass AA on white, and `text-on-danger` for text on the red.
+  - **Appearance** (`lib/theme.ts`): the choice is `localStorage` key `appearance` (`light`/`system`; no entry means Dark), applied as `data-theme` on `<html>` before first paint by the inline script in `index.html` (keep the two in step). `startThemeSync()` (main.tsx) keeps System following the device's `prefers-color-scheme` without a reload. My Preferences (`/preferences`, `pages/PreferencesPage.tsx`, from the name menu, for anyone signed in, even without access) picks it with `SegmentedControl` (native radios); its previews are elements with their own `data-theme`.
   - Components live in `src/client/components/`: `ui/` for shared building blocks, `app/` for the header, brand and user menu, `checklist/` for checklist screen parts.
   - `App.tsx` owns the session state (loading, signed out, signed in, error) from `GET /api/auth/me`. Pages call `onAccessChanged` when an API call returns 401 or 403 (`isAuthError` in `api.ts`).
   - Use `usePopover` for menus.

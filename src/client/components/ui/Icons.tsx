@@ -107,3 +107,31 @@ export const SignOutIcon = ({ className }: { className?: string }) => (
     <path d="M8 3.5H4.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1H8M12.5 6.5 16 10l-3.5 3.5M16 10H7.5" />
   </Outline>
 );
+
+export const PreferencesIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="M3.5 6h6M13.5 6h3M3.5 14h3M10.5 14h6" />
+    <circle cx="11.5" cy="6" r="2" />
+    <circle cx="8.5" cy="14" r="2" />
+  </Outline>
+);
+
+export const MoonIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="M16.5 11.8A6.5 6.5 0 0 1 8.2 3.5a6.5 6.5 0 1 0 8.3 8.3Z" />
+  </Outline>
+);
+
+export const SunIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <circle cx="10" cy="10" r="3.25" />
+    <path d="M10 2.5v1.5M10 16v1.5M2.5 10H4M16 10h1.5M4.7 4.7l1.06 1.06M14.24 14.24l1.06 1.06M4.7 15.3l1.06-1.06M14.24 5.76l1.06-1.06" />
+  </Outline>
+);
+
+export const MonitorIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <rect x="2.5" y="3.5" width="15" height="10" rx="1.5" />
+    <path d="M7 16.5h6M10 13.5v3" />
+  </Outline>
+);

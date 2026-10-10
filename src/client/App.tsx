@@ -22,6 +22,7 @@ import { listRefFrom } from "./lib/useAdminList";
 import { ChecklistPage } from "./pages/ChecklistPage";
 import { DevSignInPage } from "./pages/DevSignInPage";
 import { NoAccessPage } from "./pages/NoAccessPage";
+import { PreferencesPage } from "./pages/PreferencesPage";
 import { ProgressPage } from "./pages/ProgressPage";
 import { SignInPage } from "./pages/SignInPage";
 import type { AccessChangeReason } from "./lib/useChecklist";
@@ -138,6 +139,8 @@ export function App() {
   }
 
   function renderPage(user: CurrentUser, onAccessChanged: () => void) {
+    // Device-only, so it works for anyone signed in, including someone without access yet (US-08a).
+    if (route === "preferences") return <PreferencesPage />;
     if (!user.hasAccess) {
       return (
         <NoAccessPage

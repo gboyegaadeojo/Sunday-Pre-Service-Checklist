@@ -2,29 +2,35 @@
 
 /*
  * Design tokens from docs/design.md §2 and §10.
- * Tailwind's default palette is switched off, so only these colours exist.
+ * Tailwind's default palette is switched off, so only these colours exist. Each colour is a theme variable (below),
+ * so the same utilities (bg-card, text-fg-muted…) follow the Dark or Light theme (US-08a, requirements v1.20).
+ * `inline`: utilities read the variables where they're used, so an element with its own data-theme (the previews on
+ * My Preferences) shows that theme.
  */
-@theme {
+@theme inline {
   --color-*: initial;
   --color-transparent: transparent;
   --color-current: currentColor;
   --color-white: #ffffff;
 
-  --color-bg: #050505; /* main background */
-  --color-panel: #0a0a0a; /* primary panels and navigation */
-  --color-surface: #0f0f0f; /* secondary surfaces */
-  --color-card: #141414; /* cards and task groups */
-  --color-hover: #1a1a1a; /* hover states */
-  --color-line: #242424; /* borders and separators */
-  --color-accent: #7c3aed; /* primary accent: fills, selected markers */
-  --color-accent-soft: #a78bfa; /* secondary accent: accent text, focus ring */
-  --color-fg: #f5f5f5; /* primary text */
-  --color-fg-muted: #a3a3a3; /* secondary text */
-  --color-success: #22c55e;
-  --color-warning: #eab308;
-  --color-idle: #737373; /* neutral / not started; indicators only, too dim for body text */
-  --color-danger: #ef4444;
+  --color-bg: var(--c-bg); /* main background */
+  --color-panel: var(--c-panel); /* primary panels and navigation */
+  --color-surface: var(--c-surface); /* secondary surfaces */
+  --color-card: var(--c-card); /* cards and task groups */
+  --color-hover: var(--c-hover); /* hover states */
+  --color-line: var(--c-line); /* borders and separators */
+  --color-accent: var(--c-accent); /* primary accent: fills, selected markers */
+  --color-accent-soft: var(--c-accent-soft); /* secondary accent: accent text, focus ring */
+  --color-fg: var(--c-fg); /* primary text */
+  --color-fg-muted: var(--c-fg-muted); /* secondary text */
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-idle: var(--c-idle); /* neutral / not started; indicators only in Dark (too dim for body text there) */
+  --color-danger: var(--c-danger);
+  --color-on-danger: var(--c-on-danger); /* text on a danger fill (the confirm button) */
+}
 
+@theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Type scale: page 24, section 16–18, task 15, meta 13 (design.md §2). */
@@ -43,9 +49,52 @@
   --container-reading: 46rem; /* comfortable task line length */
 }
 
-/* Dark-only: the app is used in a low-light booth (US-08). */
-:root {
+/*
+ * Dark: the default, for the low-light booth (US-08). Applied to the page unless it says otherwise, and to any element
+ * marked data-theme="dark".
+ */
+:root,
+[data-theme="dark"] {
   color-scheme: dark;
+  --c-bg: #050505;
+  --c-panel: #0a0a0a;
+  --c-surface: #0f0f0f;
+  --c-card: #141414;
+  --c-hover: #1a1a1a;
+  --c-line: #242424;
+  --c-accent: #7c3aed;
+  --c-accent-soft: #a78bfa;
+  --c-fg: #f5f5f5;
+  --c-fg-muted: #a3a3a3;
+  --c-success: #22c55e;
+  --c-warning: #eab308;
+  --c-idle: #737373;
+  --c-danger: #ef4444;
+  --c-on-danger: #050505; /* 5.4:1 on the red; white would be 3.8:1 */
+}
+
+/*
+ * Light (US-08a): its own palette, not an inverted Dark. Status colours are darker than Dark's so they read on white
+ * (WCAG AA: green 5.0, yellow 4.9, red 4.8, grey 4.8 to 1); cards keep their border because white on #F7F7F9 alone
+ * barely separates. No shadows.
+ */
+[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: #f7f7f9;
+  --c-panel: #ffffff;
+  --c-surface: #f1f2f5;
+  --c-card: #ffffff;
+  --c-hover: #ececf1;
+  --c-line: #e2e4e9;
+  --c-accent: #6d28d9;
+  --c-accent-soft: #7c3aed;
+  --c-fg: #18181b;
+  --c-fg-muted: #52525b;
+  --c-success: #15803d;
+  --c-warning: #a16207;
+  --c-idle: #71717a;
+  --c-danger: #dc2626;
+  --c-on-danger: #ffffff;
 }
 
 body {
@@ -54,18 +103,18 @@ body {
 
 /*
  * The focus colour is every element's outline colour from the start, so `transition-colors` (which animates
- * outline-color) has nothing to animate and the ring shows purple at once instead of fading in from white.
+ * outline-color) has nothing to animate and the ring shows purple at once instead of fading in from another colour.
  */
 @layer base {
   *,
   ::before,
   ::after {
-    outline-color: var(--color-accent-soft);
+    outline-color: var(--c-accent-soft);
   }
 }
 
 /* One visible focus style everywhere (design.md §8). */
 :focus-visible {
-  outline: 2px solid var(--color-accent-soft);
+  outline: 2px solid var(--c-accent-soft);
   outline-offset: 2px;
 }

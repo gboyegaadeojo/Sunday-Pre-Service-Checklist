@@ -60,6 +60,22 @@ Use the following design tokens consistently:
 - Neutral/not started: #737373
 - Error: #EF4444
 
+**Light theme** (requirements v1.20, US-08a; Dark stays the default, Light and System are each person's choice on My Preferences):
+
+- Main background: #F7F7F9
+- Primary panels and navigation: #FFFFFF
+- Secondary surfaces: #F1F2F5
+- Cards and task groups: #FFFFFF (cards keep their border: white on #F7F7F9 alone barely separates)
+- Hover states: #ECECF1
+- Borders and separators: #E2E4E9
+- Primary accent: #6D28D9
+- Secondary accent: #7C3AED
+- Primary text: #18181B
+- Secondary text: #52525B
+- Success: #15803D · Warning/in-progress: #A16207 · Neutral/not started: #71717A · Error: #DC2626 (darker than Dark's so each passes WCAG AA on white)
+
+System isn't a third look: it shows Dark or Light to match the device, and follows it when it changes.
+
 Avoid excessive gradients, neon effects, glowing borders, bright blue/indigo accents, unnecessary shadows, and decorative elements without a functional purpose.
 
 Use purple selectively for primary actions, selected navigation, focus states, and important interactive elements.
