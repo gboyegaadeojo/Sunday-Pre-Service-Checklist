@@ -11,11 +11,12 @@ interface Props {
   ownIds?: ReadonlySet<number>;
 }
 
-// Department list shared by the desktop sidebar and the mobile picker (design.md §3C):
-// name, done/total, and status (dot plus a screen-reader label; the count is always visible).
+// Department list shared by the desktop sidebar and the mobile picker (design.md §3C): each department a card-style
+// button with its name and "X of Y tasks" (a status dot plus a screen-reader label; the count is always visible).
+// The selected one is outlined in purple.
 export function DepartmentNav({ departments, selectedId, onSelect, ownIds }: Props) {
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-2">
       {departments.map((d) => {
         const selected = d.id === selectedId;
         const progress = categoryProgress(d);
@@ -25,20 +26,17 @@ export function DepartmentNav({ departments, selectedId, onSelect, ownIds }: Pro
               type="button"
               onClick={() => onSelect(d.id)}
               aria-current={selected ? "true" : undefined}
-              className={`relative flex min-h-12 w-full items-center gap-3 rounded-control py-2 pr-3 pl-4 text-left text-sm transition-colors ${
-                selected ? "bg-hover font-semibold text-fg" : "text-fg-muted hover:bg-hover hover:text-fg"
+              className={`flex min-h-12 w-full flex-col rounded-card border px-4 py-3 text-left transition-colors ${
+                selected ? "border-accent bg-accent/10" : "border-line bg-card hover:bg-hover"
               }`}
             >
-              {selected && (
-                <span aria-hidden="true" className="absolute inset-y-2.5 left-0 w-1 rounded-full bg-accent" />
-              )}
-              <span className="min-w-0 flex-1 leading-snug wrap-anywhere">
+              <span className="min-w-0 text-sm leading-snug font-semibold text-fg wrap-anywhere">
                 {d.name}
                 {ownIds?.has(d.id) && <YoursBadge />}
               </span>
-              <span className="flex shrink-0 items-center gap-2 text-meta font-normal text-fg-muted tabular-nums">
+              <span className="mt-1 flex items-center gap-2 text-meta text-fg-muted tabular-nums">
                 <StatusDot status={progressStatus(progress)} />
-                {progress.done}/{progress.total}
+                {progress.done} of {progress.total} tasks
               </span>
             </button>
           </li>

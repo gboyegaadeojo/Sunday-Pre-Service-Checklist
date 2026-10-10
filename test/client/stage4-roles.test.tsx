@@ -130,8 +130,11 @@ describe("progress page", () => {
     serve("volunteer");
     render(<ProgressPage user={user("volunteer")} onAccessChanged={() => {}} />);
     await screen.findByText("Department A");
-    expect(screen.getByRole("region", { name: "Overall progress" }).textContent).toMatch(/1 of 2\s*tasks done/);
-    expect(screen.getByRole("button", { name: /Department A/ }).textContent).toMatch(/1 of 2 · 50%/);
+    // Three figures: tasks completed of the total, departments in progress, departments not started.
+    const summary = screen.getByRole("region", { name: "Overall progress" });
+    expect([...summary.querySelectorAll("dt")].map((d) => d.textContent)).toEqual(["Completed", "In progress", "Not started"]);
+    expect(summary.textContent).toMatch(/Completed\s*1\s*of 2 tasks/);
+    expect(screen.getByRole("button", { name: /Department A/ }).textContent).toContain("1 of 2 tasks completed");
     // Explicit status labels, not colour alone.
     expect(screen.getByRole("button", { name: /Department A/ }).textContent).toContain("In progress");
     expect(screen.getByRole("button", { name: /Department B/ }).textContent).toContain("No tasks");

@@ -1,5 +1,7 @@
 // Small inline icons. Decorative: always paired with text.
 
+import type { ReactNode } from "react";
+
 export function CheckIcon({ className = "size-4" }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 20 20" className={className}>
@@ -32,3 +34,63 @@ export function InfoIcon({ className = "size-4" }: { className?: string }) {
     </svg>
   );
 }
+
+/** Outline icons for the Admin menu (design.md §7), drawn on a 20px grid with a 1.5px stroke. */
+function Outline({ className = "size-5", children }: { className?: string; children: ReactNode }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      {children}
+    </svg>
+  );
+}
+
+export const OverviewIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <rect x="3" y="3" width="5.5" height="5.5" rx="1" />
+    <rect x="11.5" y="3" width="5.5" height="5.5" rx="1" />
+    <rect x="3" y="11.5" width="5.5" height="5.5" rx="1" />
+    <rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1" />
+  </Outline>
+);
+
+export const ChecklistIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="m3 5 1.5 1.5L7 4M3 11l1.5 1.5L7 10M10 5.5h7M10 11.5h7M10 16h7M3.5 16h2" />
+  </Outline>
+);
+
+export const ListsIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="m10 3 7 3.5-7 3.5-7-3.5L10 3Z" />
+    <path d="m3 10 7 3.5 7-3.5M3 13.5 10 17l7-3.5" />
+  </Outline>
+);
+
+export const MappingIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <rect x="2.5" y="3" width="6" height="5" rx="1" />
+    <rect x="11.5" y="12" width="6" height="5" rx="1" />
+    <path d="M5.5 8v3.5a1 1 0 0 0 1 1H11.5" />
+  </Outline>
+);
+
+export const UsersIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <circle cx="7.5" cy="7" r="2.75" />
+    <path d="M2.5 16.5c.6-2.6 2.6-4 5-4s4.4 1.4 5 4" />
+    <path d="M13 4.6a2.6 2.6 0 0 1 0 4.8M15 12.8c1.3.6 2.1 1.9 2.5 3.7" />
+  </Outline>
+);
+
+export const ActivityIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="M2.5 10h3l2-5 3.5 10 2-5h4.5" />
+  </Outline>
+);
+
+export const HistoryIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6M3.5 3.5v3h3" />
+    <path d="M10 6.5V10l2.5 1.5" />
+  </Outline>
+);

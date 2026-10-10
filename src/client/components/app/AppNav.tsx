@@ -8,7 +8,7 @@ const LINKS: { route: Route; label: string; allowed: (u: CurrentUser) => boolean
   { route: "progress", label: "Progress", allowed: (u) => u.hasAccess, active: (r) => r === "progress" },
   // Admin workspace (design.md §7): checklist editor, lists and activity log. Server enforces too.
   // (Settings is in the user menu.)
-  { route: "admin-checklist", label: "Admin", allowed: (u) => u.isAdmin, active: isAdminRoute },
+  { route: "admin-overview", label: "Admin", allowed: (u) => u.isAdmin, active: isAdminRoute },
 ];
 
 interface Props {

@@ -1,40 +1,45 @@
 import type { ChecklistResponse } from "../../../shared/types";
-import { type ProgressStatus, categoryProgress, checklistProgress, percent, plural, progressStatus } from "../../lib/checklist";
+import { type ProgressStatus, categoryProgress, checklistProgress, percent, progressStatus } from "../../lib/checklist";
 import { Card } from "../ui/Card";
 import { ProgressBar } from "../ui/ProgressBar";
-import { StatusDot } from "../ui/StatusDot";
 
-const ORDER: Exclude<ProgressStatus, "empty">[] = ["complete", "in_progress", "not_started"];
-
-// Overall numbers for the service (design.md §6). Counts only: it never declares the service "ready".
+/**
+ * The service's readiness in three figures (design.md §6): tasks completed of the total, departments in progress,
+ * departments not started. Each figure has its words next to it, so colour is never the only signal. Counts only:
+ * it never declares the service "ready". Shared by Progress and the Admin Overview.
+ */
 export function ProgressSummary({ checklist }: { checklist: ChecklistResponse }) {
   const overall = checklistProgress(checklist);
-  const byStatus = new Map<ProgressStatus, number>();
-  for (const c of checklist.categories) {
-    const s = progressStatus(categoryProgress(c));
-    byStatus.set(s, (byStatus.get(s) ?? 0) + 1);
-  }
+  const departments = (status: ProgressStatus) => checklist.categories.filter((c) => progressStatus(categoryProgress(c)) === status).length;
+  const inProgress = departments("in_progress");
+  const notStarted = departments("not_started");
+  const complete = departments("complete");
 
   return (
     <Card role="region" aria-label="Overall progress" className="px-4 py-4 md:px-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-        <p className="text-base">
-          <span className="font-semibold tabular-nums">
-            {overall.done} of {overall.total}
-          </span>{" "}
-          <span className="text-fg-muted">tasks done · {overall.total - overall.done} remaining</span>
-        </p>
-        <p className="text-meta font-medium tabular-nums">{percent(overall)}%</p>
+      <dl className="grid grid-cols-3 gap-3">
+        <Figure label="Completed" value={overall.done} unit={`of ${overall.total} tasks`} tone={overall.done > 0 ? "text-success" : "text-fg"} />
+        <Figure label="In progress" value={inProgress} unit={inProgress === 1 ? "department" : "departments"} tone={inProgress > 0 ? "text-warning" : "text-fg"} />
+        <Figure label="Not started" value={notStarted} unit={notStarted === 1 ? "department" : "departments"} tone="text-fg" />
+      </dl>
+      <div className="mt-4 flex items-center gap-3">
+        <ProgressBar progress={overall} label="Overall progress" className="flex-1" />
+        <span className="shrink-0 text-meta font-medium tabular-nums">{percent(overall)}%</span>
       </div>
-      <ProgressBar progress={overall} label="Overall progress" className="mt-2" />
-      <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-1" aria-label="Departments by status">
-        {ORDER.filter((s) => byStatus.get(s)).map((s) => (
-          <li key={s} className="flex items-center gap-1.5 text-meta">
-            <StatusDot status={s} showLabel />
-            <span className="text-fg-muted tabular-nums">· {plural(byStatus.get(s) ?? 0, "department")}</span>
-          </li>
-        ))}
-      </ul>
+      <p className="mt-1.5 text-meta text-fg-muted tabular-nums">
+        {overall.total - overall.done} remaining
+        {complete > 0 && ` · ${complete} ${complete === 1 ? "department" : "departments"} complete`}
+      </p>
     </Card>
+  );
+}
+
+function Figure({ label, value, unit, tone }: { label: string; value: number; unit: string; tone: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-meta text-fg-muted">{label}</dt>
+      <dd className={`mt-1 text-page leading-none font-semibold tabular-nums ${tone}`}>{value}</dd>
+      <dd className="mt-1 text-meta text-fg-muted">{unit}</dd>
+    </div>
   );
 }

@@ -129,7 +129,7 @@ If schedule data is unavailable, show the specified fallback banner and allow el
 
 Departments come from the checklist data. There can be any number of them; there are currently six (Presentation / Computer Graphics, Audio Engineer, Camera Operators, Director (Switcher), Miscellaneous and Technical Director). Admins add, rename, reorder and hide departments, so layouts must never assume a fixed count or fixed names.
 
-On desktop, use a persistent left sidebar or an equally effective department navigation pattern.
+On desktop, use a persistent left sidebar or an equally effective department navigation pattern. (As built, October 2026: each department is a card-style button with its name and "X of Y tasks", the selected one outlined in purple; the workspace starts with a header card for the selected department, "X of Y complete · Z remaining" and a purple bar; each section sits in its own card with a small "SECTION 1" label above its name. Phones keep the sticky department picker, and hide the header card because the picker already names the department.)
 
 On mobile, use a compact horizontal selector or accessible department menu.
 
@@ -251,6 +251,8 @@ Create a dedicated progress dashboard. **It is for everyone with access: Volunte
 
 The dashboard must make it possible to determine department readiness without manually reviewing every task.
 
+As built (October 2026): a summary card leads with three figures (tasks completed of the total, departments in progress, departments not started), each with its words, then the overall bar. Each department card shows "X of Y tasks completed", its status in words on the right, and a bar coloured by status.
+
 Display every department in the checklist (whatever the user's checklist view shows) with:
 
 - Department name.
@@ -280,7 +282,9 @@ Do not invent readiness thresholds or declare a service ready based solely on an
 
 ## 7. Admin Workspace
 
-Create a separate, role-protected Admin area, reached from the header's **Admin** tab, with its own tabs for each section. Only list sections that exist.
+Create a separate, role-protected Admin area, reached from the header's **Admin** tab, with its own navigation for each section. Only list sections that exist.
+
+As built (October 2026, project owner's sketches): the Admin tab opens an **Overview** with the current service at a glance (the same three figures as Progress, each department's status in one line, and the service's status) and a link to Progress for task details, reset and undo. On desktop (1024px and up) the sections are a sidebar menu, each with an icon, its name and one line about it, the current one outlined in purple. Phones and tablets keep a compact tab strip, and the Overview lists the sections with their descriptions.
 
 Organize it into clear sections:
 
@@ -314,7 +318,7 @@ Previous services: what was done and what wasn't ("X of Y done" per department),
 
 **Settings is not part of the Admin area.** It lives in the menu under the user's name (§3A).
 
-Current service progress is on the Progress dashboard (§6), which Admins use like everyone else.
+Current service progress is on the Progress dashboard (§6), which Admins use like everyone else. The Overview shows only a compact summary of it and links there.
 
 Use confirmation dialogs for destructive or consequential actions.
 

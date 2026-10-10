@@ -1,12 +1,12 @@
 import type { ChecklistCategory } from "../../../shared/types";
-import { categoryProgress, percent, progressStatus } from "../../lib/checklist";
+import { categoryProgress, progressStatus } from "../../lib/checklist";
 import { formatTime } from "../../lib/format";
 import { Card } from "../ui/Card";
 import { Chevron } from "../ui/Chevron";
 import { CheckIcon } from "../ui/Icons";
 import { ProgressBar } from "../ui/ProgressBar";
-import { StatusDot } from "../ui/StatusDot";
 import { YoursBadge } from "../checklist/YoursBadge";
+import { StatusText } from "./StatusText";
 
 interface Props {
   department: ChecklistCategory;
@@ -17,8 +17,8 @@ interface Props {
   yours?: boolean;
 }
 
-// One department on the progress view (US-09, design.md §6): name, explicit status label, counts,
-// percentage and bar. Expanding shows every task with who checked it and when.
+// One department on the progress view (US-09, design.md §6): name, "X of Y tasks completed", its status in words on
+// the right, and a bar coloured by status. Expanding shows every task with who checked it and when.
 export function DepartmentProgressCard({ department, timeZone, expanded, onToggle, yours = false }: Props) {
   const progress = categoryProgress(department);
   const status = progressStatus(progress);
@@ -32,22 +32,22 @@ export function DepartmentProgressCard({ department, timeZone, expanded, onToggl
           onClick={onToggle}
           aria-expanded={expanded}
           aria-controls={panelId}
-          className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-hover"
+          className="block w-full px-4 py-3.5 text-left transition-colors hover:bg-hover"
         >
-          <span className="min-w-0 flex-1">
-            <span className="block text-base leading-snug font-semibold wrap-anywhere">
-              {department.name}
-              {yours && <YoursBadge />}
-            </span>
-            <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-meta">
-              {status === "empty" ? <span className="text-fg-muted">No tasks</span> : <StatusDot status={status} showLabel />}
-              <span className="text-fg-muted tabular-nums">
-                {progress.done} of {progress.total} · {percent(progress)}%
+          <span className="flex items-start gap-3">
+            <span className="min-w-0 flex-1">
+              <span className="block text-base leading-snug font-semibold wrap-anywhere">
+                {department.name}
+                {yours && <YoursBadge />}
+              </span>
+              <span className="mt-0.5 block text-meta text-fg-muted tabular-nums">
+                {progress.done} of {progress.total} tasks completed
               </span>
             </span>
-            {progress.total > 0 && <ProgressBar progress={progress} label={`${department.name} progress`} className="mt-2.5" />}
+            <StatusText status={status} className="mt-0.5" />
+            <Chevron open={expanded} />
           </span>
-          <Chevron open={expanded} className="mt-0.5" />
+          {progress.total > 0 && <ProgressBar progress={progress} label={`${department.name} progress`} tone="status" className="mt-3" />}
         </button>
       </h2>
 

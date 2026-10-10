@@ -7,7 +7,7 @@ import { SetupNotice } from "./components/app/SetupNotice";
 import { Card } from "./components/ui/Card";
 import { ErrorState, LoadingState } from "./components/ui/States";
 import { BrandingContext, NO_BRANDING, documentTitle } from "./lib/branding";
-import { AdminTabs } from "./components/admin/AdminTabs";
+import { AdminLayout } from "./components/admin/AdminTabs";
 import { useRoute } from "./lib/router";
 import { ActivityPage } from "./pages/ActivityPage";
 import { ChecklistEditorPage } from "./pages/admin/ChecklistEditorPage";
@@ -15,6 +15,7 @@ import { HiddenItemsPage } from "./pages/admin/HiddenItemsPage";
 import { HistoryPage } from "./pages/admin/HistoryPage";
 import { ListsPage } from "./pages/admin/ListsPage";
 import { MappingPage } from "./pages/admin/MappingPage";
+import { OverviewPage } from "./pages/admin/OverviewPage";
 import { SettingsPage } from "./pages/admin/SettingsPage";
 import { UsersPage } from "./pages/admin/UsersPage";
 import { listRefFrom } from "./lib/useAdminList";
@@ -156,6 +157,7 @@ export function App() {
             <ProgressPage user={user} onAccessChanged={onAccessChanged} />
           </>
         );
+      case "admin-overview":
       case "admin-checklist":
       case "admin-hidden":
       case "admin-lists":
@@ -187,9 +189,10 @@ export function App() {
         // Settings is opened from the user menu, so it has no Admin tabs.
         if (route === "settings") return <SettingsPage onAccessChanged={onAccessChanged} onBrandingChanged={loadBranding} />;
         return (
-          <>
-            <AdminTabs route={route} onNavigate={navigate} />
-            {route === "admin-activity" ? (
+          <AdminLayout route={route} onNavigate={navigate}>
+            {route === "admin-overview" ? (
+              <OverviewPage onAccessChanged={onAccessChanged} onNavigate={navigate} />
+            ) : route === "admin-activity" ? (
               <ActivityPage onAccessChanged={onAccessChanged} />
             ) : route === "admin-history" ? (
               // Keyed by the query, so opening another service starts fresh.
@@ -206,7 +209,7 @@ export function App() {
             ) : (
               <ChecklistEditorPage key={search} listRef={listRefFrom(search)} onAccessChanged={onAccessChanged} onNavigate={navigate} />
             )}
-          </>
+          </AdminLayout>
         );
       default:
         return (
