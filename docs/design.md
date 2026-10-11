@@ -3,7 +3,7 @@
 > **How this brief is applied (project owner, October 2026)**
 >
 > - All UI work follows this brief. Apply it stage by stage, following `docs/build-plan.md`. Build each screen to this brief when its stage comes up, not earlier.
-> - **The requirements are in `docs/requirements.md` (currently v1.20). Where this brief and the requirements disagree, the requirements win.** This brief was brought in line with them in October 2026; later requirement changes apply even before the brief catches up.
+> - **The requirements are in `docs/requirements.md` (currently v1.24). Where this brief and the requirements disagree, the requirements win.** This brief was brought in line with them in October 2026; later requirement changes apply even before the brief catches up.
 > - Build the reusable components and design tokens from section 10 as screens need them.
 > - If a stage doesn't have the data yet (progress counts, user name, completion times), leave that part of the UI out rather than showing made-up numbers. Add it in the stage that provides the data.
 > - The fake login and fake schedule source in the approved build plan are allowed until Stages 9–10 (real Planning Center, then deployment). "No mock data" means no made-up numbers or placeholder content in the UI.
@@ -58,7 +58,7 @@ Use the following design tokens consistently:
 - Success: #22C55E
 - Warning/in-progress: #EAB308
 - Neutral/not started: #737373
-- Error: #EF4444
+- Error: #F87171 (lighter than the original #EF4444 so red text passes AA on the glass backdrop, requirements C40; text on a red button is #050505)
 
 **Light theme** (requirements v1.20, US-08a; Dark stays the default, Light and System are each person's choice on My Preferences):
 
@@ -69,14 +69,43 @@ Use the following design tokens consistently:
 - Hover states: #ECECF1
 - Borders and separators: #E2E4E9
 - Primary accent: #6D28D9
-- Secondary accent: #7C3AED
+- Secondary accent (accent text, focus ring): #6D28D9
 - Primary text: #18181B
 - Secondary text: #52525B
-- Success: #15803D · Warning/in-progress: #A16207 · Neutral/not started: #71717A · Error: #DC2626 (darker than Dark's so each passes WCAG AA on white)
+- Success: #166534 · Warning/in-progress: #854D0E · Neutral/not started: #71717A (indicators only) · Error: #991B1B. These are dark (Tailwind 800 shades) so each passes WCAG AA on white and on the glass backdrop (requirements C40).
 
 System isn't a third look: it shows Dark or Light to match the device, and follows it when it changes.
 
-Avoid excessive gradients, neon effects, glowing borders, bright blue/indigo accents, unnecessary shadows, and decorative elements without a functional purpose.
+**Glass tokens** (requirements C40; `styles.css`, Dark / Light):
+
+| Token | Dark | Light | Use |
+|---|---|---|---|
+| Backdrop base | #050505 | #F7F7F9 | The page colour under the backdrop |
+| Backdrop fields | violet 20%, rose 8%, teal 10% | violet 18%, pink 18%, teal 16% | Three large soft colour fields, at their strongest point |
+| Glass | #121214 at 62% | #FFFFFF at 80% | Over the backdrop only |
+| Bar | #121214 at 85% | #FFFFFF at 84% | Floats over scrolling content |
+| Edge | white 10% | #11111A 8% | 1px border |
+| Highlight | white 8% | white 90% | 1px inset line along the top edge |
+| Shadow | 0 16 40 −12, black 65% | 0 16 36 −14, #11111A 22% | Lifts floating layers off the page |
+| Blur | 24px, saturate 160% (glass) · 20px, saturate 180% (bar) | same | |
+
+`test/client/design-tokens.test.tsx` reads these from `styles.css` and fails if any text colour drops below AA on any surface it can sit on.
+
+Avoid excessive gradients, neon effects, glowing borders, bright blue/indigo accents, unnecessary shadows, and decorative elements without a functional purpose. Two exceptions have a purpose (requirements C40): the one faint backdrop, which lets glass read as glass, and the edge highlight and soft shadow on floating layers, which separate them from the content underneath.
+
+### Surfaces: glass and solid
+
+Glass is for floating layers only. Anything people read in a list stays solid.
+
+| Material | Where | Text allowed |
+|---|---|---|
+| **Glass** (`.glass`) | Sign-in card, Progress summary cards: they sit over the backdrop only | Every text colour |
+| **Bar** (`.bar`, thicker) | Header, phone department bar, menus (name menu, ⋯ menus), dialogs: they float over scrolling content | Primary and secondary text only; show states with icons, pills and those two colours, never status-coloured text |
+| **Solid** (`bg-card`, `bg-panel`) | Section cards, task rows, the checklist editor, tables, forms, fields, the admin sidebar | Every text colour |
+
+- **Corners:** controls 10px, solid cards 16px, glass cards and menus 20px, dialogs and the sign-in card 24px, pills and the phone department bar fully rounded.
+- **Rules:** no blur on a list or on anything inside one; no glass inside glass; at most two blurred bars on a phone screen at once (header and department bar); blur at most 24px. The backdrop moves only by transform, very slowly (a minute or so per drift).
+- **Solid instead of glass** (today's colours and shapes, no backdrop): when the person turns **Glass effects** off on the device, when the device asks for **Reduce Transparency** or **Increase Contrast**, and in browsers that can't blur. An element can name its solid colour (`[--surface-solid:var(--c-bg)]`; panel otherwise).
 
 Use purple selectively for primary actions, selected navigation, focus states, and important interactive elements.
 
@@ -84,7 +113,7 @@ Use status colors consistently. Never communicate task status through color alon
 
 ### Typography
 
-Use Inter or the application's existing high-quality sans-serif font.
+Use the system font: San Francisco on Apple devices, Segoe UI on Windows, Roboto on Android (requirements C40). No web font is loaded.
 
 Recommended hierarchy:
 
@@ -372,6 +401,8 @@ Use consistent interaction patterns across the application.
 - Minimal, non-disruptive success feedback.
 
 Avoid excessive toast notifications, unnecessary animations, and modal dialogs for routine checkbox interactions.
+
+**Reduce Motion** (requirements C40): when the device asks for it, the backdrop stays still and nothing animates or transitions.
 
 Resetting a service must require explicit confirmation. Explain that the action clears the service's check-offs, and provide the required undo functionality.
 

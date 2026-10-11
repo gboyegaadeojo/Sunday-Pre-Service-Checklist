@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.23 · **Date:** October 2026  
+> **Version:** 1.24 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.23
+## 0. Changes in Version 1.24
+
+| # | Change | Why |
+|---|--------|-----|
+| C40 | **A glass look** (inspired by Apple's "Liquid Glass"; no Apple logos or assets), in Dark and Light (US-08a): a faint, slowly drifting colour backdrop, and translucent blurred surfaces with a soft edge highlight and larger corners for floating layers only (header, menus, dialogs, sign-in card, the phone department bar, Progress summary cards). Task rows, checklist text and lists stay solid. All text passes WCAG AA in both themes on every surface, checked automatically from the colour tokens; Light's status and accent text colours are a shade darker for this, and Dark's red a shade lighter. Devices that ask for Reduce Transparency or Increase Contrast, and browsers that can't blur, get solid surfaces; Reduce Motion stops the backdrop and transitions. Each person can also turn **Glass effects** off on their device (next to Dark / Light / System), which restores the solid look. The system font is used (San Francisco on Apple devices). | A modern, calmer look before the app's first Sunday, without giving up readability in the booth or on phones. |
+
+## Changes in Version 1.23
 
 | # | Change | Why |
 |---|--------|-----|

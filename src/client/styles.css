@@ -46,8 +46,11 @@
   --text-meta: 0.8125rem;
   --text-meta--line-height: 1.125rem;
 
-  --radius-control: 0.5rem;
-  --radius-card: 0.75rem;
+  /* Corners (design.md §2, Surfaces): larger on the floating glass layers. Pills use rounded-full. */
+  --radius-control: 0.625rem; /* 10px: buttons, fields, segmented controls */
+  --radius-card: 1rem; /* 16px: solid cards and task groups */
+  --radius-glass: 1.25rem; /* 20px: glass cards, menus */
+  --radius-dialog: 1.5rem; /* 24px: dialogs and the sign-in card */
 
   /* Layout */
   --container-app: 85rem; /* ~1360px desktop content width (design.md §4) */
@@ -74,14 +77,26 @@
   --c-success: #22c55e;
   --c-warning: #eab308;
   --c-idle: #737373;
-  --c-danger: #ef4444;
-  --c-on-danger: #050505; /* 5.4:1 on the red; white would be 3.8:1 */
+  --c-danger: #f87171;
+  --c-on-danger: #050505; /* 7.4:1 on the red; white would be 2.8:1 */
+
+  /* Glass (design.md §2, Surfaces). test/client/design-tokens.test.tsx checks every text colour against these. */
+  --bd-base: #050505; /* page background under the backdrop */
+  --bd-1: rgb(124 58 237 / 0.2); /* backdrop colour fields, at their strongest point: violet */
+  --bd-2: rgb(225 29 72 / 0.08); /* rose */
+  --bd-3: rgb(13 148 136 / 0.1); /* teal */
+  --glass-bg: rgb(18 18 20 / 0.62); /* glass: over the backdrop only */
+  --bar-bg: rgb(18 18 20 / 0.85); /* bar: floats over scrolling content */
+  --glass-edge: rgb(255 255 255 / 0.1);
+  --glass-hi: inset 0 1px 0 rgb(255 255 255 / 0.08); /* the soft top-edge highlight */
+  --glass-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.65);
 }
 
 /*
- * Light (US-08a): its own palette, not an inverted Dark. Status colours are darker than Dark's so they read on white
- * (WCAG AA: green 5.0, yellow 4.9, red 4.8, grey 4.8 to 1); cards keep their border because white on #F7F7F9 alone
- * barely separates. No shadows.
+ * Light (US-08a): its own palette, not an inverted Dark. Status and accent text colours are dark (Tailwind 800 shades,
+ * requirements C40) so they pass AA on white (green 7.1, amber 6.9, red 8.3 to 1) and on the glass backdrop; grey (idle)
+ * is for indicators only (4.3 on the secondary surface). Cards keep their border because white on #F7F7F9 alone
+ * barely separates.
  */
 [data-theme="light"] {
   color-scheme: light;
@@ -92,18 +107,158 @@
   --c-hover: #ececf1;
   --c-line: #e2e4e9;
   --c-accent: #6d28d9;
-  --c-accent-soft: #7c3aed;
+  --c-accent-soft: #6d28d9;
   --c-fg: #18181b;
   --c-fg-muted: #52525b;
-  --c-success: #15803d;
-  --c-warning: #a16207;
+  --c-success: #166534;
+  --c-warning: #854d0e;
   --c-idle: #71717a;
-  --c-danger: #dc2626;
+  --c-danger: #991b1b;
   --c-on-danger: #ffffff;
+
+  --bd-base: #f7f7f9;
+  --bd-1: rgb(139 92 246 / 0.18);
+  --bd-2: rgb(244 114 182 / 0.18);
+  --bd-3: rgb(45 212 191 / 0.16);
+  --glass-bg: rgb(255 255 255 / 0.8);
+  --bar-bg: rgb(255 255 255 / 0.84);
+  --glass-edge: rgb(17 17 26 / 0.08);
+  --glass-hi: inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --glass-shadow: 0 16px 36px -14px rgb(17 17 26 / 0.22);
 }
 
+:root {
+  --glass-filter: blur(24px) saturate(160%);
+  --bar-filter: blur(20px) saturate(180%);
+}
+
+/*
+ * The backdrop (design.md §2, Surfaces): a few large, faint colour fields behind everything, so glass reads as glass.
+ * Two fixed layers drifting very slowly (transform only, so the browser just moves them); nothing scrolls with them.
+ */
+html {
+  background-color: var(--bd-base);
+}
 body {
-  @apply bg-bg font-sans text-fg antialiased;
+  @apply font-sans text-fg antialiased;
+}
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: -20vmax;
+  z-index: -1;
+  pointer-events: none;
+  will-change: transform;
+  animation: backdrop-drift 54s ease-in-out infinite alternate;
+}
+body::before {
+  background:
+    radial-gradient(closest-side, var(--bd-1), transparent) -10vmax -15vmax / 90vmax 90vmax no-repeat,
+    radial-gradient(closest-side, var(--bd-3), transparent) 0 100% / 80vmax 80vmax no-repeat;
+}
+body::after {
+  background: radial-gradient(closest-side, var(--bd-2), transparent) 100% 35% / 85vmax 85vmax no-repeat;
+  animation-duration: 66s;
+  animation-direction: alternate-reverse;
+}
+@keyframes backdrop-drift {
+  to {
+    transform: translate3d(10vmax, 7vmax, 0) scale(1.1);
+  }
+}
+
+/*
+ * Surfaces (design.md §2): `glass` for floating layers over the backdrop (sign-in card, Progress summary cards), `bar`
+ * for layers that float over scrolling content (header, department bar, menus, dialogs: thicker, and only primary and
+ * secondary text on them). Everything in a list stays solid (bg-card). Corners come from rounded-glass/-dialog/-full.
+ * An element can say which solid colour it falls back to: [--surface-solid:var(--c-bg)] (default: panel).
+ */
+@layer components {
+  .glass,
+  .bar {
+    border: 1px solid var(--glass-edge);
+    box-shadow: var(--glass-hi), var(--glass-shadow);
+  }
+  .glass {
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-filter);
+    backdrop-filter: var(--glass-filter);
+  }
+  .bar {
+    background-color: var(--bar-bg);
+    -webkit-backdrop-filter: var(--bar-filter);
+    backdrop-filter: var(--bar-filter);
+  }
+}
+
+/*
+ * Solid surfaces instead of glass: today's colours and shapes, no backdrop, no blur. For people who turn glass effects
+ * off (data-glass="off" on <html>), whose device asks for less transparency or more contrast, and browsers that can't
+ * blur. Listed three times because a media query or @supports can't share one rule with an attribute selector.
+ */
+html[data-glass="off"] {
+  background-color: var(--c-bg);
+}
+html[data-glass="off"] body::before,
+html[data-glass="off"] body::after {
+  display: none;
+}
+html[data-glass="off"] :is(.glass, .bar) {
+  background-color: var(--surface-solid, var(--c-panel));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-color: var(--c-line);
+  box-shadow: none;
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  html {
+    background-color: var(--c-bg);
+  }
+  body::before,
+  body::after {
+    display: none;
+  }
+  :is(.glass, .bar) {
+    background-color: var(--surface-solid, var(--c-panel));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: var(--c-line);
+    box-shadow: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html {
+    background-color: var(--c-bg);
+  }
+  body::before,
+  body::after {
+    display: none;
+  }
+  :is(.glass, .bar) {
+    background-color: var(--surface-solid, var(--c-panel));
+    border-color: var(--c-line);
+    box-shadow: none;
+  }
+}
+
+/*
+ * Reduce Motion (design.md §8): the backdrop stays where it is, and nothing animates or transitions. Unlayered, so it
+ * wins over Tailwind's transition and animation utilities (which are in a layer) without !important.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+  }
+  body::before,
+  body::after {
+    animation: none;
+  }
 }
 
 /*
