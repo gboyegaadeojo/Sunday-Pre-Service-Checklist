@@ -419,6 +419,14 @@ The original plan for this stage:
 - Write `docs/deployment.md` covering secrets and how to rotate them, seeding the first admin, the "sign in once during the week" advice (US-04b), D1 backup and point-in-time recovery, and the optional custom domain.
 - **Test in the browser:** open the `*.workers.dev` URL on a phone and run a full Sunday walkthrough.
 
+As built (October 11, 2026; `docs/deployment.md`):
+- The Worker is `checklist`, live at `https://checklist.media-5f7.workers.dev` (the account's workers.dev subdomain is shared with another Worker, so it stays `media-5f7`). The D1 database `sunday-pre-service-checklist` is in western North America; local development keeps its own database through `preview_database_id`.
+- Five Worker secrets (`SESSION_SECRET` and the four Planning Center values), never `DEV_AUTH` or `SCHEDULE_SOURCE`. The live site was checked: `/api/dev/*` returns 404, the served code has no test users or sample schedule, the sign-in screen has no developer box, and Team mapping reads the real Planning Center.
+- Workers Builds deploys every push to `main` (`npm run build`, then `npm run deploy`: migrations, then deploy); Preview builds are off. A rollback and roll-forward were practised. Release rules: append-only migrations (enforced by the pre-commit hook), no pushes from Saturday 6 PM until after the Sunday service unless urgent, and an export before any push with a new migration.
+- Backups: Time Travel (7 days) and `npm run db:export`; restoring an export into a new database was practised.
+- The first Admin was set in the database after their first live sign-in (no hand-made `user_identities` row: sign-in creates it, as with any user), logged in `role_events`. Team mapping is set up (479 Sunday Service; the seven positions of 479 Media Team, Technical Director seeing all departments).
+- **Still to do:** Technical Directors sign in and get Director (they couldn't before the trial), and the full Sunday walkthrough on a phone at the trial service.
+
 ---
 
 ## 5. Decisions — Closed

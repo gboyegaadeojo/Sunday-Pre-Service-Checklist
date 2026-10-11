@@ -139,9 +139,15 @@ a **new** database, which the app is then switched to:
 If a deploy breaks something, put the previous version back. It takes seconds and needs no build.
 
 - **Dashboard**: Workers & Pages › `checklist` › Deployments. Find the last good version, open
-  its **⋯** menu and choose **Rollback**, then confirm.
-- **Terminal**: `npx wrangler deployments list` shows recent versions; `npx wrangler rollback` goes back to the
-  previous one (or `npx wrangler rollback <version-id>` to a specific one).
+  its **⋯** menu and choose **Rollback**. The "Rollback checklist" dialog shows the current version and the one you're
+  going back to; add a message (e.g. what broke) and click the blue **Rollback** button. The Active deployment box
+  shows the old version within seconds.
+- **Terminal**: `npx wrangler deployments list --name checklist` shows recent versions;
+  `npx wrangler rollback <version-id> --name checklist --message "what broke"` deploys that version to all traffic
+  (it asks you to confirm). Without a version ID it goes back to the previous one.
+
+Rolling forward again is the same thing: roll back to the newer version. Both directions were practised when the app
+went live (October 2026).
 
 A rollback changes only the code. **It doesn't undo database migrations**, which is fine as long as migrations only
 add things (new tables or columns) that the older code ignores. Data can be put back with Time Travel. The next push to
