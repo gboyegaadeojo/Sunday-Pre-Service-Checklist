@@ -67,14 +67,17 @@ Build. The settings:
 | Setting | Value |
 |---|---|
 | Git repository | `gboyegaadeojo/Sunday-Pre-Service-Checklist` |
-| Production branch | `main` |
+| Production branch | `main` (Disable builds: off) |
 | Build command | `npm run build` |
 | Deploy command | `npm run deploy` |
-| Builds for non-production branches | Off |
+| Enable Preview builds | **Off**: preview versions of other branches would use the live database |
+| Path | `/` |
+| API token | Created automatically when connecting ("Workers Builds – <date>") |
+| Build variables | None. Never `DEV_AUTH` or `SCHEDULE_SOURCE` |
 
 `npm run deploy` first applies any new database migrations to the live database (`npm run db:migrate:remote`),
-then deploys the new version. If a migration fails, nothing is deployed. Builds and their logs are under the Worker's
-**Deployments** tab. A failed build leaves the previous version running.
+then deploys the new version. If a migration fails, nothing is deployed. A failed build leaves the previous version
+running. Connecting the repository doesn't start a build by itself; the next push to `main` does.
 
 The checks (lint, types, tests) run before every commit on your machine (`.githooks/pre-commit`), so the build only
 builds.
