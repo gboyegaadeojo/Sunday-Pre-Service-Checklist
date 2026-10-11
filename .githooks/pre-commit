@@ -5,9 +5,9 @@
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 
-# 1. Files that must never be committed (US-16).
+# 1. Files that must never be committed (US-16), including live database exports (backups/: real names).
 blocked=$(printf '%s\n' "$staged" \
-  | grep -E '(^|/)(\.dev\.vars|\.env)(\.[^/]*)?$|(^|/)\.wrangler/|(^|/)node_modules/' \
+  | grep -E '(^|/)(\.dev\.vars|\.env)(\.[^/]*)?$|(^|/)\.wrangler/|(^|/)node_modules/|^backups/' \
   | grep -v '\.dev\.vars\.example$')
 if [ -n "$blocked" ]; then
   echo "pre-commit: these files must never be committed:"
@@ -16,7 +16,18 @@ if [ -n "$blocked" ]; then
   exit 1
 fi
 
-# 2. Likely secrets in added lines. This is a heuristic: a name like *_SECRET / *_TOKEN /
+# 2. Migrations are append-only (CLAUDE.md): an existing migration file may never be changed, renamed or
+#    deleted, because the live database has already applied it. Database changes go in a new migration.
+changed_migrations=$(git diff --cached --name-status --diff-filter=MDRT -- migrations/)
+if [ -n "$changed_migrations" ]; then
+  echo "pre-commit: existing migration files must never be changed, renamed or deleted:"
+  printf '%s\n' "$changed_migrations" | sed 's/^/  /'
+  echo "Put the change in a new migration instead (the next number in migrations/)."
+  echo "Undo with: git restore --staged --worktree <file>"
+  exit 1
+fi
+
+# 3. Likely secrets in added lines. This is a heuristic: a name like *_SECRET / *_TOKEN /
 #    *_PASSWORD / *_API_KEY assigned a long literal value, or a private key block.
 secrets=$(git diff --cached -U0 --diff-filter=ACMR -- . ':(exclude)package-lock.json' \
   | grep -E '^\+' \
@@ -28,7 +39,7 @@ if [ -n "$secrets" ]; then
   exit 1
 fi
 
-# 3. Lint, type checks, tests and production build.
+# 4. Lint, type checks, tests and production build.
 if ! command -v npm >/dev/null 2>&1; then
   echo "pre-commit: npm not found on PATH, so the checks can't run. Commit blocked."
   exit 1

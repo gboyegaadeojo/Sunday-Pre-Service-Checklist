@@ -12,8 +12,11 @@
     {
       "binding": "DB",
       "database_name": "sunday-pre-service-checklist",
-      // Placeholder for local development. Replaced with the real ID in Stage 10.
+      // The live database (not a secret). Placeholder until it's created in Stage 10.
       "database_id": "00000000-0000-0000-0000-000000000000",
+      // Local development (npm run dev, wrangler --local) uses this ID instead, so the local database in
+      // .wrangler/state stays the same whatever the live ID is. Never point it at a real database.
+      "preview_database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
   ],

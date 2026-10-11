@@ -11,6 +11,9 @@
     "test": "vite build --logLevel warn && vitest run",
     "check": "npm run lint && npm run typecheck && npm test",
     "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
+    "db:export": "wrangler d1 export DB --remote --config wrangler.jsonc --output",
+    "deploy": "npm run db:migrate:remote && wrangler deploy",
     "prepare": "git config core.hooksPath .githooks"
   },
   "dependencies": {

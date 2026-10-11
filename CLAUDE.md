@@ -22,7 +22,12 @@ npx vitest run --project client   # browser-code tests only (happy-dom; test/cli
 npm run typecheck    # regenerates worker-configuration.d.ts (wrangler types), then tsc on client and worker
 npm run build        # production build into dist/
 npm run db:migrate   # apply migrations to the local D1 only
+npm run db:export -- backups/2026-10-18-before-0012.sql   # export the LIVE database to a file (backups/ is gitignored)
+npm run db:migrate:remote   # apply migrations to the LIVE database (the GitHub deploy runs this; rarely by hand)
+npm run deploy       # LIVE: migrations, then wrangler deploy. Workers Builds runs it on every push to main
 ```
+
+Live hosting, secrets, deploys, rollbacks and backups: `docs/deployment.md`.
 
 Local D1 state lives in `.wrangler/state`. Delete that folder to reset the local database to schema + seed.
 
@@ -36,14 +41,19 @@ The church will keep changing its checklist, departments, and team structure. Ne
 
 Before committing, always:
 1. Run the lint, type checks, tests, and production build (`npm run check`), and confirm they all pass. If anything fails, fix it or tell the user. Never commit failing code.
-2. Make sure no secrets, `.dev.vars`, `.wrangler`, or `node_modules` files are included.
+2. Make sure no secrets, `.dev.vars`, `.wrangler`, `node_modules` or `backups/` files are included.
 3. Give the user a short summary of what changed and anything not finished.
 4. Wait for the user's OK before committing.
 
-When the user says "commit", that means commit **and push** (to `origin main`).
+When the user says "commit", that means commit **and push** (to `origin main`). **Every push to `main` deploys to the live site** (Workers Builds, `docs/deployment.md`), so before pushing:
+- **Weekend freeze:** no pushes to `main` from Saturday 6 PM until after the Sunday service, in the church's time zone (the `time_zone` setting), unless it's an urgent fix. Check the current time there first; inside the window, commit locally and ask the user whether it's urgent before pushing.
+- **New migration in the push:** export the live database first (`npm run db:export -- backups/<date>-before-<migration number>.sql`), check the file isn't empty, and tell the user where it is.
 
-`.githooks/pre-commit` enforces points 1 and 2 automatically. `npm install` enables it through the `prepare` script, which runs `git config core.hooksPath .githooks`. The hook blocks a commit if:
-- forbidden files are staged, or
+**Migrations are append-only. Never edit, rename or delete an existing file in `migrations/`**; every database change goes in a new migration with the next number. The live database has already applied the existing ones.
+
+`.githooks/pre-commit` enforces points 1 and 2 and the migration rule automatically. `npm install` enables it through the `prepare` script, which runs `git config core.hooksPath .githooks`. The hook blocks a commit if:
+- forbidden files are staged (including `backups/`), or
+- an existing migration file is changed, renamed or deleted, or
 - an added line looks like a secret (a `*_SECRET`, `*_TOKEN`, `*_PASSWORD` or `*_API_KEY` name with a long value, or a private key), or
 - `npm run check` fails.
 
@@ -61,7 +71,8 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
   - **The structure is data, never code.** Admins can move tasks between sections and departments, move sections between departments, and reorder everything (US-12, US-12a, US-13). Application code must never hardcode department or section names, IDs or ownership. Tests may use seed names.
   - Check-offs snapshot the task text, department and section (`*_snapshot` columns). The current service places check-offs by the task's current location (`task_id`), so a moved task stays checked. Past services and history use the snapshots.
   - `0002_seed_ifc_checklist.sql` was generated from Section 6 of the requirements.
-  - Migrations that have been applied must not be edited once deployed (Stage 10). Add a new migration instead.
+  - Migrations are append-only: never edit, rename or delete an existing one (the pre-commit hook refuses it); add a new migration instead. The deploy applies new ones to the live database before the new code goes out, and a rollback doesn't undo them, so a migration should only add (tables, columns, rows) in ways the previous code can live with.
+  - `wrangler.jsonc` has the live `database_id` and a `preview_database_id` for local development, so the local database in `.wrangler/state` never changes with the live one.
 - **Auth** (`src/worker/middleware/auth.ts`, `src/worker/lib/session.ts`):
   - The `session` cookie is an HMAC-signed token holding only the internal app user ID (`users.id`, never a sign-in provider's ID) and a session ID. It lasts 30 days, is re-issued once it's over an hour old, and is HttpOnly and SameSite=Lax. It's Secure whenever the request is https.
   - `loadSession` runs on all `/api/*` routes. It re-reads the user and their roles from D1 into `c.var.user` on every request (US-03).
@@ -165,7 +176,7 @@ Never bypass it with `--no-verify`. The hook must keep LF line endings, which `.
 - **Access and the department view** (Stage 7b, US-02, US-05; `db/schedule-view.ts`): `verifyMembership` runs at sign-in and on every `GET /api/auth/me`, stamping or clearing `team_verified_at` from the source's roster against linked teams; "unknown" (no source, no Service Type or no links yet, no account in the source, source unreachable) changes nothing. **Until team mapping is set up** (`isTeamMappingReady`: Service Type chosen and at least one link), only Admins and Directors get in: `requireAccess` refuses everyone else with "The app is being set up. Check back soon.", and `/me` sends `settingUp: true` for `NoAccessPage`. Admins and Directors get `teamMappingPending: true` instead, and `SetupNotice` tells them on the checklist and Progress that volunteers can't get in yet. The shared test setup (`test/apply-migrations.ts`) therefore maps the fake Production team to a seed department in every test file; mapping tests clear it first. `getChecklistView` gives `GET /api/checklist` its `view` (`own`/`all`/`choose` + note). A person's ID in a source is their sign-in subject for `PERSON_PROVIDER[source]`. The view is display only: never filter categories or check-offs by it on the server. The client remembers "Show all departments" and a picked department for the day (`lib/forToday.ts`).
 - **Outages** (Stage 7c, US-04a, US-04b): every source call goes through `cached()` in `sources/cache.ts`, which times out at 5 seconds and then marks the source unreachable for a minute (`<source>:unavailable` in `source_cache`; cleared by Refresh or the dev switch). Callers turn `ProviderUnavailableError` into a fallback, never a blocked page: `verifyMembership` returns "unavailable" (the last confirmation stands for `VERIFIED_FOR_DAYS` = 90 in `lib/access.ts`), `getCurrentService` keeps the last recorded plan's date and sets `scheduleUnavailable`, and the checklist view becomes "choose" with note `schedule_unavailable`. `/me` sends `unreachable` (the source's label) to someone not confirmed in 90 days. Fake outage: `down`/`delayMs` in `PUT /api/dev/schedule`, and the dev sign-in's main button (`viaPlanningCenter`) refuses with the US-04b message while down.
 - **Design review** (Stage 8): `docs/design-review.md` lists what was found and fixed. Its screenshots live in `docs/design-review/`, which is gitignored (local only).
-- **Planned, not built yet** (see build plan): deployment (Stage 10).
+- **In progress** (see build plan): deployment (Stage 10, `docs/deployment.md`).
 
 ## Rules from the requirements
 
