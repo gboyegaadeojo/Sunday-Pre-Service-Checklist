@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 // Read from disk: Vitest hands CSS imports to tests as empty strings.
 const css = readFileSync("src/client/styles.css", "utf8").replace(/\r\n/g, "\n");
+const dialogSource = readFileSync("src/client/components/ui/ConfirmDialog.tsx", "utf8");
 
 type RGB = [number, number, number];
 type RGBA = [number, number, number, number];
@@ -74,6 +75,16 @@ describe.each(Object.entries(THEMES))("%s theme", (_, t) => {
   it("primary and secondary text pass on a bar over the backdrop or anything that scrolls under it", () => {
     const content = ["--c-card", "--c-accent", "--c-success", "--c-warning", "--c-danger", "--c-fg"].map((k) => solid(t[k]));
     expectAA(worst(BAR_TEXT, [...backdrop, ...content].map((u) => over(color(t["--bar-bg"]), u))));
+  });
+
+  // Dialogs are bars too, but over the page dimmed by the dialog's backdrop (ConfirmDialog: backdrop:bg-bg/NN), which
+  // washes out whatever is behind them: every text colour is allowed there.
+  it("every text colour passes in a dialog, over the dimmed page", () => {
+    const dim = Number(dialogSource.match(/backdrop:bg-bg\/(\d+)/)?.[1]) / 100;
+    expect(dim, "ConfirmDialog's backdrop strength").toBeGreaterThan(0);
+    const content = ["--c-card", "--c-accent", "--c-success", "--c-warning", "--c-danger", "--c-fg", "--bd-base"].map((k) => solid(t[k]));
+    const dimmed = [...backdrop, ...content].map((u) => over([...solid(t["--c-bg"]), dim] as RGBA, u));
+    expectAA(worst(TEXT, dimmed.map((u) => over(color(t["--bar-bg"]), u))));
   });
 
   it("the text on the danger button passes", () => {

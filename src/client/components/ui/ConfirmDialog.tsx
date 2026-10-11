@@ -18,7 +18,8 @@ interface Props {
 
 /**
  * Confirmation for consequential actions (design.md §7, §8). Built on the native <dialog>: modal,
- * focus-trapped, closes on Escape. Cancel gets focus first so an accidental Enter never confirms.
+ * focus-trapped, closes on Escape. Cancel gets focus first so an accidental Enter never confirms. A bar surface
+ * (design.md §2) over the page dimmed to 20%, which keeps every text colour readable on it (design-tokens test).
  */
 export function ConfirmDialog({
   open,
@@ -55,7 +56,7 @@ export function ConfirmDialog({
         e.preventDefault();
         if (!busy) onCancel();
       }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-card border border-line bg-panel p-0 text-fg backdrop:bg-bg/80"
+      className="bar m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-dialog p-0 text-fg backdrop:bg-bg/80"
     >
       <div className="p-5">
         <h2 id={titleId} className="text-lg font-semibold">

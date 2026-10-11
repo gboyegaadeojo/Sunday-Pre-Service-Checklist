@@ -6,7 +6,7 @@ import { type ThemePreference, useThemePreference } from "../../lib/theme";
 import { usePopover } from "../../lib/usePopover";
 import { Avatar } from "../ui/Avatar";
 import { Chevron } from "../ui/Chevron";
-import { MonitorIcon, MoonIcon, OverviewIcon, SignOutIcon, SunIcon } from "../ui/Icons";
+import { AlertIcon, MonitorIcon, MoonIcon, OverviewIcon, SignOutIcon, SunIcon } from "../ui/Icons";
 import { RouteLink } from "./RouteLink";
 
 interface Props {
@@ -111,7 +111,7 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
           role="menu"
           aria-label={`Account: ${user.name}`}
           onKeyDown={onKeyDown}
-          className="absolute top-full right-0 z-40 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-card border border-line bg-panel p-1.5"
+          className="bar absolute top-full right-0 z-40 mt-1.5 w-72 max-w-[calc(100vw-2rem)] rounded-glass p-1.5"
         >
           <div className="flex items-center gap-3 px-2.5 py-2.5">
             <Avatar name={user.name} url={user.avatarUrl} className="size-9" />
@@ -159,7 +159,7 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
                 <OverviewIcon className={`size-5 shrink-0 ${isAdminRoute(route) ? "text-accent-soft" : ""}`} />
                 <span className="min-w-0 flex-1">Administrative Settings</span>
                 {attention > 0 && (
-                  <span className="rounded-full bg-warning/15 px-1.5 text-meta font-semibold text-warning">
+                  <span className="rounded-full bg-warning/25 px-1.5 text-meta font-semibold text-fg">
                     {attention}
                     <span className="sr-only"> need{attention === 1 ? "s" : ""} attention</span>
                   </span>
@@ -170,7 +170,8 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
 
           <div role="none" className="mt-0.5 border-t border-line pt-1.5">
             {signOutError && (
-              <p role="alert" className="px-3 pb-1.5 text-meta text-danger">
+              <p role="alert" className="flex items-start gap-1.5 px-3 pb-1.5 text-meta text-fg">
+                <AlertIcon className="mt-px size-3.5 shrink-0 text-danger" />
                 {signOutError}
               </p>
             )}

@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { useThemePreference } from "../../lib/theme";
 import { Button } from "../ui/Button";
-import { Card } from "../ui/Card";
 import { InfoIcon, MonitorIcon, MoonIcon, SunIcon } from "../ui/Icons";
 import { SegmentedControl } from "../ui/SegmentedControl";
 import { Brand } from "./Brand";
@@ -26,7 +25,7 @@ export function SignInScreen({ onSignIn, signingIn = false, error = null, notice
         <div className="mb-6">
           <Brand />
         </div>
-        <Card className="p-6">
+        <div className="glass rounded-dialog [--surface-solid:var(--c-card)] p-6">
           <h1 className="text-page font-semibold tracking-tight">Sign in</h1>
           {notice && (
             <p role="status" className="mt-3 flex gap-2.5 rounded-control border border-accent-soft/30 bg-accent/10 px-3 py-2.5 text-sm">
@@ -53,7 +52,7 @@ export function SignInScreen({ onSignIn, signingIn = false, error = null, notice
               {error}
             </p>
           )}
-        </Card>
+        </div>
         {children}
         <AppearanceChoice />
       </div>

@@ -35,7 +35,7 @@ export function ActionMenu({ id, label, items }: { id: string; label: string; it
         </svg>
       </button>
       {open && (
-        <ul id={menuId} className="absolute top-full right-0 z-40 mt-1 min-w-48 rounded-card border border-line bg-panel p-1.5">
+        <ul id={menuId} className="absolute top-full right-0 z-40 mt-1 min-w-48 rounded-glass border border-line bg-panel p-1.5 shadow-[var(--glass-shadow)]">
           {items.map((item) => (
             <li key={item.label}>
               <button

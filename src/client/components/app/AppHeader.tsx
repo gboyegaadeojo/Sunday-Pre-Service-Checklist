@@ -16,11 +16,13 @@ interface Props {
 
 // Compact top bar (design.md §3A): brand, role-authorized sections, and the user menu.
 // On phones the brand shrinks to its mark so the section links fit.
+// A full-width bar surface (design.md §2, Surfaces): content scrolls under it, so only primary and secondary text.
+// bar-host: it holds the name menu, which blurs the page itself (see styles.css).
 export function AppHeader({ user, route, onNavigate, ...menu }: Props) {
   // Admins only: what needs their attention, asked once per page load and after mapping changes (lib/adminAttention.ts).
   const attentionCount = attentionItems(useMappingStatus(user.isAdmin)).length;
   return (
-    <header className="sticky top-0 z-30 h-14 border-b border-line bg-panel">
+    <header className="bar bar-host sticky top-0 z-30 h-14 rounded-none border-x-0 border-t-0">
       <div className="mx-auto flex h-full max-w-app items-center gap-2 px-4 sm:gap-4 md:px-6">
         {/* The branding links to the Checklist for anyone with access (not on the access screens). */}
         <Brand compact onHome={user.hasAccess ? onNavigate : undefined} />

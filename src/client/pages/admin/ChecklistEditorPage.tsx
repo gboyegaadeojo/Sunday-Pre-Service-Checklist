@@ -196,8 +196,10 @@ export function ChecklistEditorPage({ listRef, onAccessChanged, onNavigate }: Pr
         />
 
         {reordering ? (
-          // Stays in view while scrolling (below the app header), so leaving the mode is always one tap away.
-          <div className="sticky top-14 z-20 -mx-4 flex items-center justify-between gap-3 border-b border-line bg-bg px-4 py-2 md:-mx-6 md:px-6">
+          // Stays in view while scrolling (below the app header), so leaving the mode is always one tap away. A rounded
+          // bar surface (design.md §2, Surfaces): primary and secondary text only. Below 1024px it parks under the
+          // section selector (AdminLayout), which is sticky there too.
+          <div className="bar sticky top-32 z-20 flex items-center justify-between gap-3 rounded-dialog py-2 pr-2 pl-4 lg:top-16">
             <p className="min-w-0 text-sm">
               <span className="font-semibold">Reordering.</span>{" "}
               <span className="text-fg-muted">Use the arrows to move items. Each move saves right away.</span>

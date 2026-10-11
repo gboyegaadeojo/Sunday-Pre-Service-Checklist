@@ -16,7 +16,7 @@ export function ProgressSummary({ checklist }: { checklist: ChecklistResponse })
   const complete = departments("complete");
 
   return (
-    <Card role="region" aria-label="Overall progress" className="px-4 py-4 md:px-5">
+    <Card surface="glass" role="region" aria-label="Overall progress" className="px-4 py-4 md:px-5">
       <dl className="grid grid-cols-3 gap-3">
         <Figure label="Completed" value={overall.done} unit={`of ${overall.total} tasks`} tone={overall.done > 0 ? "text-success" : "text-fg"} />
         <Figure label="In progress" value={inProgress} unit={inProgress === 1 ? "department" : "departments"} tone={inProgress > 0 ? "text-warning" : "text-fg"} />

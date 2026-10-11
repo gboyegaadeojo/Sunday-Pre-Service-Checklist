@@ -28,7 +28,7 @@ export function ServiceOverview({ checklist, saveState, own }: Props) {
   const lead = mine ?? whole;
 
   return (
-    <Card role="region" aria-label="Service overview" className="px-4 py-2.5 md:px-5 md:py-4">
+    <Card surface="glass" role="region" aria-label="Service overview" className="px-4 py-2.5 md:px-5 md:py-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-1">
         <p className="min-w-0">
           <span className="block text-meta text-fg-muted">

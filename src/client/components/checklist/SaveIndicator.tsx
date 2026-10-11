@@ -21,7 +21,9 @@ export function SaveIndicator({ state, compact = false }: { state: SaveState; co
       )}
       {state === "saved" && <CheckIcon className="size-3.5 text-success" />}
       {state === "failed" && <AlertIcon className="size-3.5 text-danger" />}
-      {label && <span className={state === "failed" ? "text-danger" : "text-fg-muted"}>{label}</span>}
+      {/* Compact sits on a bar surface, where only primary and secondary text are allowed (design.md §2): the red
+          icon carries the colour there. */}
+      {label && <span className={state === "failed" ? (compact ? "text-fg" : "text-danger") : "text-fg-muted"}>{label}</span>}
     </>
   );
   // A span when compact: it sits inside the department bar's button.

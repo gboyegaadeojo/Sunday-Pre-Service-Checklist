@@ -190,6 +190,26 @@ body::after {
     -webkit-backdrop-filter: var(--bar-filter);
     backdrop-filter: var(--bar-filter);
   }
+  /*
+   * A bar that holds another floating layer (the header holds the name menu) draws its glass on ::before instead. An
+   * element with a backdrop filter makes everything inside it blur only that element, so the menu would show the page
+   * through, unblurred. Needs a positioned element with a stacking context (sticky + z-index).
+   */
+  .bar-host {
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .bar-host::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background-color: var(--bar-bg);
+    -webkit-backdrop-filter: var(--bar-filter);
+    backdrop-filter: var(--bar-filter);
+  }
 }
 
 /*
@@ -201,7 +221,8 @@ html[data-glass="off"] {
   background-color: var(--c-bg);
 }
 html[data-glass="off"] body::before,
-html[data-glass="off"] body::after {
+html[data-glass="off"] body::after,
+html[data-glass="off"] .bar-host::before {
   display: none;
 }
 html[data-glass="off"] :is(.glass, .bar) {
@@ -216,7 +237,8 @@ html[data-glass="off"] :is(.glass, .bar) {
     background-color: var(--c-bg);
   }
   body::before,
-  body::after {
+  body::after,
+  .bar-host::before {
     display: none;
   }
   :is(.glass, .bar) {
@@ -232,7 +254,8 @@ html[data-glass="off"] :is(.glass, .bar) {
     background-color: var(--c-bg);
   }
   body::before,
-  body::after {
+  body::after,
+  .bar-host::before {
     display: none;
   }
   :is(.glass, .bar) {

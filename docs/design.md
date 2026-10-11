@@ -99,12 +99,13 @@ Glass is for floating layers only. Anything people read in a list stays solid.
 
 | Material | Where | Text allowed |
 |---|---|---|
-| **Glass** (`.glass`) | Sign-in card, Progress summary cards: they sit over the backdrop only | Every text colour |
-| **Bar** (`.bar`, thicker) | Header, phone department bar, menus (name menu, ⋯ menus), dialogs: they float over scrolling content | Primary and secondary text only; show states with icons, pills and those two colours, never status-coloured text |
-| **Solid** (`bg-card`, `bg-panel`) | Section cards, task rows, the checklist editor, tables, forms, fields, the admin sidebar | Every text colour |
+| **Glass** (`.glass`; `Card surface="glass"`) | Sign-in card, the access screens' card, the summary card at the top of Checklist and Progress: they sit over the backdrop only | Every text colour |
+| **Bar** (`.bar`, thicker) | Header, name menu, and the floating bars under the header (phone department bar, the admin section selector below 1024px, the editor's Reordering bar): content scrolls under them | Primary and secondary text only; show states with icons and pills (e.g. a count in primary text on an amber pill, "Not saved" in primary text beside a red icon), never status-coloured text |
+| **Bar in a dialog** | Dialogs: a bar over the page dimmed to 20% (`backdrop:bg-bg/80`), which washes out what's behind | Every text colour |
+| **Solid** (`bg-card`, `bg-panel`) | Section cards, task rows, department cards, the checklist editor, tables, forms, fields, the admin sidebar, and the lists a bar opens (department and section lists, ⋯ menus; these get the glass corners and shadow) | Every text colour |
 
-- **Corners:** controls 10px, solid cards 16px, glass cards and menus 20px, dialogs and the sign-in card 24px, pills and the phone department bar fully rounded.
-- **Rules:** no blur on a list or on anything inside one; no glass inside glass; at most two blurred bars on a phone screen at once (header and department bar); blur at most 24px. The backdrop moves only by transform, very slowly (a minute or so per drift).
+- **Corners:** controls 10px, solid cards 16px, glass cards and menus 20px, dialogs, the sign-in card and the floating bars 24px, pills fully rounded.
+- **Rules:** no blur on a list or on anything inside one; no glass inside glass; at most two blurred bars on a phone screen at once (header and department bar; the editor's Reordering bar makes a third, for Admins only); blur at most 24px. A bar that holds another floating layer (the header holds the name menu) draws its glass behind itself (`bar-host`), because an element inside a blurred element can only blur that element. The backdrop moves only by transform, very slowly (a minute or so per drift).
 - **Solid instead of glass** (today's colours and shapes, no backdrop): when the person turns **Glass effects** off on the device, when the device asks for **Reduce Transparency** or **Increase Contrast**, and in browsers that can't blur. An element can name its solid colour (`[--surface-solid:var(--c-bg)]`; panel otherwise).
 
 Use purple selectively for primary actions, selected navigation, focus states, and important interactive elements.

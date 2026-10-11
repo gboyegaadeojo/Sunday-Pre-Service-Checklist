@@ -16,20 +16,21 @@ interface Props {
 }
 
 // Mobile department menu (design.md §3C, §5): a sticky bar that opens the same list as the sidebar, and keeps the
-// save status in view.
+// save status in view. It floats under the header as a rounded bar surface (design.md §2, Surfaces): the checklist
+// scrolls under it, so only primary and secondary text on it. The list it opens is solid, like every list.
 export function DepartmentPicker({ departments, selected, onSelect, ownIds, saveState }: Props) {
   const { open, setOpen, close, rootRef, triggerRef } = usePopover();
   const progress = categoryProgress(selected);
 
   return (
-    <div ref={rootRef} className="sticky top-14 z-20 -mx-4 mt-3 border-b border-line bg-bg px-4 py-2 md:hidden">
+    <div ref={rootRef} className="bar sticky top-16 z-20 mt-3 rounded-dialog p-1 md:hidden">
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="department-menu"
-        className="flex min-h-12 w-full items-center gap-3 rounded-control border border-line bg-card px-3 py-1.5 text-left"
+        className="flex min-h-12 w-full items-center gap-3 rounded-[1.25rem] px-3 py-1.5 text-left transition-colors hover:bg-fg/5"
       >
         <span className="min-w-0 flex-1">
           <span className="flex items-center justify-between gap-2">
@@ -49,7 +50,7 @@ export function DepartmentPicker({ departments, selected, onSelect, ownIds, save
         <nav
           id="department-menu"
           aria-label="Departments"
-          className="absolute inset-x-4 top-full mt-1 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-card border border-line bg-panel p-1.5"
+          className="absolute inset-x-0 top-full mt-1.5 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-glass border border-line bg-panel p-1.5 shadow-[var(--glass-shadow)]"
         >
           <DepartmentNav
             departments={departments}

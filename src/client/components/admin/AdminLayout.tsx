@@ -64,11 +64,14 @@ export const ADMIN_SECTIONS: AdminSection[] = ADMIN_GROUPS.flatMap((g) => g.sect
 
 type Attention = { attention: number; newTeams: number };
 
-/** The count (needs attention) or a quiet "new" (teams to review) shown on Team mapping. */
+/**
+ * The count (needs attention) or a quiet "new" (teams to review) shown on Team mapping. Primary text on an amber pill,
+ * so it also reads on a bar surface (design.md §2, Surfaces).
+ */
 export function MappingBadge({ attention, newTeams }: Attention) {
   if (attention > 0) {
     return (
-      <span className="rounded-full bg-warning/15 px-1.5 text-meta font-semibold text-warning">
+      <span className="rounded-full bg-warning/25 px-1.5 text-meta font-semibold text-fg">
         {attention}
         <span className="sr-only"> need{attention === 1 ? "s" : ""} attention</span>
       </span>
@@ -126,26 +129,29 @@ function SectionList({ route, onNavigate, attention, onPicked }: { route: Route;
   );
 }
 
-/** Phones and tablets: a sticky "Section" selector under the header that opens the grouped list (like the department picker). */
+/**
+ * Phones and tablets: a sticky "Section" selector under the header that opens the grouped list (like the department
+ * picker): a rounded bar surface floating under the header; the list it opens is solid.
+ */
 function SectionPicker({ route, onNavigate, attention }: { route: Route; onNavigate: Navigate; attention: Attention }) {
   const { open, setOpen, close, rootRef, triggerRef } = usePopover();
   const current = ADMIN_SECTIONS.find((s) => s.active(route)) ?? ADMIN_SECTIONS[0];
   return (
-    <div ref={rootRef} className="sticky top-14 z-20 border-b border-line bg-bg px-4 py-2 md:px-6 lg:hidden">
+    <div ref={rootRef} className="sticky top-14 z-20 px-4 pt-2 md:px-6 lg:hidden">
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="admin-section-menu"
-        className="flex min-h-12 w-full items-center gap-3 rounded-control border border-line bg-card px-3 py-1.5 text-left"
+        className="bar flex min-h-14 w-full items-center gap-3 rounded-dialog px-4 py-1.5 text-left transition-colors"
       >
         <span className="min-w-0 flex-1">
           <span className="block text-meta text-fg-muted">Administrative Settings</span>
           <span className="flex items-center gap-2 text-sm leading-snug font-semibold">
             {current.label}
             {current.route !== "admin-mapping" && attention.attention > 0 && (
-              <span className="rounded-full bg-warning/15 px-1.5 text-meta font-semibold text-warning">
+              <span className="rounded-full bg-warning/25 px-1.5 text-meta font-semibold text-fg">
                 {attention.attention}
                 <span className="sr-only"> team mapping item{attention.attention === 1 ? "" : "s"} to link</span>
               </span>
@@ -158,7 +164,7 @@ function SectionPicker({ route, onNavigate, attention }: { route: Route; onNavig
         <nav
           id="admin-section-menu"
           aria-label="Administrative Settings sections"
-          className="absolute inset-x-4 top-full mt-1 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-card border border-line bg-panel p-2 md:inset-x-6"
+          className="absolute inset-x-4 top-full mt-1.5 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-glass border border-line bg-panel p-2 shadow-[var(--glass-shadow)] md:inset-x-6"
         >
           <SectionList route={route} onNavigate={onNavigate} attention={attention} onPicked={close} />
         </nav>
