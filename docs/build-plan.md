@@ -427,6 +427,30 @@ As built (October 11, 2026; `docs/deployment.md`):
 - The first Admin was set in the database after their first live sign-in (no hand-made `user_identities` row: sign-in creates it, as with any user), logged in `role_events`. Team mapping is set up (479 Sunday Service; the seven positions of 479 Media Team, Technical Director seeing all departments).
 - **Still to do:** Technical Directors sign in and get Director (they couldn't before the trial), and the full Sunday walkthrough on a phone at the trial service.
 
+### Stage 11 — Glass look (done)
+Requirements C40, design.md §2 "Surfaces". Built and deployed in three parts in October 2026: tokens, backdrop and surfaces with an automatic contrast test (`test/client/design-tokens.test.tsx`); glass and bar surfaces on every floating layer; and the per-device Glass effects On / Off switch.
+
+### Stage 12 — Scheduled Director (planned, not built)
+Requirements C41. An Admin marks positions whose scheduled people get Director for the current service period.
+- **Team mapping:** a switch per position, "Gets the Director role while scheduled", stored with the position's link (a new migration adds a flag to `team_links`; never edit an existing migration). Logged to `mapping_events` like any mapping change. Only positions matched by ID count, so a position name that matches nothing (C39) grants nothing.
+- **The grant:** worked out on the server from the current service's plan (`planAssignments`, the cached call Team mapping already uses), for people scheduled and not declined in a marked position. Stored per user and service (e.g. a new `scheduled_roles` table with the service ID), so it ends by itself when the next service becomes current. Checked wherever Director is checked today (`requireStaff`, `/me`, `service.reset`): Director = the permanent flag **or** a grant for the current service.
+- **Outages (US-04a):** if Planning Center can't be reached, the grants from the last successful check for that service stand; nothing is granted or removed until it answers again.
+- **Permanent Directors** (the `is_director` flag, Users & Permissions) are untouched. Admin is never granted.
+- **Users & Permissions:** "Director (scheduled)" or "Director (permanent)"; a scheduled grant can't be switched off there (it's changed in Team mapping or Planning Center), and the permanent switch still works for someone who also has a scheduled grant.
+- **Role log:** `role_events` records each automatic grant and its end, with the position and service, and a system actor instead of an Admin; Activity shows them under the Roles filter.
+- **Docs:** CLAUDE.md, design.md and `docs/planning-center.md` change the "roles never come from Planning Center" wording to the Admin-chosen exception.
+- **Tests:** grant and expiry across a service change, declined and unmatched assignments, outages keeping the last grant, permanent and scheduled together, the server refusing reset to someone whose grant has ended, and the log rows.
+- **Test in the browser:** with the sample schedule, mark Technical Director, sign in as the test Technical Director, and see Reset on Progress; move to the next service and see it gone.
+
+### Stage 13 — Installable app (planned, not built)
+Requirements C42. A Progressive Web App: no app store and no cost.
+- **Manifest:** a web app manifest (name, short name, colours, `display: standalone`, start URL `/`). The name and short name come from the Church settings branding, never hardcoded, so the Worker serves the manifest (or the build writes a neutral one; decide when building).
+- **Icons:** app icons at the sizes Android, desktop and iPhone need (including `apple-touch-icon` and a maskable icon). They're branding, so where they come from (the logo mark, or an icon an Admin uploads) is decided when building; nothing church-specific in code.
+- **Install button:** shown in the name menu (and on the sign-in screen) where the browser offers installing (`beforeinstallprompt` on Android and desktop Chrome and Edge); hidden once installed. On iPhone, which has no install prompt, a short "Share › Add to Home Screen" how-to instead.
+- **Behaviour:** opens full screen without the browser bar; the theme colour follows Dark or Light. No offline mode: check-offs need the server, so a service worker (if one is needed) only makes it installable and never serves stale checklist data.
+- **Tests:** the manifest's fields and icons, the install button shown only when offered, and the production build containing the manifest.
+- **Test in the browser:** install on an Android phone, an iPhone (Add to Home Screen) and a desktop; it opens full screen and signs in as usual.
+
 ---
 
 ## 5. Decisions — Closed
