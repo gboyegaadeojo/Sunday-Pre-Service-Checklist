@@ -51,6 +51,7 @@ export function savePreference(preference: ThemePreference) {
  */
 export function startThemeSync(): () => void {
   applyTheme(resolveTheme(readPreference()));
+  applyGlass(readGlass());
   const query = systemQuery();
   if (!query) return () => {};
   const onChange = () => {
@@ -76,4 +77,46 @@ export function useThemePreference() {
     setPreferenceState(next);
   }, []);
   return { preference, setPreference, theme: resolveTheme(preference) };
+}
+
+// Glass effects (requirements C40): on by default; each person can turn them off on this device, which shows the solid
+// surfaces instead (`data-glass="off"` on <html>, styles.css). The inline script in index.html applies it before the
+// page first draws, like the theme; keep the key and value in step.
+
+export const GLASS_KEY = "glass";
+
+/** Whether glass effects are on: yes unless this device has stored "off" (or storage is blocked and nothing's known). */
+export function readGlass(): boolean {
+  try {
+    return window.localStorage.getItem(GLASS_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+/** Shows glass or the solid surfaces on the page. */
+export function applyGlass(on: boolean) {
+  if (on) delete document.documentElement.dataset.glass;
+  else document.documentElement.dataset.glass = "off";
+}
+
+/** Saves the choice on this device (best effort; on needs no entry) and applies it. */
+export function saveGlass(on: boolean) {
+  try {
+    if (on) window.localStorage.removeItem(GLASS_KEY);
+    else window.localStorage.setItem(GLASS_KEY, "off");
+  } catch {
+    // Private window or blocked storage: it still applies for this visit.
+  }
+  applyGlass(on);
+}
+
+/** The glass choice, for the name menu and the sign-in screen. */
+export function useGlassPreference() {
+  const [glassOn, setGlassOnState] = useState(readGlass);
+  const setGlassOn = useCallback((on: boolean) => {
+    saveGlass(on);
+    setGlassOnState(on);
+  }, []);
+  return { glassOn, setGlassOn };
 }

@@ -1,8 +1,9 @@
 // Appearance (US-08a, requirements v1.20): Dark, Light or System, chosen in the name menu (or on the sign-in screen)
 // and remembered on the device. Dark is the default; System follows the device and changes with it without a reload.
+// Glass effects (requirements C40): on by default, turned off per device in the same places (solid surfaces instead).
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { THEME_KEY, readPreference, savePreference, startThemeSync } from "../../src/client/lib/theme";
+import { GLASS_KEY, THEME_KEY, readGlass, readPreference, saveGlass, savePreference, startThemeSync } from "../../src/client/lib/theme";
 import { SignInScreen } from "../../src/client/components/app/SignInScreen";
 import { UserMenu } from "../../src/client/components/app/UserMenu";
 import type { CurrentUser } from "../../src/shared/types";
@@ -27,11 +28,13 @@ function mockDevice(light: boolean) {
   };
 }
 const shown = () => document.documentElement.dataset.theme;
+const glassOff = () => document.documentElement.dataset.glass === "off";
 
 let stop = () => {};
 beforeEach(() => {
   window.localStorage.clear();
   delete document.documentElement.dataset.theme;
+  delete document.documentElement.dataset.glass;
 });
 afterEach(() => {
   stop();
@@ -122,6 +125,7 @@ describe("choosing it", () => {
     mockDevice(false);
     const menu = openMenu();
     const [dark, light, system] = within(menu).getAllByRole("menuitemradio");
+    const glass = within(menu).getByRole("menuitemcheckbox", { name: "Glass effects" });
     const [admin, signOut] = within(menu).getAllByRole("menuitem");
     await waitFor(() => expect(document.activeElement).toBe(dark)); // the chosen option gets focus on opening
     fireEvent.keyDown(dark, { key: "ArrowRight" });
@@ -133,6 +137,8 @@ describe("choosing it", () => {
     fireEvent.keyDown(dark, { key: "ArrowLeft" });
     expect(document.activeElement).toBe(system);
     fireEvent.keyDown(system, { key: "ArrowDown" }); // from anywhere in the row, down goes to the next item
+    expect(document.activeElement).toBe(glass);
+    fireEvent.keyDown(glass, { key: "ArrowDown" });
     expect(document.activeElement).toBe(admin);
     fireEvent.keyDown(admin, { key: "ArrowDown" });
     expect(document.activeElement).toBe(signOut);
@@ -146,5 +152,68 @@ describe("choosing it", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Light" }));
     expect(shown()).toBe("light");
     expect((screen.getByRole("radio", { name: "Light" }) as HTMLInputElement).checked).toBe(true);
+  });
+});
+
+describe("glass effects", () => {
+  it("are on by default, and when what's stored isn't \"off\"", () => {
+    mockDevice(false);
+    expect(readGlass()).toBe(true);
+    window.localStorage.setItem(GLASS_KEY, "maybe");
+    expect(readGlass()).toBe(true);
+    stop = startThemeSync();
+    expect(glassOff()).toBe(false);
+  });
+
+  it("off is remembered on the device and applied on start and at once; on needs no entry", () => {
+    mockDevice(false);
+    window.localStorage.setItem(GLASS_KEY, "off");
+    stop = startThemeSync();
+    expect(glassOff()).toBe(true);
+    saveGlass(true);
+    expect(window.localStorage.getItem(GLASS_KEY)).toBeNull();
+    expect(glassOff()).toBe(false);
+    saveGlass(false);
+    expect(window.localStorage.getItem(GLASS_KEY)).toBe("off");
+    expect(glassOff()).toBe(true);
+  });
+
+  it("still apply when the device blocks storage, and read as on", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(readGlass()).toBe(true);
+    saveGlass(false);
+    expect(glassOff()).toBe(true);
+  });
+
+  it("are a switch in the name menu, next to the appearance row, which keeps the menu open", () => {
+    mockDevice(false);
+    const ADMIN: CurrentUser = { id: 1, name: "Test Admin", avatarUrl: null, isAdmin: true, isDirector: false, hasAccess: true };
+    render(<UserMenu user={ADMIN} route="checklist" onNavigate={() => {}} onSignOut={() => {}} signingOut={false} signOutError={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Account: Test Admin" }));
+    const group = within(screen.getByRole("menu")).getByRole("group", { name: "Appearance" });
+    const glass = within(group).getByRole("menuitemcheckbox", { name: "Glass effects" });
+    expect(glass.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(glass);
+    expect(glass.getAttribute("aria-checked")).toBe("false");
+    expect(glassOff()).toBe(true);
+    expect(window.localStorage.getItem(GLASS_KEY)).toBe("off");
+    expect(screen.getByRole("menu")).toBeTruthy(); // still open
+    fireEvent.click(glass);
+    expect(glassOff()).toBe(false);
+  });
+
+  it("are a switch on the sign-in screen too", () => {
+    mockDevice(false);
+    render(<SignInScreen />);
+    const glass = screen.getByRole("switch", { name: "Glass effects" });
+    expect(glass.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(glass);
+    expect(glass.getAttribute("aria-checked")).toBe("false");
+    expect(glassOff()).toBe(true);
   });
 });

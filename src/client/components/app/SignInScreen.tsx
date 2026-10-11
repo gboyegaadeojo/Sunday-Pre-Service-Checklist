@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { useThemePreference } from "../../lib/theme";
+import { useGlassPreference, useThemePreference } from "../../lib/theme";
 import { Button } from "../ui/Button";
 import { InfoIcon, MonitorIcon, MoonIcon, SunIcon } from "../ui/Icons";
 import { SegmentedControl } from "../ui/SegmentedControl";
+import { Switch } from "../ui/Switch";
 import { Brand } from "./Brand";
 
 interface Props {
@@ -60,9 +61,13 @@ export function SignInScreen({ onSignIn, signingIn = false, error = null, notice
   );
 }
 
-/** Dark / Light / System before signing in (US-08a); signed in, it's in the menu under the person's name. */
+/**
+ * Dark / Light / System (US-08a) and Glass effects on or off (requirements C40) before signing in; signed in, they're
+ * in the menu under the person's name.
+ */
 function AppearanceChoice() {
   const { preference, setPreference } = useThemePreference();
+  const { glassOn, setGlassOn } = useGlassPreference();
   return (
     <div className="mt-6">
       <p className="mb-1.5 text-meta text-fg-muted">Appearance</p>
@@ -76,6 +81,9 @@ function AppearanceChoice() {
           { value: "system", label: "System", icon: <MonitorIcon className="size-4 shrink-0 text-fg-muted" /> },
         ]}
       />
+      <div className="mt-2">
+        <Switch label="Glass effects" on={glassOn} onToggle={() => setGlassOn(!glassOn)} />
+      </div>
     </div>
   );
 }

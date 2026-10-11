@@ -2,11 +2,12 @@ import { type KeyboardEvent, useEffect, useRef } from "react";
 import type { CurrentUser } from "../../../shared/types";
 import { type Navigate, type Route, isAdminRoute } from "../../lib/router";
 import { roleLabel } from "../../lib/roles";
-import { type ThemePreference, useThemePreference } from "../../lib/theme";
+import { type ThemePreference, useGlassPreference, useThemePreference } from "../../lib/theme";
 import { usePopover } from "../../lib/usePopover";
 import { Avatar } from "../ui/Avatar";
 import { Chevron } from "../ui/Chevron";
 import { AlertIcon, MonitorIcon, MoonIcon, OverviewIcon, SignOutIcon, SunIcon } from "../ui/Icons";
+import { SwitchTrack } from "../ui/Switch";
 import { RouteLink } from "./RouteLink";
 
 interface Props {
@@ -29,22 +30,23 @@ const APPEARANCE: { value: ThemePreference; label: string; icon: typeof MoonIcon
   { value: "system", label: "System", icon: MonitorIcon },
 ];
 
-/** Focus stops for ↑/↓: each menu item, and the appearance row as one stop (its chosen option). */
-const STOPS = "[role=menuitem]:not([disabled]), [role=menuitemradio][aria-checked=true]";
+/** Focus stops for ↑/↓: each menu item, the appearance row as one stop (its chosen option), and the glass switch. */
+const STOPS = "[role=menuitem]:not([disabled]), [role=menuitemradio][aria-checked=true], [role=menuitemcheckbox]";
 
 /**
  * The menu under the person's name (design.md §3A, requirements v1.20): who they are; Appearance (Dark / Light /
- * System, US-08a) for everyone; Administrative Settings for Admins only (the server refuses everyone else too), with a
+ * System, US-08a, and Glass effects on or off, requirements C40) for everyone; Administrative Settings for Admins only (the server refuses everyone else too), with a
  * count when something needs their attention; then Sign out, set apart.
  * A real menu for keyboards: focus moves in on opening, ↑/↓ and Home/End move between items (the appearance row is one
  * stop), ←/→ move along the row, Enter or Space picks; Escape or Tab closes, and Escape returns focus to the button.
- * Picking an appearance keeps the menu open, so the change shows straight away.
+ * Picking an appearance or turning glass on or off keeps the menu open, so the change shows straight away.
  */
 export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signOutError, attentionCount = 0 }: Props) {
   const { open, setOpen, rootRef, triggerRef } = usePopover();
   const menuRef = useRef<HTMLDivElement>(null);
   const role = roleLabel(user);
   const { preference, setPreference } = useThemePreference();
+  const { glassOn, setGlassOn } = useGlassPreference();
   const attention = user.isAdmin && attentionCount > 0 ? attentionCount : 0;
 
   useEffect(() => {
@@ -145,6 +147,16 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
                 );
               })}
             </div>
+            <button
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked={glassOn}
+              onClick={() => setGlassOn(!glassOn)}
+              className={`${ITEM} mt-1.5 text-fg-muted hover:text-fg`}
+            >
+              <span className="min-w-0 flex-1">Glass effects</span>
+              <SwitchTrack on={glassOn} />
+            </button>
           </fieldset>
 
           {user.isAdmin && (

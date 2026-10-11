@@ -7,7 +7,8 @@
     <title>Checklist</title>
     <!--
       Appearance (US-08a): applies this device's Dark / Light / System choice before the page first draws, so there's
-      no flash of the wrong theme. Dark when nothing is stored. Mirrors src/client/lib/theme.ts (key "appearance").
+      no flash of the wrong theme. Dark when nothing is stored. Mirrors src/client/lib/theme.ts (keys "appearance" and
+      "glass").
     -->
     <script>
       (function () {
@@ -19,6 +20,10 @@
           pref === "light" || (pref === "system" && !!window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
         document.documentElement.setAttribute("data-theme", light ? "light" : "dark");
         document.querySelector('meta[name="theme-color"]').setAttribute("content", light ? "#ffffff" : "#0a0a0a");
+        // Glass effects (requirements C40): solid surfaces when this device turned them off (key "glass").
+        try {
+          if (localStorage.getItem("glass") === "off") document.documentElement.setAttribute("data-glass", "off");
+        } catch (e) {}
       })();
     </script>
   </head>
