@@ -30,7 +30,7 @@ Who someone is (Admin, Director or volunteer) is set inside the app by an Admin.
 
 People will sign in with their **Planning Center** account, and the schedule comes from Planning Center Services. Planning Center sits behind replaceable interfaces, so another sign-in provider or scheduling system could be used later without losing people, roles or history.
 
-Today the Planning Center connection isn't built yet (Stage 9; see Status). Locally, you sign in as built-in test users instead.
+Planning Center sign-in and the schedule are connected ([docs/planning-center.md](docs/planning-center.md)). Locally the app still starts with built-in test users and a sample schedule, and can be switched to the real Planning Center.
 
 ## Hosting
 
@@ -45,8 +45,9 @@ Built so far:
 - **Stage 6:** users and roles.
 - **Stage 7:** team mapping (7a), access by team membership with each person's department view (7b), carrying on when Planning Center can't be reached (7c), and taking the current service's date from Planning Center plans (7d).
 - **Stage 8:** a design review of every screen, role and state ([docs/design-review.md](docs/design-review.md)), with all 20 findings fixed.
+- **Stage 9:** the real Planning Center: sign-in, and the schedule read with the church's token ([docs/planning-center.md](docs/planning-center.md)).
 
-Next: the real Planning Center connection (Stage 9), and going live on Cloudflare (Stage 10).
+Next: going live on Cloudflare (Stage 10).
 
 The full plan is in [docs/build-plan.md](docs/build-plan.md).
 

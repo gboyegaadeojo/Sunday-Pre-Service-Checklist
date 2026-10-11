@@ -392,6 +392,20 @@ Every screen is built by now, with the fake sources, so this is the point to loo
 - No new features here, and no change to the design direction, colours or typography without the project owner's say-so.
 
 ### Stage 9 — Real Planning Center
+**Done (October 2026),** in four parts. The setup guide is `docs/planning-center.md`.
+- **9a:** the Planning Center settings (`PCO_PAT_ID`/`PCO_PAT_SECRET`, `PCO_CLIENT_ID`/`PCO_CLIENT_SECRET`, read only through `sources/planning-center/config.ts`). Production uses Planning Center when configured and can never choose the sample schedule. Locally the sample stays the default, and `SCHEDULE_SOURCE=planning_center` switches to the real one. Tests never see real values.
+- **9b:** the schedule, read-only with the Personal Access Token. Tried against the church's real Planning Center: Service Types, *479 Media Team*'s seven positions, and the next plan.
+- **9c:** OAuth sign-in (People scope; the code exchanged in the Worker; the person's token dropped). Tried with the account manager's real account: confirmed on the team, scheduled as Technical Director and highlighted, then made Admin on Users & Permissions.
+- **9d:** docs.
+- The token is from the account manager's own Planning Center account for now; it could move to a dedicated "Media App" account with view-only Services access. It **must include Services** (a People-only token gets 401 from Services).
+- Positions on a plan come from Planning Center by **name**, so they're matched by name within the team; links and membership use IDs. A position renamed after people were scheduled may leave them choosing their department by hand, and Admins aren't told yet (a "Needs attention" item is proposed).
+- **Handed to Stage 10:**
+  - add the live callback URL to the OAuth application;
+  - set the four Planning Center values and `SESSION_SECRET` as Worker secrets (never `DEV_AUTH` or `SCHEDULE_SOURCE`);
+  - make the account manager the first Admin after their first live sign-in;
+  - choose the Service Type and link the positions in the live app.
+
+The original plan for this stage:
 - The Planning Center `ScheduleSource` uses the church-level token (read-only) for teams, positions, rosters and plans, with a 5-second timeout (US-04a, US-17).
 - Planning Center OAuth sign-in, as an `IdentityProvider`: the code exchange happens in the Worker, the volunteer's token is discarded after identifying them, and there are clear error messages when Planning Center is down (US-01, US-04b).
 - The sign-in button starts the real Planning Center flow. The developer-only test-user control stays local-only, and production builds already exclude it (Stage 2).

@@ -1,12 +1,19 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.21 · **Date:** October 2026  
+> **Version:** 1.22 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.21
+## 0. Changes in Version 1.22
+
+| # | Change | Why |
+|---|--------|-----|
+| C37 | **Planning Center is connected (Stage 9).** The schedule token is a Personal Access Token from the Admin who manages the church's Planning Center account for now; it could later move to a dedicated "Media App" Planning Center account with view-only Services access. It must include Services. The OAuth application is Confidential and asks only for People. Setup: `docs/planning-center.md`. | Records how Q7 was answered, and that the token shouldn't depend on one person forever. |
+| C38 | **Positions on a plan are matched by name** within their team, because Planning Center gives a scheduled person's position only by name (US-05). Team mapping links and team membership still use Planning Center IDs (US-15, US-02). A position renamed after people were scheduled may leave them choosing their department by hand for that service. | A Planning Center limitation, written down so it isn't a surprise. |
+
+## Changes in Version 1.21
 
 | # | Change | Why |
 |---|--------|-----|
@@ -585,7 +592,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 | Q4 | Multiple service times? | No — single service per service day (weekday is an admin setting, seeded Sunday). |
 | Q5 | Hosting | Cloudflare Workers, Free plan ($0). Chosen over Vercel (free plan limited to personal, non-commercial use). |
 | Q6 | Database | Cloudflare D1, Free plan ($0). Chosen over Supabase (free projects can pause after 7 days of low activity). |
-| Q7 | Planning Center API access | Two credentials: an OAuth app for volunteer sign-in, and a church-level access token for reading teams and schedules. Both registered at api.planningcenteronline.com by someone with the right Planning Center permissions. |
+| Q7 | Planning Center API access | Two credentials: an OAuth app for volunteer sign-in, and a church-level access token for reading teams and schedules. Both registered at api.planningcenteronline.com by someone with the right Planning Center permissions. As built (v1.22): a Personal Access Token from the account manager's own account, with Services enabled (could move to a dedicated "Media App" account), and a Confidential OAuth app with People scope; see `docs/planning-center.md`. |
 | Q8 | API down during service | Never block on Sunday morning: 30-day sessions plus manual department selection for recently verified team members. |
 | Q9 | Checklist reset | No automatic reset — each service has its own record. Manual reset for Admins/Directors only, with confirmation and undo. Reset is refused when nothing is checked; undo applies once, to the latest reset. |
 | Q10 | Editing tasks mid-service | Allow edits. Check-offs stay linked; history shows the task text snapshot. |
