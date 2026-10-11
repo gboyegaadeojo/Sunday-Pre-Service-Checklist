@@ -67,7 +67,8 @@ describe("a failed save stays visible (#1)", () => {
     checkoff = () => json({ checkoff: { by: USER.name, at: "2026-10-11T14:00:00.000Z" } });
     fireEvent.click(task());
     await waitFor(() => expect(screen.queryByText("Not saved. Tap to try again.")).toBeNull());
-    expect(screen.queryByRole("alert")).toBeNull();
+    // The row's note can go before the save answers; the message clears only once it has.
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     expect((task() as HTMLInputElement).checked).toBe(true);
     expect(screen.getAllByText("Saved").length).toBeGreaterThan(0);
   });
