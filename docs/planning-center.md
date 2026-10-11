@@ -46,7 +46,7 @@ The token's owner needs access to **Services** in Planning Center: Viewer is eno
    - **Application type: Confidential.** The secret stays on the server and the code exchange happens in the Worker.
    - **Authorization callback URLs**, one per line:
      - Local: `http://localhost:5173/api/auth/planning-center/callback`
-     - Live (Stage 10): `https://<the app's address>/api/auth/planning-center/callback`
+     - Live: `https://checklist.media-5f7.workers.dev/api/auth/planning-center/callback`
 3. Copy the **Client ID** into `PCO_CLIENT_ID` and the **Secret** into `PCO_CLIENT_SECRET`.
 
 The callback URL must match exactly: `http` vs `https`, the port, and no slash at the end. Callback URLs can be added later, so the live one doesn't need to exist yet when the app is created.

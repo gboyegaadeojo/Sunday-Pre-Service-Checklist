@@ -5,7 +5,7 @@ for the IFC media team. Planning Center setup (the token and the OAuth applicati
 
 ## What runs where
 
-- **Cloudflare Workers (Free)**: one Worker, `sunday-pre-service-checklist`, serves the pages (static files, which
+- **Cloudflare Workers (Free)**: one Worker, `checklist`, serves the pages (static files, which
   cost nothing) and the `/api/*` routes. Free plan limits: 100,000 requests a day, 10 ms CPU per request.
 - **Cloudflare D1 (Free)**: one database, `sunday-pre-service-checklist`, bound to the Worker as `DB`. Its ID is in
   `wrangler.jsonc` (not a secret). Local development uses a separate local database (`preview_database_id`), so
@@ -13,8 +13,8 @@ for the IFC media team. Planning Center setup (the token and the OAuth applicati
 - **GitHub**: every push to `main` builds and deploys automatically (below).
 - **Cost**: $0. Nothing here needs a paid plan.
 
-**Live address:** `https://sunday-pre-service-checklist.<subdomain>.workers.dev` (the `<subdomain>` is the
-account's workers.dev subdomain, chosen once in the Cloudflare dashboard).
+**Live address:** `https://checklist.media-5f7.workers.dev` (the Worker `checklist` on the account's workers.dev
+subdomain, `media-5f7`, which it shares with other Workers on the account, so don't change it).
 
 ## Secrets
 
@@ -39,7 +39,7 @@ Either way, the value is typed by you and never shown again.
 
 - **Terminal** (in the project folder, signed in with `npx wrangler login`):
   `npx wrangler secret put SESSION_SECRET`, then type or paste the value at the prompt and press Enter.
-- **Dashboard**: Workers & Pages › `sunday-pre-service-checklist` › Settings › Variables and Secrets › Add.
+- **Dashboard**: Workers & Pages › `checklist` › Settings › Variables and Secrets › Add.
   Choose type **Secret**, enter the name and the value, then **Deploy**.
 
 A new value takes effect within a few seconds, with no redeploy needed. Deploys from GitHub keep the secrets.
@@ -61,7 +61,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 ## Automatic deploys (Cloudflare Workers Builds)
 
-The Worker is connected to the GitHub repository in Workers & Pages › `sunday-pre-service-checklist` › Settings ›
+The Worker is connected to the GitHub repository in Workers & Pages › `checklist` › Settings ›
 Build. The settings:
 
 | Setting | Value |
@@ -135,7 +135,7 @@ a **new** database, which the app is then switched to:
 
 If a deploy breaks something, put the previous version back. It takes seconds and needs no build.
 
-- **Dashboard**: Workers & Pages › `sunday-pre-service-checklist` › Deployments. Find the last good version, open
+- **Dashboard**: Workers & Pages › `checklist` › Deployments. Find the last good version, open
   its **⋯** menu and choose **Rollback**, then confirm.
 - **Terminal**: `npx wrangler deployments list` shows recent versions; `npx wrangler rollback` goes back to the
   previous one (or `npx wrangler rollback <version-id>` to a specific one).
@@ -188,4 +188,4 @@ callback URL (`https://<new address>/api/auth/planning-center/callback`) to the 
 | A volunteer sees "The app is being set up" | Team mapping isn't finished (Service Type and at least one link) |
 | The Worker log says "DEV_AUTH is set on a production Worker" | Delete `DEV_AUTH` from the Worker's Variables and Secrets |
 
-Worker logs: Workers & Pages › `sunday-pre-service-checklist` › Logs (observability is on in `wrangler.jsonc`).
+Worker logs: Workers & Pages › `checklist` › Logs (observability is on in `wrangler.jsonc`).

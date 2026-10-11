@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sunday-pre-service-checklist",
+  "name": "checklist",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
@@ -12,8 +12,8 @@
     {
       "binding": "DB",
       "database_name": "sunday-pre-service-checklist",
-      // The live database (not a secret). Placeholder until it's created in Stage 10.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // The live database (not a secret).
+      "database_id": "965460a0-4dd9-43ad-8671-739c8b578333",
       // Local development (npm run dev, wrangler --local) uses this ID instead, so the local database in
       // .wrangler/state stays the same whatever the live ID is. Never point it at a real database.
       "preview_database_id": "00000000-0000-0000-0000-000000000000",

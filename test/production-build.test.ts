@@ -2,7 +2,7 @@
 // Runs against the real production bundle, which `npm test` builds first.
 import { createExecutionContext, env, waitOnExecutionContext } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
-import bundleSource from "../dist/sunday_pre_service_checklist/index.js?raw";
+import bundleSource from "../dist/checklist/index.js?raw";
 import { FAKE_SERVICE_TYPES } from "../src/worker/dev/fake-schedule";
 import { FAKE_USERS } from "../src/worker/dev/fake-users";
 
@@ -13,7 +13,7 @@ const clientChunks = import.meta.glob<string>("../dist/client/assets/*.js", {
 });
 
 // @ts-expect-error -- the built JS bundle has no type declarations; its shape is asserted below.
-const worker = (await import("../dist/sunday_pre_service_checklist/index.js")) as {
+const worker = (await import("../dist/checklist/index.js")) as {
   default: { fetch: (req: Request, env: Env, ctx: ExecutionContext) => Promise<Response> };
 };
 
