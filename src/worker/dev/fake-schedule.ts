@@ -9,7 +9,7 @@
 
 import { addDays } from "../../shared/service-day";
 import { ProviderUnavailableError } from "../sources/identity";
-import type { ScheduleSource, SourceAssignment, SourceServiceType, SourceTeam } from "../sources/schedule";
+import type { PlanAssignment, ScheduleSource, SourceAssignment, SourceServiceType, SourceTeam } from "../sources/schedule";
 
 export const FAKE_SERVICE_TYPES: SourceServiceType[] = [
   { externalId: "st-sunday", name: "Sunday Service" },
@@ -129,7 +129,7 @@ async function answer(db: D1Database): Promise<FakeScheduleState> {
 
 /** The fake source. A factory with no module-level side effects, so production builds drop it entirely. */
 export function createFakeScheduleSource(db: D1Database): ScheduleSource {
-  return {
+  const source: ScheduleSource = {
     id: "fake",
     label: "Planning Center (sample data)",
     listServiceTypes: async () => {
@@ -163,9 +163,31 @@ export function createFakeScheduleSource(db: D1Database): ScheduleSource {
         .sort();
       return dates[0] ? { externalId: `plan-${serviceTypeExternalId}-${dates[0]}`, date: dates[0] } : null;
     },
-    assignments: async (_plan, person) => {
-      await answer(db);
-      return FAKE_ASSIGNMENTS[person] ?? [];
-    },
+    planAssignments: (plan) => planAssignments(plan),
+    assignments: async (plan, person) =>
+      (await planAssignments(plan))
+        .filter((a) => a.person === person)
+        .map(({ teamExternalId, positionExternalId }) => ({ teamExternalId, positionExternalId })),
   };
+
+  // As in Planning Center (requirements C38): people carry the position name they were scheduled under (the sample
+  // name), matched by name to the team's positions now. A position renamed or removed through /api/dev/schedule
+  // therefore matches nothing for them, as for people scheduled before a rename in Planning Center.
+  async function planAssignments(plan: string): Promise<PlanAssignment[]> {
+    const serviceTypeExternalId = plan.slice("plan-".length, -"-YYYY-MM-DD".length);
+    const sample = FAKE_TEAMS[serviceTypeExternalId] ?? [];
+    const teams = await source.listTeams(serviceTypeExternalId);
+    return Object.entries(FAKE_ASSIGNMENTS).flatMap(([person, list]) =>
+      list.flatMap((a) => {
+        const positionName = sample.find((t) => t.externalId === a.teamExternalId)?.positions.find((p) => p.externalId === a.positionExternalId)?.name;
+        if (!positionName) return []; // not scheduled in this Service Type's plans
+        const position = teams
+          .find((t) => t.externalId === a.teamExternalId)
+          ?.positions.find((p) => p.name.trim().toLowerCase() === positionName.toLowerCase());
+        return [{ person, teamExternalId: a.teamExternalId, positionExternalId: position?.externalId ?? null, positionName }];
+      }),
+    );
+  }
+
+  return source;
 }

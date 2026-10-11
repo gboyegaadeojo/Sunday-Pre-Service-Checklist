@@ -35,6 +35,16 @@ export interface SourceAssignment {
 }
 
 /**
+ * Someone scheduled on a plan (anyone, not one person): their team, the position name the source gives for it, and
+ * the position that name was matched to, or null when it matches none of the team's positions (e.g. renamed after
+ * they were scheduled; requirements C38). `person` is the source's ID: server-side only, never sent to the browser.
+ */
+export interface PlanAssignment extends SourceAssignment {
+  person: string;
+  positionName: string | null;
+}
+
+/**
  * Read-only access to the church's schedule. `person` is the source's own ID for the person, found through
  * the user's linked sign-in account for that source (user_identities). Every call may throw
  * ProviderUnavailableError (sources/identity.ts); callers fall back as US-04a describes.
@@ -50,6 +60,8 @@ export interface ScheduleSource {
   /** The earliest plan on or after `fromDate` (US-07), or null if none is published. */
   nextPlan(serviceTypeExternalId: string, fromDate: string): Promise<SourcePlan | null>;
   assignments(planExternalId: string, person: string): Promise<SourceAssignment[]>;
+  /** Everyone scheduled on the plan (declined ones left out), for spotting position names that match nothing. */
+  planAssignments(planExternalId: string): Promise<PlanAssignment[]>;
 }
 
 /**

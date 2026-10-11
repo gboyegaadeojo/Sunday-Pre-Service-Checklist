@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from "react";
-import { useMappingStatus } from "../../lib/adminAttention";
+import { mappingBadgeCounts, useMappingStatus } from "../../lib/adminAttention";
 import type { Navigate, Route } from "../../lib/router";
 import { usePopover } from "../../lib/usePopover";
 import { RouteLink } from "../app/RouteLink";
@@ -64,13 +64,13 @@ export const ADMIN_SECTIONS: AdminSection[] = ADMIN_GROUPS.flatMap((g) => g.sect
 
 type Attention = { attention: number; newTeams: number };
 
-/** The count (needs linking) or a quiet "new" (teams to review) shown on Team mapping. */
+/** The count (needs attention) or a quiet "new" (teams to review) shown on Team mapping. */
 export function MappingBadge({ attention, newTeams }: Attention) {
   if (attention > 0) {
     return (
       <span className="rounded-full bg-warning/15 px-1.5 text-meta font-semibold text-warning">
         {attention}
-        <span className="sr-only"> need{attention === 1 ? "s" : ""} linking</span>
+        <span className="sr-only"> need{attention === 1 ? "s" : ""} attention</span>
       </span>
     );
   }
@@ -273,7 +273,7 @@ export function AdminShortcuts({ onNavigate, attention }: { onNavigate: Navigate
 export function AdminLayout({ route, onNavigate, children }: { route: Route; onNavigate: Navigate; children: ReactNode }) {
   // Re-asked on each section change; shared with the header and the Admin home (lib/adminAttention.ts).
   const status = useMappingStatus(true, route);
-  const attention = { attention: (status?.unlinked ?? 0) + (status?.missing ?? 0), newTeams: status?.newTeams ?? 0 };
+  const attention = mappingBadgeCounts(status);
   const checklistManagement = route === "admin-checklist" || route === "admin-hidden" || route === "admin-lists";
   return (
     <>

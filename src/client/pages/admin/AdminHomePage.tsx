@@ -3,7 +3,7 @@ import { RouteLink } from "../../components/app/RouteLink";
 import { Card } from "../../components/ui/Card";
 import { AlertIcon, CheckIcon } from "../../components/ui/Icons";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { attentionItems, useMappingStatus } from "../../lib/adminAttention";
+import { attentionItems, mappingBadgeCounts, useMappingStatus } from "../../lib/adminAttention";
 import type { Navigate } from "../../lib/router";
 
 // Administrative Settings' landing page (design.md §7, requirements v1.20): first, what needs an Admin's attention,
@@ -13,7 +13,7 @@ export function AdminHomePage({ onNavigate }: { onNavigate: Navigate }) {
   // Shared with the header and the sidebar; the layout asks again whenever the section changes.
   const status = useMappingStatus(true);
   const items = attentionItems(status);
-  const sidebarCounts = { attention: (status?.unlinked ?? 0) + (status?.missing ?? 0), newTeams: status?.newTeams ?? 0 };
+  const sidebarCounts = mappingBadgeCounts(status);
 
   return (
     <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 pb-24 md:px-6 md:pt-6">

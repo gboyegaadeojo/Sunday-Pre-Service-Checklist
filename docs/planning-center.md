@@ -80,7 +80,7 @@ The live app always uses Planning Center when the token is set. The sample sched
   - People scheduled afterwards carry the new name and match once the app's cached position list refreshes.
   - People scheduled before the rename may still carry the old name in Planning Center. If so, it matches nothing. They then follow the team's link if the team has one; otherwise they see "Your position isn't linked to a checklist department yet, so choose yours below." They can still get in and check off tasks; they pick their department by hand (remembered for the day).
   - Re-saving that person's assignment in Planning Center refreshes the name.
-- **This isn't flagged to Admins yet:** the mapping screen's warnings are by ID. A "Needs attention" item for unmatched position names has been proposed.
+- **Admins are told** (requirements C39): when anyone on the current service's plan, on a media team, carries a position name that matches nothing, the Admin home's **Needs attention** lists it (with the dot on the avatar and the count in the name menu), and **Team mapping** shows each name with how many people are scheduled under it. It can't be fixed with a link, because there's no position to link to: re-save those assignments in Planning Center (or rename the position back), then use **Refresh from Planning Center**. Only the current service's plan is checked.
 
 ## When Planning Center is down
 

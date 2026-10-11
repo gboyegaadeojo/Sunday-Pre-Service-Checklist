@@ -4,11 +4,11 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ADMIN_SECTIONS } from "../../src/client/components/admin/AdminLayout";
-import { attentionItems, resetMappingStatus } from "../../src/client/lib/adminAttention";
+import { attentionItems, mappingBadgeCounts, resetMappingStatus } from "../../src/client/lib/adminAttention";
 import { AdminHomePage } from "../../src/client/pages/admin/AdminHomePage";
 import type { MappingStatusResponse } from "../../src/shared/types";
 
-const CALM: MappingStatusResponse = { unlinked: 0, missing: 0, newTeams: 0, ready: true, connected: true };
+const CALM: MappingStatusResponse = { unlinked: 0, missing: 0, newTeams: 0, unmatched: 0, ready: true, connected: true };
 let status: MappingStatusResponse;
 
 beforeEach(() => {
@@ -38,7 +38,7 @@ describe("Needs attention", () => {
   });
 
   it("lists each admin-fixable problem, each linking to Team mapping", async () => {
-    status = { unlinked: 3, missing: 1, newTeams: 1, ready: false, connected: true, unreachable: "Planning Center" };
+    status = { unlinked: 3, missing: 1, newTeams: 1, unmatched: 2, ready: false, connected: true, unreachable: "Planning Center" };
     const section = await attention();
     const items = await within(section).findAllByRole("listitem");
     expect(items.map((li) => li.querySelector("p")?.textContent)).toEqual([
@@ -46,11 +46,17 @@ describe("Needs attention", () => {
       "Team mapping isn't set up",
       "3 positions on media teams not linked to a department",
       "1 link points to something no longer in the schedule",
+      "2 position names on the next service's plan match no position",
       "1 new team to review",
     ]);
     for (const li of items) {
       expect(within(li).getByRole("link", { name: "Fix in Team mapping" }).getAttribute("href")).toBe("/admin/mapping");
     }
+  });
+
+  it("flags a position name on the plan that matches nothing, and counts it on the Team mapping badge", () => {
+    expect(attentionItems({ ...CALM, unmatched: 1 }).map((i) => i.title)).toEqual(["1 position name on the next service's plan matches no position"]);
+    expect(mappingBadgeCounts({ ...CALM, unlinked: 1, missing: 1, unmatched: 1, newTeams: 2 })).toEqual({ attention: 3, newTeams: 2 });
   });
 
   it("shows nothing to fix when no schedule source is connected at all (not an Admin's fix)", () => {

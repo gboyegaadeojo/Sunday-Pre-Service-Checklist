@@ -398,7 +398,7 @@ Every screen is built by now, with the fake sources, so this is the point to loo
 - **9c:** OAuth sign-in (People scope; the code exchanged in the Worker; the person's token dropped). Tried with the account manager's real account: confirmed on the team, scheduled as Technical Director and highlighted, then made Admin on Users & Permissions.
 - **9d:** docs.
 - The token is from the account manager's own Planning Center account for now; it could move to a dedicated "Media App" account with view-only Services access. It **must include Services** (a People-only token gets 401 from Services).
-- Positions on a plan come from Planning Center by **name**, so they're matched by name within the team; links and membership use IDs. A position renamed after people were scheduled may leave them choosing their department by hand, and Admins aren't told yet (a "Needs attention" item is proposed).
+- Positions on a plan come from Planning Center by **name**, so they're matched by name within the team; links and membership use IDs. A position renamed after people were scheduled may leave them choosing their department by hand. Admins are told (requirements C39): Needs attention and Team mapping flag names on the current service's plan that match no position on a media team.
 - **Handed to Stage 10:**
   - add the live callback URL to the OAuth application;
   - set the four Planning Center values and `SESSION_SECRET` as Worker secrets (never `DEV_AUTH` or `SCHEDULE_SOURCE`);

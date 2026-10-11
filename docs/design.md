@@ -315,7 +315,7 @@ Do not invent readiness thresholds or declare a service ready based solely on an
 
 Create a separate, role-protected Admin area, reached from **Administrative Settings** in an Admin's name menu (not a header tab), with its own navigation for each section. Only list sections that exist.
 
-As built (October 2026, requirements v1.21): **Administrative Settings** in an Admin's name menu opens the **Admin home**: "Needs attention" first, listing only problems an Admin can fix, each linking to where to fix it (team mapping not set up, positions not linked, links to things gone from the schedule, new teams to review, the schedule source unreachable), or "Nothing needs your attention"; then a shortcut card for each section with a line about it; then one link, "See today's progress". No progress numbers here. The section navigation is described under Church settings below.
+As built (October 2026, requirements v1.21): **Administrative Settings** in an Admin's name menu opens the **Admin home**: "Needs attention" first, listing only problems an Admin can fix, each linking to where to fix it (team mapping not set up, positions not linked, links to things gone from the schedule, position names on the next service's plan that match no position (requirements v1.23), new teams to review, the schedule source unreachable), or "Nothing needs your attention"; then a shortcut card for each section with a line about it; then one link, "See today's progress". No progress numbers here. The section navigation is described under Church settings below.
 
 Organize it into clear sections:
 

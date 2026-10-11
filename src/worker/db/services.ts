@@ -1,8 +1,7 @@
 import { InvalidSettingError, assertTimeZone, currentServiceDate, localDate, parseWeekday } from "../../shared/service-day";
-import { cached } from "../sources/cache";
 import { ProviderUnavailableError } from "../sources/identity";
 import type { ScheduleSource, SourcePlan } from "../sources/schedule";
-import { getServiceTypeId } from "./mapping";
+import { currentPlan, getServiceTypeId } from "./mapping";
 import { startRecordStatements } from "./service-record";
 import { getSettings } from "./settings";
 
@@ -77,7 +76,7 @@ export async function getCurrentService(db: D1Database, now: Date, source: Sched
   let unavailable = false;
   if (source && serviceTypeId) {
     try {
-      plan = await cached<SourcePlan | null>(db, `${source.id}:plan:${serviceTypeId}:${today}`, () => source.nextPlan(serviceTypeId, today));
+      plan = await currentPlan(db, source, serviceTypeId, today);
       known = true;
     } catch (err) {
       if (!(err instanceof ProviderUnavailableError)) throw err;

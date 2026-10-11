@@ -36,6 +36,8 @@ const base = (): MappingResponse => ({
   missing: [],
   unlinked: [{ team: "Production", position: "Camera 3" }],
   newTeams: [{ externalId: "t-band", name: "Worship Band" }],
+  unmatched: [],
+  unmatchedPlanDate: "2026-10-11",
   fetchedAt: "2026-10-10T14:00:00.000Z",
   timeZone: "America/Winnipeg",
 });
@@ -53,7 +55,7 @@ beforeEach(() => {
         sent.push({ method, path, body: init.body ? JSON.parse(String(init.body)) : null });
         return new Response(null, { status: 204 });
       }
-      return path === "/api/admin/mapping/status" ? json({ unlinked: 1, missing: 0, newTeams: 1 }) : json(data);
+      return path === "/api/admin/mapping/status" ? json({ unlinked: 1, missing: 0, newTeams: 1, unmatched: 0 }) : json(data);
     }),
   );
 });
@@ -83,6 +85,25 @@ describe("team mapping page", () => {
     expect(screen.getByText("Choose the Service Type to see its teams and positions.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Service Type the app follows"), { target: { value: "st-1" } });
     await waitFor(() => expect(sent).toEqual([{ method: "PUT", path: "/api/admin/mapping/service-type", body: { externalId: "st-1" } }]));
+  });
+
+  it("points out position names on the plan that match no position (requirements C39)", async () => {
+    data.unmatched = [
+      { team: "Production", position: "Camera 2", people: 2 },
+      { team: "Production", position: "Lyrics", people: 1 },
+    ];
+    await renderPage();
+    const notice = screen.getByText(/2 position names on the plan for .+ match no position in Planning Center/).closest("div[role=status]") as HTMLElement;
+    expect(within(notice).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "Production › “Camera 2” (2 people scheduled)",
+      "Production › “Lyrics” (1 person scheduled)",
+    ]);
+    expect(notice.textContent).toContain("Saving their assignment again in Planning Center fixes it.");
+  });
+
+  it("shows no unmatched notice when every scheduled position matches", async () => {
+    await renderPage();
+    expect(screen.queryByText(/match(es)? no position/)).toBeNull();
   });
 
   it("points out positions on a media team that aren't linked yet", async () => {

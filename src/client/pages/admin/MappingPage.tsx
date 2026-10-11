@@ -10,7 +10,7 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States
 import { Switch } from "../../components/ui/Switch";
 import { MAPPING_CHANGED } from "../../lib/adminAttention";
 import { plural } from "../../lib/checklist";
-import { formatDateTime } from "../../lib/format";
+import { formatDateTime, formatServiceDate } from "../../lib/format";
 import { useMapping } from "../../lib/useAdminList";
 
 const SELECT =
@@ -136,7 +136,8 @@ export function MappingPage({ onAccessChanged }: { onAccessChanged: () => void }
   );
 }
 
-/** What the Admin should act on: positions in media teams with no department, and links gone from the source. */
+/** What the Admin should act on: positions in media teams with no department, position names on the plan that match
+ * nothing (requirements C39), new teams, and links gone from the source. */
 function AttentionNotices({ data, busy, onRemove }: { data: MappingResponse; busy: boolean; onRemove: (m: MappingResponse["missing"][number]) => void }) {
   return (
     <>
@@ -149,6 +150,29 @@ function AttentionNotices({ data, busy, onRemove }: { data: MappingResponse; bus
             </p>
             <p className="text-fg-muted wrap-anywhere">{data.unlinked.map((u) => `${u.team} › ${u.position}`).join(", ")}</p>
             <p className="mt-1 text-meta text-fg-muted">People scheduled there won't see a department of their own until it's linked.</p>
+          </div>
+        </div>
+      )}
+      {data.unmatched.length > 0 && (
+        <div role="status" className="flex gap-3 rounded-card border border-warning/40 bg-warning/10 p-4 text-sm">
+          <AlertIcon className="mt-0.5 size-4 shrink-0 text-warning" />
+          <div className="min-w-0">
+            <p className="font-medium text-fg">
+              {data.unmatched.length === 1 ? "A position name" : `${data.unmatched.length} position names`} on the plan for{" "}
+              {data.unmatchedPlanDate && formatServiceDate(data.unmatchedPlanDate)} {data.unmatched.length === 1 ? "matches" : "match"} no position in{" "}
+              {data.source?.label}
+            </p>
+            <ul className="text-fg-muted wrap-anywhere">
+              {data.unmatched.map((u) => (
+                <li key={`${u.team}/${u.position}`}>
+                  {u.team} › “{u.position}” ({u.people} {u.people === 1 ? "person" : "people"} scheduled)
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-meta text-fg-muted">
+              Usually the position was renamed after they were scheduled, so it can't be linked here. They follow their
+              team's link if it has one, or choose their department. Saving their assignment again in {data.source?.label} fixes it.
+            </p>
           </div>
         </div>
       )}

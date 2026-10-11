@@ -616,9 +616,24 @@ export interface MappingResponse {
   unlinked: { team: string; position: string }[];
   /** Teams with no links that nobody has marked "Not a media team" yet: link them, or mark them. */
   newTeams: { externalId: string; name: string }[];
+  /**
+   * Position names on the current service's plan that match no position in their (media) team, usually renamed in
+   * the source after people were scheduled (requirements C38, C39). Fixed in the source, not by a link.
+   */
+  unmatched: UnmatchedPosition[];
+  /** The date of the plan `unmatched` was read from, or null when none is published (or no Service Type is chosen). */
+  unmatchedPlanDate: string | null;
   /** When the teams and positions were fetched from the source (cached for a few minutes). */
   fetchedAt: string | null;
   timeZone: string;
+}
+
+/** A position name people are scheduled under that matches none of the team's positions. Names only, never who. */
+export interface UnmatchedPosition {
+  team: string;
+  position: string;
+  /** How many people are scheduled under it. */
+  people: number;
 }
 
 /** PUT /api/admin/mapping/service-type */
@@ -641,7 +656,6 @@ export interface SetTeamReviewRequest {
   notMediaTeam: boolean;
 }
 
-/** GET /api/admin/mapping/status: for the notice on the Admin tabs. */
 /**
  * GET /api/admin/mapping/status: what needs an Admin's attention in team mapping (the Admin home's "Needs attention",
  * the count in the name menu, the dot on the avatar).
@@ -652,6 +666,8 @@ export interface MappingStatusResponse {
   missing: number;
   /** Teams not reviewed yet (informational). */
   newTeams: number;
+  /** Position names on the current service's plan that match no position (MappingResponse.unmatched). */
+  unmatched: number;
   /** Team mapping is set up (a Service Type and at least one link): volunteers can get in (US-02, requirements v1.19). */
   ready: boolean;
   /** Present when the schedule source couldn't be reached just now: its name, e.g. "Planning Center" (US-04a). */

@@ -50,6 +50,14 @@ export function attentionItems(s: MappingStatusResponse | null): AttentionItem[]
       detail: "Remove or replace the link so it leads somewhere again.",
     });
   }
+  if (s.unmatched > 0) {
+    items.push({
+      id: "unmatched",
+      title: `${n(s.unmatched, "position name", "position names")} on the next service's plan ${s.unmatched === 1 ? "matches" : "match"} no position`,
+      detail:
+        "Usually a position renamed after people were scheduled. They won't see their department first until their assignment is saved again in the schedule.",
+    });
+  }
   if (s.newTeams > 0) {
     items.push({
       id: "new_teams",
@@ -58,6 +66,11 @@ export function attentionItems(s: MappingStatusResponse | null): AttentionItem[]
     });
   }
   return items;
+}
+
+/** The Team mapping badge's numbers: problems to fix (a count), and teams to review (a quiet "new"). */
+export function mappingBadgeCounts(s: MappingStatusResponse | null): { attention: number; newTeams: number } {
+  return { attention: (s?.unlinked ?? 0) + (s?.missing ?? 0) + (s?.unmatched ?? 0), newTeams: s?.newTeams ?? 0 };
 }
 
 let latest: MappingStatusResponse | null = null;

@@ -28,8 +28,8 @@ import { ProviderUnavailableError } from "../sources/identity";
 import type { AppEnv } from "../types";
 
 // Team mapping (Stage 7a, US-15). Admins only, enforced here.
-//   GET  /api/admin/mapping                the screen: Service Types, teams and positions with links, missing, unlinked
-//   GET  /api/admin/mapping/status         unlinked and missing counts, for the notice on the Admin tabs
+//   GET  /api/admin/mapping                the screen: Service Types, teams and positions with links, missing, unlinked, unmatched
+//   GET  /api/admin/mapping/status         what needs attention, as counts (the Admin home, the name menu, the avatar dot)
 //   POST /api/admin/mapping/refresh        "Refresh from Planning Center": fetch everything anew, then as GET
 //   PUT  /api/admin/mapping/service-type   { externalId }  the Service Type the app follows
 //   PUT  /api/admin/mapping/link           { teamExternalId, positionExternalId, departmentId, seesAll }  null department unlinks
@@ -53,15 +53,15 @@ async function guardSource<T>(c: Context<AppEnv>, run: () => Promise<T>): Promis
 
 export const adminMappingRoutes = new Hono<AppEnv>()
   .use(requireAdmin)
-  .get("/", (c) => guardSource(c, async () => c.json<MappingResponse>(await getMapping(c.env.DB, c.var.schedule))))
+  .get("/", (c) => guardSource(c, async () => c.json<MappingResponse>(await getMapping(c.env.DB, c.var.schedule, new Date()))))
   // Never fails for an unreachable source: that's one of the things it reports (the Admin home's "Needs attention").
   .get("/status", async (c) => {
     const source = c.var.schedule;
     const ready = await isTeamMappingReady(c.env.DB, source);
-    const base = { unlinked: 0, missing: 0, newTeams: 0, ready, connected: source !== null };
+    const base = { unlinked: 0, missing: 0, newTeams: 0, unmatched: 0, ready, connected: source !== null };
     try {
-      const mapping = await getMapping(c.env.DB, source);
-      return c.json<MappingStatusResponse>({ ...base, unlinked: mapping.unlinked.length, missing: mapping.missing.length, newTeams: mapping.newTeams.length });
+      const mapping = await getMapping(c.env.DB, source, new Date());
+      return c.json<MappingStatusResponse>({ ...base, unlinked: mapping.unlinked.length, missing: mapping.missing.length, newTeams: mapping.newTeams.length, unmatched: mapping.unmatched.length });
     } catch (err) {
       if (!(err instanceof ProviderUnavailableError)) throw err;
       return c.json<MappingStatusResponse>({ ...base, unreachable: source?.label ?? "the schedule source" });
@@ -73,7 +73,7 @@ export const adminMappingRoutes = new Hono<AppEnv>()
       const source = c.var.schedule;
       if (!source) return notConnected(c);
       await refreshSchedule(c.env.DB, source);
-      return c.json<MappingResponse>(await getMapping(c.env.DB, source));
+      return c.json<MappingResponse>(await getMapping(c.env.DB, source, new Date()));
     }),
   )
   .put("/service-type", (c) =>

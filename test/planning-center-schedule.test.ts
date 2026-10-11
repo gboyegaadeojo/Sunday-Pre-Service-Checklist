@@ -154,6 +154,34 @@ describe("reading the schedule", () => {
       { teamExternalId: "t1", positionExternalId: "p2" },
       { teamExternalId: "t1", positionExternalId: null },
     ]);
+    // Everyone on the plan, with the name Planning Center gives, so names that match nothing can be flagged (C39).
+    expect(await source.planAssignments("111:pl1")).toEqual([
+      { person: "42", teamExternalId: "t1", positionExternalId: "p2", positionName: " camera 2 " },
+      { person: "7", teamExternalId: "t1", positionExternalId: "p1", positionName: "Audio" },
+      { person: "42", teamExternalId: "t1", positionExternalId: null, positionName: "Renamed Position" },
+    ]);
+  });
+
+  it("gives no position name when Planning Center leaves it blank", async () => {
+    const { source } = fakePlanningCenter((u) => {
+      if (u.pathname === "/services/v2/service_types/111/plans/pl1/team_members") {
+        return {
+          body: {
+            data: [
+              {
+                type: "PlanPerson",
+                id: "m1",
+                attributes: { status: "C", team_position_name: "  " },
+                relationships: { person: { data: { type: "Person", id: "42" } }, team: { data: { type: "Team", id: "t1" } } },
+              },
+            ],
+          },
+        };
+      }
+      if (u.pathname === TEAMS_PATH) return { body: { data: [team("t1", "Production", ["p1"])], included: [position("p1", "Audio", "t1")] } };
+      return undefined;
+    });
+    expect(await source.planAssignments("111:pl1")).toEqual([{ person: "42", teamExternalId: "t1", positionExternalId: null, positionName: null }]);
   });
 });
 
@@ -165,6 +193,7 @@ describe("talking to Planning Center", () => {
     await source.teamsOf("42");
     await source.nextPlan("111", "2026-10-11");
     await source.assignments("111:pl1", "42");
+    await source.planAssignments("111:pl1");
     expect(calls.length).toBeGreaterThan(0);
     for (const c of calls) {
       expect(c.method).toBe("GET");

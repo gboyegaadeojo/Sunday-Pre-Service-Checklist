@@ -13,9 +13,11 @@ import type {
   MappingResponse,
   MappingTeam,
   MissingLink,
+  UnmatchedPosition,
 } from "../../shared/types";
+import { localDate } from "../../shared/service-day";
 import { cached, clearCache } from "../sources/cache";
-import type { ScheduleSource, SourceServiceType, SourceTeam } from "../sources/schedule";
+import type { PlanAssignment, ScheduleSource, SourcePlan, SourceServiceType, SourceTeam } from "../sources/schedule";
 import { type Actor, actorValues } from "./checkoffs";
 import { getSettings } from "./settings";
 
@@ -80,9 +82,10 @@ const toLink = (r: LinkRow): MappingLink => ({
 
 /**
  * The mapping screen: the source's Service Types, the chosen one's teams and positions with their links, links
- * whose team or position has gone from the source, and positions in media teams that lead to no department.
+ * whose team or position has gone from the source, positions in media teams that lead to no department, and position
+ * names on the current service's plan that match no position (`now` decides which plan that is).
  */
-export async function getMapping(db: D1Database, source: ScheduleSource | null): Promise<MappingResponse> {
+export async function getMapping(db: D1Database, source: ScheduleSource | null, now: Date): Promise<MappingResponse> {
   const settings = await getSettings(db, ["time_zone"]);
   const timeZone = settings.time_zone ?? "";
   const [listResult, departmentResult] = await db.batch([
@@ -95,7 +98,19 @@ export async function getMapping(db: D1Database, source: ScheduleSource | null):
     timeZone,
   };
   if (!source) {
-    return { ...base, source: null, serviceTypes: [], serviceTypeId: null, teams: [], missing: [], unlinked: [], newTeams: [], fetchedAt: null };
+    return {
+      ...base,
+      source: null,
+      serviceTypes: [],
+      serviceTypeId: null,
+      teams: [],
+      missing: [],
+      unlinked: [],
+      newTeams: [],
+      unmatched: [],
+      unmatchedPlanDate: null,
+      fetchedAt: null,
+    };
   }
 
   const serviceTypeId = await getServiceTypeId(db, source);
@@ -147,6 +162,8 @@ export async function getMapping(db: D1Database, source: ScheduleSource | null):
   // New: no links, and not marked "Not a media team". Informational: link them or mark them.
   const newTeams = teams.filter((t) => !t.isMediaTeam && !t.notMediaTeam).map((t) => ({ externalId: t.externalId, name: t.name }));
 
+  const unmatched = serviceTypeId && timeZone ? await unmatchedPositions(db, source, serviceTypeId, localDate(now, timeZone).date, teams) : null;
+
   return {
     ...base,
     source: { label: source.label },
@@ -156,8 +173,48 @@ export async function getMapping(db: D1Database, source: ScheduleSource | null):
     missing,
     unlinked,
     newTeams,
+    unmatched: unmatched?.positions ?? [],
+    unmatchedPlanDate: unmatched?.planDate ?? null,
     fetchedAt: schedule?.fetchedAt ?? null,
   };
+}
+
+/**
+ * The current service's plan (US-07): the earliest on or after `today` in the Service Type, or null if none is
+ * published. Cached a few minutes; shared by getCurrentService and the mapping screen, so they ask the source once.
+ */
+export const currentPlan = (db: D1Database, source: ScheduleSource, serviceTypeId: string, today: string) =>
+  cached<SourcePlan | null>(db, cacheKey(source, "plan", serviceTypeId, today), () => source.nextPlan(serviceTypeId, today));
+
+/**
+ * Position names on the current service's plan that match none of their team's positions, on media teams only
+ * (requirements C38, C39): usually a position renamed in the source after people were scheduled. Those people see
+ * their team's department, if the team is linked, or choose their own. One entry per team and name, with how many
+ * are scheduled under it; names only, never who. null when no plan is published.
+ */
+async function unmatchedPositions(
+  db: D1Database,
+  source: ScheduleSource,
+  serviceTypeId: string,
+  today: string,
+  teams: MappingTeam[],
+): Promise<{ planDate: string; positions: UnmatchedPosition[] } | null> {
+  const plan = await currentPlan(db, source, serviceTypeId, today);
+  if (!plan) return null;
+  const assignments = await cached<PlanAssignment[]>(db, cacheKey(source, "plan-assignments", plan.externalId), () =>
+    source.planAssignments(plan.externalId),
+  );
+  const positions: UnmatchedPosition[] = [];
+  for (const a of assignments) {
+    if (a.positionExternalId !== null || a.positionName === null) continue;
+    const team = teams.find((t) => t.externalId === a.teamExternalId);
+    if (!team?.isMediaTeam) continue;
+    const position = a.positionName.trim().replace(/\s+/g, " ");
+    const same = positions.find((p) => p.team === team.name && p.position.toLowerCase() === position.toLowerCase());
+    if (same) same.people += 1;
+    else positions.push({ team: team.name, position, people: 1 });
+  }
+  return { planDate: plan.date, positions };
 }
 
 const LOG_COLUMNS = "action, source, team_external_id, position_external_id, target_name, before_json, after_json, user_id, user_name, session_id, tab_id, user_agent";

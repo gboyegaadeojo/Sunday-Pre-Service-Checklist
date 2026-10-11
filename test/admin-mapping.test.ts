@@ -231,6 +231,66 @@ describe("changes in the source", () => {
   });
 });
 
+// Requirements C38, C39: the fake source's scheduled people keep the position name they were scheduled under, as in
+// Planning Center, so renaming a position afterwards leaves that name matching nothing.
+describe("position names on the plan that match nothing", () => {
+  it("finds nothing while every scheduled name matches", async () => {
+    await chooseSunday();
+    await mapExpected();
+    const m = await mapping();
+    expect(m.unmatched).toEqual([]);
+    expect(m.unmatchedPlanDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(await status()).toMatchObject({ unmatched: 0 });
+  });
+
+  it("flags a name on the current plan after the position is renamed, with how many are scheduled, never who", async () => {
+    await chooseSunday();
+    await mapExpected();
+    await adjustSchedule({ renamedPositions: { "pos-camera-2": "Camera 2 (Balcony)", "pos-audio": "Sound" } });
+    const m = await refresh();
+    expect(m.unmatched).toEqual([
+      { team: "Production", position: "Camera 2", people: 1 },
+      { team: "Production", position: "Audio", people: 1 },
+    ]);
+    expect(JSON.stringify(m)).not.toMatch(/camera2|audio-presentation/); // no person IDs from the source
+    expect(await status()).toMatchObject({ unmatched: 2, unlinked: 0, missing: 0 });
+    // The links themselves are fine: they use IDs.
+    expect(positions(m).find((p) => p.externalId === "pos-camera-2")).toMatchObject({ name: "Camera 2 (Balcony)", status: "linked" });
+  });
+
+  it("flags a scheduled position that was removed from the team", async () => {
+    await chooseSunday();
+    expect((await link(null, "Miscellaneous")).status).toBe(204);
+    await adjustSchedule({ removedPositions: ["pos-technical-director"] });
+    expect((await refresh()).unmatched).toEqual([{ team: "Production", position: "Technical Director", people: 1 }]);
+  });
+
+  it("only looks at media teams", async () => {
+    await chooseSunday();
+    expect((await link(null, "Miscellaneous")).status).toBe(204);
+    await adjustSchedule({ renamedPositions: { "pos-vocals": "Lead Vocals" } });
+    expect((await refresh()).unmatched).toEqual([]);
+  });
+
+  it("has nothing to check when no plan is published or no Service Type is chosen", async () => {
+    await adjustSchedule({ renamedPositions: { "pos-camera-2": "Camera 2 (Balcony)" } });
+    expect(await mapping()).toMatchObject({ unmatched: [], unmatchedPlanDate: null });
+    await chooseSunday();
+    expect((await link(null, "Miscellaneous")).status).toBe(204);
+    await adjustSchedule({ renamedPositions: { "pos-camera-2": "Camera 2 (Balcony)" }, unpublished: true });
+    expect(await refresh()).toMatchObject({ unmatched: [], unmatchedPlanDate: null });
+    expect(await status()).toMatchObject({ unmatched: 0 });
+  });
+
+  it("reports an unreachable source instead of a count", async () => {
+    await chooseSunday();
+    expect((await link(null, "Miscellaneous")).status).toBe(204);
+    await adjustSchedule({ down: true });
+    await env.DB.prepare("DELETE FROM source_cache").run();
+    expect(await status()).toMatchObject({ unmatched: 0, unreachable: "Planning Center (sample data)" });
+  });
+});
+
 describe("editing links", () => {
   it("changes, marks and removes a link, logging each", async () => {
     await chooseSunday();

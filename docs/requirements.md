@@ -1,12 +1,18 @@
 # Church Media Team Checklist App — Requirements
 
-> **Version:** 1.22 · **Date:** October 2026  
+> **Version:** 1.23 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
 > **Status:** All decisions closed — ready for build
 
 ---
 
-## 0. Changes in Version 1.22
+## 0. Changes in Version 1.23
+
+| # | Change | Why |
+|---|--------|-----|
+| C39 | **Position names that match nothing are flagged to Admins** (US-15, following C38). When someone on the current service's plan is scheduled on a media team under a position name that matches none of that team's positions (usually a position renamed in Planning Center after they were scheduled), the Admin home's "Needs attention" says so, with a link to Team mapping, and it counts towards the dot on the avatar and the count in the name menu. Team mapping lists each such name with how many people are scheduled under it (never who) and says how to fix it: save their assignment again in Planning Center. Only the current service's plan is checked. | Admins find out before Sunday, instead of volunteers quietly having to pick their department by hand. One plan keeps it to a single cached call. |
+
+## Changes in Version 1.22
 
 | # | Change | Why |
 |---|--------|-----|

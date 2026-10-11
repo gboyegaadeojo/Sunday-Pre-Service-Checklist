@@ -4,7 +4,7 @@
 // 5-second limit, 5-minute cache, outage fallback.
 
 import { addDays, localDate } from "../../../shared/service-day";
-import type { ScheduleSource, SourceAssignment, SourcePlan, SourceServiceType, SourceTeam } from "../schedule";
+import type { PlanAssignment, ScheduleSource, SourceAssignment, SourcePlan, SourceServiceType, SourceTeam } from "../schedule";
 import { type FetchLike, NotFoundError, type PlanningCenterClient, type Resource, createClient, relatedId } from "./client";
 import { planningCenterCredentials } from "./config";
 
@@ -62,6 +62,30 @@ export function createPlanningCenterSchedule(
     });
     });
 
+  // Everyone scheduled in the plan, unless they declined: their team and position. Planning Center names the position
+  // here rather than giving its ID, so it's matched by name within that team (requirements C38); a position renamed
+  // after the schedule was made then matches nothing (positionExternalId null).
+  async function planAssignments(planExternalId: string): Promise<PlanAssignment[]> {
+    const { serviceTypeId, id } = parsePlanId(planExternalId);
+    const [members, teams] = await Promise.all([
+      orNone(async () => (await api.list(`/services/v2/service_types/${serviceTypeId}/plans/${id}/team_members?per_page=100`)).data),
+      listTeams(serviceTypeId),
+    ]);
+    const assignments: PlanAssignment[] = [];
+    for (const m of members) {
+      const person = relatedId(m, "person");
+      const teamId = relatedId(m, "team");
+      if (!person || !teamId || m.attributes.status === "D") continue;
+      const raw = m.attributes.team_position_name;
+      const positionName = typeof raw === "string" && raw.trim() !== "" ? raw : null;
+      const position = positionName
+        ? teams.find((t) => t.externalId === teamId)?.positions.find((p) => sameName(p.name, positionName))
+        : undefined;
+      assignments.push({ person, teamExternalId: teamId, positionExternalId: position?.externalId ?? null, positionName });
+    }
+    return assignments;
+  }
+
   return {
     id: "planning_center",
     label: "Planning Center",
@@ -109,25 +133,14 @@ export function createPlanningCenterSchedule(
       return null;
     },
 
-    // Where the person is scheduled in the plan (US-05): their team and position, unless they declined. Planning
-    // Center names the position here rather than giving its ID, so it's matched by name within that team; a position
-    // renamed after the schedule was made then counts as the whole team (its team link, if any, still applies).
+    planAssignments,
+
+    // Where the person is scheduled in the plan (US-05). A position name that matches nothing counts as the whole
+    // team (its team link, if any, still applies).
     async assignments(planExternalId, person): Promise<SourceAssignment[]> {
-      const { serviceTypeId, id } = parsePlanId(planExternalId);
-      const [members, teams] = await Promise.all([
-        orNone(async () => (await api.list(`/services/v2/service_types/${serviceTypeId}/plans/${id}/team_members?per_page=100`)).data),
-        listTeams(serviceTypeId),
-      ]);
-      const assignments: SourceAssignment[] = [];
-      for (const m of members) {
-        if (relatedId(m, "person") !== person || m.attributes.status === "D") continue;
-        const teamId = relatedId(m, "team");
-        if (!teamId) continue;
-        const positionName = typeof m.attributes.team_position_name === "string" ? m.attributes.team_position_name : "";
-        const position = teams.find((t) => t.externalId === teamId)?.positions.find((p) => positionName && sameName(p.name, positionName));
-        assignments.push({ teamExternalId: teamId, positionExternalId: position?.externalId ?? null });
-      }
-      return assignments;
+      return (await planAssignments(planExternalId))
+        .filter((a) => a.person === person)
+        .map(({ teamExternalId, positionExternalId }) => ({ teamExternalId, positionExternalId }));
     },
   };
 }
