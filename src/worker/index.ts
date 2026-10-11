@@ -16,6 +16,7 @@ import { createFakeScheduleSource } from "./dev/fake-schedule";
 import { createDevAuthRoutes } from "./routes/dev-auth";
 import { createDevScheduleRoutes } from "./routes/dev-schedule";
 import { wantsRealScheduleLocally } from "./sources/planning-center/config";
+import { planningCenterSchedule } from "./sources/planning-center/schedule";
 import type { AppEnv } from "./types";
 
 // Only /api/* reaches the Worker; pages are static assets (see wrangler.jsonc).
@@ -33,7 +34,7 @@ app.use("/api/*", async (c, next) => {
     "schedule",
     import.meta.env.DEV && !wantsRealScheduleLocally(c.env)
       ? createFakeScheduleSource(c.env.DB)
-      : null, // Planning Center's schedule source arrives in Stage 9b
+      : planningCenterSchedule(c.env, c.env.DB),
   );
   await next();
 });
