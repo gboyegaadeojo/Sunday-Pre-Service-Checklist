@@ -151,6 +151,12 @@ export interface CurrentUser {
   unreachable?: string;
 }
 
+/** GET /api/auth/sign-in-options (public): which sign-in is set up, so the sign-in screen offers only that (US-01). */
+export interface SignInOptionsResponse {
+  /** Planning Center sign-in is configured (its OAuth application, Stage 9c). */
+  planningCenter: boolean;
+}
+
 /** Church branding from settings (admin-editable). A null field has no value set. */
 export interface BrandingResponse {
   shortName: string | null;

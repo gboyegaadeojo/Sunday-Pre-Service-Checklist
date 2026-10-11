@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import type { MeResponse } from "../../shared/types";
+import type { MeResponse, SignInOptionsResponse } from "../../shared/types";
 import { isTeamMappingReady, verifyMembership } from "../db/schedule-view";
 import { toCurrentUser } from "../lib/access";
 import { endSession, requireUser } from "../middleware/auth";
+import { planningCenterCredentials } from "../sources/planning-center/config";
 import type { AppEnv } from "../types";
 
 export const authRoutes = new Hono<AppEnv>()
@@ -20,6 +21,8 @@ export const authRoutes = new Hono<AppEnv>()
     const unreachable = membership === "unavailable" ? c.var.schedule?.label : undefined;
     return c.json<MeResponse>({ user: toCurrentUser(checked, await isTeamMappingReady(c.env.DB, c.var.schedule), unreachable) });
   })
+  // Public: whether "Sign in with Planning Center" works yet. Says nothing about the credentials themselves.
+  .get("/sign-in-options", (c) => c.json<SignInOptionsResponse>({ planningCenter: planningCenterCredentials(c.env).signIn !== null }))
   .post("/sign-out", (c) => {
     endSession(c);
     return c.body(null, 204);

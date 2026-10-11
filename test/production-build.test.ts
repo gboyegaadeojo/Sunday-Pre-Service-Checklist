@@ -17,9 +17,9 @@ const worker = (await import("../dist/sunday_pre_service_checklist/index.js")) a
   default: { fetch: (req: Request, env: Env, ctx: ExecutionContext) => Promise<Response> };
 };
 
-async function callProduction(path: string, init?: RequestInit) {
+async function callProduction(path: string, init?: RequestInit, bindings: Record<string, string> = {}) {
   const ctx = createExecutionContext();
-  const res = await worker.default.fetch(new Request(`https://checklist.test${path}`, init), { ...env, DEV_AUTH: "true" }, ctx);
+  const res = await worker.default.fetch(new Request(`https://checklist.test${path}`, init), { ...env, DEV_AUTH: "true", ...bindings } as Env, ctx);
   await waitOnExecutionContext(ctx);
   return res;
 }
@@ -65,5 +65,15 @@ describe("production build", () => {
     const res = await callProduction("/api/auth/me");
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ code: "signed_out" });
+  });
+
+  it("offers Planning Center sign-in only once its OAuth application is configured (Stage 9c)", async () => {
+    expect(await (await callProduction("/api/auth/sign-in-options")).json()).toEqual({ planningCenter: false });
+    const configured = { PCO_CLIENT_ID: "client-id", PCO_CLIENT_SECRET: "client-secret" };
+    expect(await (await callProduction("/api/auth/sign-in-options", {}, configured)).json()).toEqual({ planningCenter: true });
+    const start = await callProduction("/api/auth/planning-center/start", { redirect: "manual" }, configured);
+    expect(start.status).toBe(302);
+    expect(start.headers.get("Location")?.startsWith("https://api.planningcenteronline.com/oauth/authorize?")).toBe(true);
+    expect(start.headers.get("Location")).not.toContain("client-secret");
   });
 });

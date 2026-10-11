@@ -42,8 +42,12 @@ export async function getUser(db: D1Database, id: number): Promise<User | null> 
 
 export interface SignIn {
   identity: ExternalIdentity;
-  /** Result of the media-team membership check at sign-in (US-02). */
-  onMediaTeam: boolean;
+  /**
+   * Result of the media-team membership check at sign-in (US-02), or null to leave the last confirmation as it is:
+   * a real sign-in checks membership just after (verifyMembership), which keeps the confirmation during an outage
+   * (US-04a) instead of clearing it here.
+   */
+  onMediaTeam: boolean | null;
   /** Role flags applied only when the user is first created; later changes are made in-app (US-03). */
   initialRoles?: { isAdmin: boolean; isDirector: boolean };
 }
@@ -56,6 +60,7 @@ export interface SignIn {
 export async function signInWithIdentity(db: D1Database, { identity, onMediaTeam, initialRoles }: SignIn, nowIso: string): Promise<number> {
   const { provider, subject, name, avatarUrl, email } = identity;
   const verifiedAt = onMediaTeam ? nowIso : null;
+  const keepVerification = onMediaTeam === null ? 1 : 0;
   const linkedUser = "(SELECT user_id FROM user_identities WHERE provider = ?1 AND subject = ?2)";
   const results = await db.batch([
     // A new user only if this account isn't linked yet…
@@ -74,10 +79,11 @@ export async function signInWithIdentity(db: D1Database, { identity, onMediaTeam
       .bind(provider, subject, email, nowIso),
     db
       .prepare(
-        `UPDATE users SET display_name = ?3, avatar_url = ?4, team_verified_at = ?5, last_seen_at = ?6
+        `UPDATE users SET display_name = ?3, avatar_url = ?4, team_verified_at = CASE WHEN ?7 = 1 THEN team_verified_at ELSE ?5 END,
+                last_seen_at = ?6
           WHERE id = ${linkedUser}`,
       )
-      .bind(provider, subject, name, avatarUrl, verifiedAt, nowIso),
+      .bind(provider, subject, name, avatarUrl, verifiedAt, nowIso, keepVerification),
     db
       .prepare("UPDATE user_identities SET last_used_at = ?3, email = COALESCE(?4, email) WHERE provider = ?1 AND subject = ?2")
       .bind(provider, subject, nowIso, email),

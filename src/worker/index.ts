@@ -7,6 +7,7 @@ import { adminSettingsRoutes } from "./routes/admin-settings";
 import { adminStructureRoutes } from "./routes/admin-structure";
 import { adminUserRoutes } from "./routes/admin-users";
 import { authRoutes } from "./routes/auth";
+import { planningCenterAuthRoutes } from "./routes/auth-planning-center";
 import { brandingRoutes } from "./routes/branding";
 import { checklistRoutes } from "./routes/checklist";
 import { checkoffRoutes } from "./routes/checkoffs";
@@ -39,6 +40,7 @@ app.use("/api/*", async (c, next) => {
   await next();
 });
 
+app.route("/api/auth/planning-center", planningCenterAuthRoutes);
 app.route("/api/auth", authRoutes);
 app.route("/api/branding", brandingRoutes);
 app.route("/api/checklist", checklistRoutes);

@@ -3,14 +3,20 @@ import type { DevUser, DevUsersResponse } from "../../shared/types";
 import { getJson, postJson, putJson } from "../api";
 import { SignInScreen } from "../components/app/SignInScreen";
 import { Switch } from "../components/ui/Switch";
+import { planningCenterSignInReady, startPlanningCenterSignIn, useSignInResult } from "../lib/signInResult";
 
 // LOCAL DEVELOPMENT ONLY. App.tsx renders this only when import.meta.env.DEV is true, so production
 // builds drop this file (test/production-build.test.ts checks the client bundle). The server side
 // also needs DEV_AUTH=true; without it this page behaves exactly like the production sign-in.
+// When Planning Center sign-in is configured locally (.dev.vars, Stage 9c), the main button starts the real flow; the
+// test users below still work. Otherwise the main button signs in as the test volunteer through the sample schedule.
 export function DevSignInPage({ onSignedIn, notice }: { onSignedIn: () => void; notice?: string | null }) {
   const [users, setUsers] = useState<DevUser[] | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const result = useSignInResult();
+  const [error, setError] = useState<string | null>(result);
+  const [realSignIn, setRealSignIn] = useState(false);
+  const [starting, setStarting] = useState(false);
   // The fake schedule source's adjustments; `down` stands for a Planning Center outage (US-04a, US-04b).
   const [schedule, setSchedule] = useState<Record<string, unknown> | null>(null);
 
@@ -18,6 +24,7 @@ export function DevSignInPage({ onSignedIn, notice }: { onSignedIn: () => void; 
     getJson<DevUsersResponse>("/api/dev/users")
       .then((res) => setUsers(res.users))
       .catch(() => setUsers(null)); // DEV_AUTH off: no test users, same as production
+    void planningCenterSignInReady().then(setRealSignIn);
     getJson<Record<string, unknown>>("/api/dev/schedule")
       .then(setSchedule)
       .catch(() => setSchedule(null));
@@ -44,10 +51,20 @@ export function DevSignInPage({ onSignedIn, notice }: { onSignedIn: () => void; 
     }
   };
 
-  if (!users) return <SignInScreen notice={notice} />;
+  const startRealSignIn = () => {
+    setStarting(true);
+    startPlanningCenterSignIn();
+  };
+
+  if (!users) return <SignInScreen onSignIn={realSignIn ? startRealSignIn : undefined} signingIn={starting} error={error} notice={notice} />;
 
   return (
-    <SignInScreen onSignIn={() => void signInAs("volunteer", true)} signingIn={pendingKey === "volunteer"} error={error} notice={notice}>
+    <SignInScreen
+      onSignIn={realSignIn ? startRealSignIn : () => void signInAs("volunteer", true)}
+      signingIn={starting || pendingKey === "volunteer"}
+      error={error}
+      notice={notice}
+    >
       <section
         aria-labelledby="dev-tools-heading"
         className="mt-6 rounded-card border border-dashed border-warning/50 bg-warning/5 p-4"
@@ -56,8 +73,10 @@ export function DevSignInPage({ onSignedIn, notice }: { onSignedIn: () => void; 
           Developer only · local testing
         </h2>
         <p className="mt-1 text-meta text-fg-muted">
-          Not part of the app. The button above signs in as the test volunteer, through the sample Planning Center.
-          Switch test user:
+          Not part of the app.{" "}
+          {realSignIn
+            ? "The button above signs in with your real Planning Center account. Or use a test user:"
+            : "The button above signs in as the test volunteer, through the sample Planning Center. Switch test user:"}
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {users.map((u) => (
