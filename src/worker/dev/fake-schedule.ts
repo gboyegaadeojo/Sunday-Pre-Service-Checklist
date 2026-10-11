@@ -92,6 +92,8 @@ export interface FakeScheduleState {
   removedPositions?: string[];
   /** No plan is published on service days, as before Planning Center has the service (US-05 note). */
   unpublished?: boolean;
+  /** People (test-user keys) taken off every plan, as if removed from the schedule in Planning Center. */
+  unscheduledPeople?: string[];
   /** Extra plans on other dates ("YYYY-MM-DD"), e.g. a Saturday special service (US-07). */
   extraPlans?: { date: string }[];
   /** Planning Center is down: every call fails, and sign-in through it is unavailable (US-04a, US-04b). */
@@ -177,7 +179,8 @@ export function createFakeScheduleSource(db: D1Database): ScheduleSource {
     const serviceTypeExternalId = plan.slice("plan-".length, -"-YYYY-MM-DD".length);
     const sample = FAKE_TEAMS[serviceTypeExternalId] ?? [];
     const teams = await source.listTeams(serviceTypeExternalId);
-    return Object.entries(FAKE_ASSIGNMENTS).flatMap(([person, list]) =>
+    const off = new Set((await readFakeScheduleState(db)).unscheduledPeople ?? []);
+    return Object.entries(FAKE_ASSIGNMENTS).filter(([person]) => !off.has(person)).flatMap(([person, list]) =>
       list.flatMap((a) => {
         const positionName = sample.find((t) => t.externalId === a.teamExternalId)?.positions.find((p) => p.externalId === a.positionExternalId)?.name;
         if (!positionName) return []; // not scheduled in this Service Type's plans

@@ -149,6 +149,19 @@ export interface CurrentUser {
    * haven't been confirmed in the last 90 days (US-04a). Its name, e.g. "Planning Center".
    */
   unreachable?: string;
+  /**
+   * Present while they're Director because they're scheduled in a position an Admin marked "Gets the Director role
+   * while scheduled", for the current service only (requirements C41). Never for Admins or permanent Directors.
+   */
+  scheduledDirector?: DirectorGrant;
+}
+
+/** A Director role held because someone is scheduled in a marked position, for one service (requirements C41). */
+export interface DirectorGrant {
+  /** "Team › Position" as the schedule names it. */
+  position: string;
+  /** The service it's for ("YYYY-MM-DD"). */
+  serviceDate: string;
 }
 
 /** GET /api/auth/sign-in-options (public): which sign-in is set up, so the sign-in screen offers only that (US-01). */
@@ -543,13 +556,23 @@ export interface UpdateRolesResponse {
 }
 
 /** One entry of the append-only role log: only the roles that changed, before and after. */
+/**
+ * What a role-log entry changed: the role switches an Admin set, or an automatic Director grant from the schedule
+ * (scheduledDirector: the grant, or null; reason on an end).
+ */
+export type RoleEditValues = Partial<Record<RoleField, boolean>> & {
+  scheduledDirector?: DirectorGrant | null;
+  /** Why an automatic grant ended: its service is over, or they're no longer scheduled in a marked position. */
+  reason?: "service_over" | "not_scheduled";
+};
+
 export interface RoleEditEvent {
   id: number;
   at: string;
   /** The person whose roles changed, by their name at the time. */
   target: string;
-  before: Partial<Record<RoleField, boolean>>;
-  after: Partial<Record<RoleField, boolean>>;
+  before: RoleEditValues;
+  after: RoleEditValues;
   user: string;
   sessionId: string | null;
   tabId: string | null;
@@ -566,6 +589,8 @@ export interface MappingLink {
   department: { id: number; name: string };
   /** People scheduled here see every department by default (US-05), e.g. Technical Director. */
   seesAll: boolean;
+  /** People scheduled in this position get the Director role for that service (requirements C41). Positions only. */
+  grantsDirector: boolean;
   /** The department isn't in the default list (the default changed since it was linked). */
   outsideDefaultList: boolean;
 }
@@ -650,6 +675,13 @@ export interface SetLinkRequest {
   seesAll: boolean;
 }
 
+/** PUT /api/admin/mapping/director: "Gets the Director role while scheduled" on a linked position (requirements C41). */
+export interface SetDirectorRequest {
+  teamExternalId: string;
+  positionExternalId: string;
+  grantsDirector: boolean;
+}
+
 /** PUT /api/admin/mapping/team-review: mark a team with no links "Not a media team", or undo it. */
 export interface SetTeamReviewRequest {
   teamExternalId: string;
@@ -681,13 +713,14 @@ export interface MappingEditValues {
   seesAll?: boolean;
   serviceType?: string | null;
   notMediaTeam?: boolean;
+  grantsDirector?: boolean;
 }
 
 /** One entry of the append-only mapping log (Stage 7a). */
 export interface MappingEditEvent {
   id: number;
   at: string;
-  action: "link" | "unlink" | "sees_all" | "service_type" | "not_media";
+  action: "link" | "unlink" | "sees_all" | "service_type" | "not_media" | "director";
   /** "Team › Position", "Team", or the Service Type's name. */
   target: string;
   before: MappingEditValues | null;

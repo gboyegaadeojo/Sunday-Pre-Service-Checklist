@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import type { ApiErrorBody } from "../../shared/types";
+import { withScheduledDirector } from "../db/scheduled-directors";
 import { getUser, touchUser } from "../db/users";
 import { hasAccess } from "../lib/access";
 import {
@@ -45,7 +46,10 @@ export function endSession(c: Context<AppEnv>) {
   deleteCookie(c, SESSION_COOKIE, cookieOptions(c));
 }
 
-/** Loads the signed-in user (roles fresh from D1) into c.var.user and renews the 30-day cookie. */
+/**
+ * Loads the signed-in user (roles fresh from D1, including a scheduled Director grant for the current service,
+ * requirements C41) into c.var.user and renews the 30-day cookie.
+ */
 export const loadSession = createMiddleware<AppEnv>(async (c, next) => {
   c.set("user", null);
   c.set("sessionId", null);
@@ -53,7 +57,8 @@ export const loadSession = createMiddleware<AppEnv>(async (c, next) => {
   if (token) {
     const now = nowSeconds();
     const session = await verifySessionToken(sessionSecret(c), token, now);
-    const user = session ? await getUser(c.env.DB, session.sub) : null;
+    const stored = session ? await getUser(c.env.DB, session.sub) : null;
+    const user = stored ? await withScheduledDirector(c.env.DB, stored, new Date(now * 1000)) : null;
     if (!session || !user) {
       endSession(c);
     } else {

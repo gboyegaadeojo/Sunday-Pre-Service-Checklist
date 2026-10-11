@@ -27,7 +27,7 @@ const base = (): MappingResponse => ({
       isMediaTeam: true,
       notMediaTeam: false,
       positions: [
-        { externalId: "p-audio", name: "Audio", link: { department: AUDIO, seesAll: false, outsideDefaultList: false }, status: "linked" },
+        { externalId: "p-audio", name: "Audio", link: { department: AUDIO, seesAll: false, grantsDirector: false, outsideDefaultList: false }, status: "linked" },
         { externalId: "p-cam3", name: "Camera 3", link: null, status: "unlinked" },
       ],
     },
@@ -136,7 +136,7 @@ describe("team mapping page", () => {
   });
 
   it("links a whole team, and shows positions following it", async () => {
-    data.teams[0].link = { department: CAMERAS, seesAll: false, outsideDefaultList: false };
+    data.teams[0].link = { department: CAMERAS, seesAll: false, grantsDirector: false, outsideDefaultList: false };
     data.teams[0].positions[1] = { ...data.teams[0].positions[1], status: "team" };
     data.unlinked = [];
     await renderPage();

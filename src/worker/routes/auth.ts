@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import type { MeResponse, SignInOptionsResponse } from "../../shared/types";
+import { syncScheduledDirectors, withScheduledDirector } from "../db/scheduled-directors";
 import { isTeamMappingReady, verifyMembership } from "../db/schedule-view";
+import { getUser } from "../db/users";
 import { toCurrentUser } from "../lib/access";
 import { endSession, requireUser } from "../middleware/auth";
 import { planningCenterCredentials } from "../sources/planning-center/config";
@@ -13,10 +15,13 @@ export const authRoutes = new Hono<AppEnv>()
     // Each page load re-checks team membership (US-02), so joining or leaving a linked team takes effect then.
     const now = new Date();
     const membership = await verifyMembership(c.env.DB, c.var.schedule, user.id, now);
+    // ...and brings the scheduled Director grants up to date (requirements C41), then reads the roles again.
+    await syncScheduledDirectors(c.env.DB, c.var.schedule, now);
+    const fresh = await withScheduledDirector(c.env.DB, (await getUser(c.env.DB, user.id)) ?? user, now);
     const checked =
       membership === "member" || membership === "not_member"
-        ? { ...user, teamVerifiedAt: membership === "member" ? now.toISOString() : null }
-        : user;
+        ? { ...fresh, teamVerifiedAt: membership === "member" ? now.toISOString() : null }
+        : fresh;
     // Unreachable: the last confirmation stands for 90 days; without one, they're told to try again shortly (US-04a).
     const unreachable = membership === "unavailable" ? c.var.schedule?.label : undefined;
     return c.json<MeResponse>({ user: toCurrentUser(checked, await isTeamMappingReady(c.env.DB, c.var.schedule), unreachable) });

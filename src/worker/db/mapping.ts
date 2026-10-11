@@ -57,6 +57,7 @@ interface LinkRow {
   team_name: string;
   position_name: string | null;
   sees_all: number;
+  grants_director: number;
   department_id: number;
   department_name: string;
   in_default_list: number;
@@ -65,7 +66,7 @@ interface LinkRow {
 const readLinks = (db: D1Database, sourceId: string) =>
   db
     .prepare(
-      `SELECT tl.id, tl.team_external_id, tl.position_external_id, tl.team_name, tl.position_name, tl.sees_all,
+      `SELECT tl.id, tl.team_external_id, tl.position_external_id, tl.team_name, tl.position_name, tl.sees_all, tl.grants_director,
               c.id AS department_id, c.name AS department_name,
               (c.deleted_at IS NULL AND c.list_id = ${DEFAULT_LIST}) AS in_default_list
          FROM team_links tl JOIN categories c ON c.id = tl.category_id
@@ -77,6 +78,7 @@ const readLinks = (db: D1Database, sourceId: string) =>
 const toLink = (r: LinkRow): MappingLink => ({
   department: { id: r.department_id, name: r.department_name },
   seesAll: r.sees_all === 1,
+  grantsDirector: r.grants_director === 1,
   outsideDefaultList: r.in_default_list !== 1,
 });
 
@@ -187,6 +189,13 @@ export const currentPlan = (db: D1Database, source: ScheduleSource, serviceTypeI
   cached<SourcePlan | null>(db, cacheKey(source, "plan", serviceTypeId, today), () => source.nextPlan(serviceTypeId, today));
 
 /**
+ * Everyone scheduled on a plan (declined left out), cached a few minutes: shared by Team mapping's unmatched names and
+ * the scheduled Director grants (db/scheduled-directors.ts), so they ask the source once.
+ */
+export const planAssignments = (db: D1Database, source: ScheduleSource, planExternalId: string) =>
+  cached<PlanAssignment[]>(db, cacheKey(source, "plan-assignments", planExternalId), () => source.planAssignments(planExternalId));
+
+/**
  * Position names on the current service's plan that match none of their team's positions, on media teams only
  * (requirements C38, C39): usually a position renamed in the source after people were scheduled. Those people see
  * their team's department, if the team is linked, or choose their own. One entry per team and name, with how many
@@ -201,9 +210,7 @@ async function unmatchedPositions(
 ): Promise<{ planDate: string; positions: UnmatchedPosition[] } | null> {
   const plan = await currentPlan(db, source, serviceTypeId, today);
   if (!plan) return null;
-  const assignments = await cached<PlanAssignment[]>(db, cacheKey(source, "plan-assignments", plan.externalId), () =>
-    source.planAssignments(plan.externalId),
-  );
+  const assignments = await planAssignments(db, source, plan.externalId);
   const positions: UnmatchedPosition[] = [];
   for (const a of assignments) {
     if (a.positionExternalId !== null || a.positionName === null) continue;
@@ -352,6 +359,49 @@ export async function setLink(
     return "bad_department";
   }
   return "conflict";
+}
+
+export type DirectorSwitchResult = "ok" | "unchanged" | "no_link" | "conflict";
+
+/**
+ * "Gets the Director role while scheduled" on a position's own link, on or off (requirements C41). Logged like any
+ * mapping change, log first: the row is written only if the link is still as read, and the switch changes only if it
+ * was. "no_link": the position has no link of its own (the switch needs one). Grants follow at the next schedule check.
+ */
+export async function setGrantsDirector(
+  db: D1Database,
+  actor: Actor,
+  sourceId: string,
+  target: LinkTarget & { positionExternalId: string },
+  on: boolean,
+): Promise<DirectorSwitchResult> {
+  const link = await db
+    .prepare("SELECT id, grants_director FROM team_links WHERE source = ?1 AND team_external_id = ?2 AND position_external_id = ?3")
+    .bind(sourceId, target.teamExternalId, target.positionExternalId)
+    .first<{ id: number; grants_director: number }>();
+  if (!link) return "no_link";
+  if ((link.grants_director === 1) === on) return "unchanged";
+  const name = `${target.teamName} › ${target.positionName}`;
+  const [logged] = await db.batch([
+    bindWithActor(
+      db.prepare(
+        `INSERT INTO mapping_events (${LOG_COLUMNS})
+         SELECT 'director', ?1, ?2, ?3, ?4, json_object('grantsDirector', json(?7)), json_object('grantsDirector', json(?8)), ?21, ?22, ?23, ?24, ?25
+           FROM team_links WHERE id = ?5 AND grants_director = ?6`,
+      ),
+      actor,
+      sourceId,
+      target.teamExternalId,
+      target.positionExternalId,
+      name,
+      link.id,
+      link.grants_director,
+      link.grants_director === 1 ? "true" : "false",
+      on ? "true" : "false",
+    ),
+    db.prepare("UPDATE team_links SET grants_director = ?2 WHERE id = ?1 AND changes() = 1").bind(link.id, on ? 1 : 0),
+  ]);
+  return logged.meta.changes === 1 ? "ok" : "conflict";
 }
 
 export type TeamReviewResult = "ok" | "unchanged" | "has_links";

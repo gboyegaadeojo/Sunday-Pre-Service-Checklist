@@ -2,6 +2,7 @@
 // local test users, later possibly Google) are linked to it in user_identities. Roles and every record of
 // who did what refer to users.id, so changing sign-in providers never loses people, roles or history.
 
+import type { DirectorGrant } from "../../shared/types";
 import type { ExternalIdentity } from "../sources/identity";
 
 export interface User {
@@ -10,8 +11,11 @@ export interface User {
   name: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  /** Director now: the permanent role, or a scheduled grant for the current service (set by withScheduledDirector). */
   isDirector: boolean;
   teamVerifiedAt: string | null;
+  /** Present while Director only through being scheduled in a marked position (requirements C41). */
+  scheduledDirector?: DirectorGrant;
 }
 
 interface UserRow {

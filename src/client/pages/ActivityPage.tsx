@@ -126,12 +126,24 @@ const describeSettings = (e: SettingsEditEvent) =>
 
 const ROLE: Record<RoleField, string> = { isAdmin: "Admin", isDirector: "Director" };
 
-/** "Test Volunteer: Director added; Admin removed" (US-03). */
-const describeRoles = (e: RoleEditEvent) =>
-  `${e.target}: ${(Object.keys(ROLE) as RoleField[])
+/**
+ * "Test Volunteer: Director added; Admin removed" (US-03), or an automatic Director grant from the schedule
+ * (requirements C41): "Test TD: Director while scheduled as Production › Technical Director (Sunday, October 18,
+ * 2026)", and its end.
+ */
+function describeRoles(e: RoleEditEvent): string {
+  if ("scheduledDirector" in e.after) {
+    const grant = e.after.scheduledDirector ?? e.before.scheduledDirector;
+    const where = grant ? ` as ${grant.position} (${formatServiceDate(grant.serviceDate)})` : "";
+    if (e.after.scheduledDirector) return `${e.target}: Director while scheduled${where}`;
+    const why = e.after.reason === "service_over" ? "that service is over" : "no longer scheduled in a position that grants it";
+    return `${e.target}: scheduled Director ended${where}, ${why}`;
+  }
+  return `${e.target}: ${(Object.keys(ROLE) as RoleField[])
     .filter((f) => f in e.after)
     .map((f) => `${ROLE[f]} ${e.after[f] ? "added" : "removed"}`)
     .join("; ")}`;
+}
 
 /** A team-mapping change in words (Stage 7a, US-15). */
 function describeMapping(e: MappingEditEvent): string {
@@ -149,6 +161,8 @@ function describeMapping(e: MappingEditEvent): string {
       return `${e.target}: ${after?.seesAll ? "now sees" : "no longer sees"} all departments`;
     case "not_media":
       return `${e.target}: ${after?.notMediaTeam ? "marked not a media team" : "no longer marked as not a media team"}`;
+    case "director":
+      return `${e.target}: ${after?.grantsDirector ? "now gets" : "no longer gets"} the Director role while scheduled`;
     default:
       return e.target;
   }

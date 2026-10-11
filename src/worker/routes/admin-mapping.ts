@@ -5,6 +5,7 @@ import type {
   MappingEditsResponse,
   MappingResponse,
   MappingStatusResponse,
+  SetDirectorRequest,
   SetLinkRequest,
   SetServiceTypeRequest,
   SetTeamReviewRequest,
@@ -17,6 +18,7 @@ import {
   listServiceTypes,
   listTeams,
   refreshSchedule,
+  setGrantsDirector,
   setLink,
   setNotMediaTeam,
   setServiceType,
@@ -33,6 +35,8 @@ import type { AppEnv } from "../types";
 //   POST /api/admin/mapping/refresh        "Refresh from Planning Center": fetch everything anew, then as GET
 //   PUT  /api/admin/mapping/service-type   { externalId }  the Service Type the app follows
 //   PUT  /api/admin/mapping/link           { teamExternalId, positionExternalId, departmentId, seesAll }  null department unlinks
+//   PUT  /api/admin/mapping/director       { teamExternalId, positionExternalId, grantsDirector }  "Gets the Director role
+//                                          while scheduled" on a linked position (requirements C41)
 //   PUT  /api/admin/mapping/team-review    { teamExternalId, notMediaTeam }  mark a team with no links "Not a media team", or undo
 //   GET  /api/admin/mapping/events         the append-only mapping log, newest first
 // Nothing is linked automatically. Changes are logged; links use the source's IDs, never names.
@@ -128,6 +132,31 @@ export const adminMappingRoutes = new Hono<AppEnv>()
       if (result === "not_media") {
         return c.json<ApiErrorBody>({ error: "This team is marked “Not a media team”. Undo that first to link it." }, 409);
       }
+      if (result === "conflict") return c.json<ApiErrorBody>({ error: "This link was just changed by someone else. Showing the latest." }, 409);
+      return c.body(null, 204);
+    }),
+  )
+  .put("/director", (c) =>
+    guardSource(c, async () => {
+      const source = c.var.schedule;
+      if (!source) return notConnected(c);
+      const body = (await c.req.json().catch(() => null)) as Partial<SetDirectorRequest> | null;
+      if (typeof body?.teamExternalId !== "string" || typeof body.positionExternalId !== "string" || typeof body.grantsDirector !== "boolean") {
+        return c.json<ApiErrorBody>({ error: "Send teamExternalId, positionExternalId and grantsDirector." }, 400);
+      }
+      // The position must be in the source now (turning it off for one that's gone works through removing its link).
+      const serviceTypeId = await getServiceTypeId(c.env.DB, source);
+      const team = serviceTypeId ? (await listTeams(c.env.DB, source, serviceTypeId)).teams.find((t) => t.externalId === body.teamExternalId) : undefined;
+      const position = team?.positions.find((p) => p.externalId === body.positionExternalId);
+      if (!team || !position) return c.json<ApiErrorBody>({ error: "That position isn't in the schedule any more. Refresh and try again." }, 404);
+      const result = await setGrantsDirector(
+        c.env.DB,
+        actorFor(c),
+        source.id,
+        { teamExternalId: team.externalId, positionExternalId: position.externalId, teamName: team.name, positionName: position.name },
+        body.grantsDirector,
+      );
+      if (result === "no_link") return c.json<ApiErrorBody>({ error: "Link this position to a department first." }, 409);
       if (result === "conflict") return c.json<ApiErrorBody>({ error: "This link was just changed by someone else. Showing the latest." }, 409);
       return c.body(null, 204);
     }),
