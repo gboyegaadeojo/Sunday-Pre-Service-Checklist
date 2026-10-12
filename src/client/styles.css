@@ -222,6 +222,11 @@ body::after {
  */
 html[data-glass="off"] {
   background-color: var(--c-bg);
+  /* Glass effects turned off restores the look from before the glass work, corners included (requirements C40). */
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-glass: 0.75rem;
+  --radius-dialog: 0.75rem;
 }
 html[data-glass="off"] body::before,
 html[data-glass="off"] body::after,
