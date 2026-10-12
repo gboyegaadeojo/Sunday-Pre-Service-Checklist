@@ -190,9 +190,15 @@ If schedule data is unavailable, show the specified fallback banner and allow el
 
 Departments come from the checklist data. There can be any number of them; there are currently six (Presentation / Computer Graphics, Audio Engineer, Camera Operators, Director (Switcher), Miscellaneous and Technical Director). Admins add, rename, reorder and hide departments, so layouts must never assume a fixed count or fixed names.
 
-On desktop, use a persistent left sidebar or an equally effective department navigation pattern. (As built, October 2026: each department is a card-style button with its name and "X of Y tasks", the selected one outlined in purple; the workspace starts with a header card for the selected department, "X of Y complete · Z remaining" and a purple bar; each section sits in its own card with a small "SECTION 1" label above its name. Phones keep the sticky department picker, and hide the header card because the picker already names the department.)
+On desktop, use a persistent left sidebar or an equally effective department navigation pattern. (As built, October 2026: each department is a card-style button with its name and "X of Y tasks", the selected one outlined in purple; the workspace starts with a header card for the selected department, "X of Y complete · Z remaining" and a purple bar; each section sits in its own card with a small "SECTION 1" label above its name. The sidebar is from 1024px; below that the department picker below takes its place and the header card is hidden, because the picker already names the department.)
 
-On mobile, use a compact horizontal selector or accessible department menu.
+On mobile, use a compact horizontal selector or accessible department menu. As built (October 2026), on phones and tablets (below 1024px):
+
+- **The picker is a control, not a content card:** a purple-tinted surface (`bg-control`) with a subtle purple border, the department name large, "X of Y done" as secondary text, and **Change** with an up-down select icon (never the section collapse chevron).
+- **A status line above the name** says whose checklist it is: **Your checklist** (purple badge) for their own scheduled department; **Helping out: not your department** with a **Back to mine** button when they're on another; **Choose your department** when they have none of their own (not scheduled, position not linked, no plan published, or the schedule couldn't be loaded; the note explaining why stays above).
+- **Tapping it opens a bottom sheet** (native `<dialog>`, solid like every list, glass corners and shadow, slides up except with Reduce Motion): **Your departments** first with a check mark on the current one, the **Show all departments** switch, then **Other departments** with their counts; 48px rows; Done, Escape or a tap outside closes it and focus returns to the button.
+- **When the card scrolls up under the header,** a compact one-line bar (a bar surface, design.md §2) takes its place under the header: name, count, save status and the select icon, opening the same sheet. Hidden and out of the keyboard order otherwise.
+- **Screen readers** hear one button, e.g. "Technical Director, your checklist, 0 of 7 done. Change department".
 
 For each department, display:
 
