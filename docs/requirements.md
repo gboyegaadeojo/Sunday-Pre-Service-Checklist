@@ -2,15 +2,15 @@
 
 > **Version:** 1.25 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
-> **Status:** All decisions closed — ready for build. C41 and C42 are planned, not built yet.
+> **Status:** All decisions closed — ready for build. C41 is built; C42 is planned, not built yet.
 
 ---
 
-## 0. Changes in Version 1.25 (planned, not built yet)
+## 0. Changes in Version 1.25 (C41 built October 2026; C42 planned, not built yet)
 
 | # | Change | Why |
 |---|--------|-----|
-| C41 | **Scheduled Director** (planned; build plan Stage 12). In Team mapping, each position gets a switch, **"Gets the Director role while scheduled"**. People scheduled in such a position for the current service (not declined) get the Director role for that service period only, and lose it when the next service becomes current, or sooner if they're taken off the plan. As with the department view, a scheduled person's position comes from Planning Center by name (C38): someone still carrying a position's old name after a rename matches nothing and isn't granted (C39). Directors set on Users & Permissions are permanent and stay as they are. If Planning Center can't be reached, the grant from the last successful schedule check for that service stands (US-04a). Users & Permissions shows **"Director (scheduled)"** or **"Director (permanent)"**, and the role log records each automatic grant and its end. **This changes the rule that roles never come from Planning Center** (US-03): roles still never come from Planning Center on their own, but an Admin can choose positions that grant Director while someone is scheduled in them. Admin is never granted this way. | Technical Directors rotate week to week; the one on duty needs reset and undo without an Admin changing roles every Sunday. |
+| C41 | **Scheduled Director** (built; build plan Stage 12). In Team mapping, each position gets a switch, **"Gets the Director role while scheduled"**. People scheduled in such a position for the current service (not declined) get the Director role for that service period only, and lose it when the next service becomes current, or sooner if they're taken off the plan. As with the department view, a scheduled person's position comes from Planning Center by name (C38): someone still carrying a position's old name after a rename matches nothing and isn't granted (C39). Directors set on Users & Permissions are permanent and stay as they are. If Planning Center can't be reached, the grant from the last successful schedule check for that service stands (US-04a). Users & Permissions shows **"Director (scheduled)"** or **"Director (permanent)"**, and the role log records each automatic grant and its end. **This changes the rule that roles never come from Planning Center** (US-03): roles still never come from Planning Center on their own, but an Admin can choose positions that grant Director while someone is scheduled in them. Admin is never granted this way. | Technical Directors rotate week to week; the one on duty needs reset and undo without an Admin changing roles every Sunday. |
 | C42 | **Installable app** (planned; build plan Stage 13). The app can be installed on phones and computers with no app store: an app icon, opens full screen without the browser bar, an **Install** button on Android and desktop browsers that support it, and **Add to Home Screen** on iPhone (with a short how-to). It stays the same website underneath: same address, same sign-in, updates arrive with each deploy, and it still needs a connection (no offline mode). | One tap from the home screen on a Sunday morning, like the other apps the team uses, at no cost. |
 
 ## Changes in Version 1.24
@@ -219,7 +219,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Admin and Director status are stored as flags on the user record in the app's database, keyed by Planning Center person ID.
 - The first admin is seeded at deployment time (documented in the deployment guide).
 - An admin can grant or revoke Admin and Director flags for other users from within the app.
-- *Planned (C41, not built yet):* Director can also be granted automatically while someone is scheduled in a position an Admin has marked "Gets the Director role while scheduled", for that service period only. Admin is never granted this way.
+- *C41:* Director can also be granted automatically while someone is scheduled in a position an Admin has marked "Gets the Director role while scheduled", for that service period only. Admin is never granted this way.
 - **There must always be at least one Admin.** The server refuses to remove the Admin role from the last Admin ("You can't remove the last Admin. Make someone else an Admin first."), including when two Admins try to remove each other at the same moment.
 - An Admin removing their own Admin role is asked to confirm first, even when other Admins exist.
 - Roles are checked on the server on every request, so revoking access takes effect on the user's next page load.
@@ -499,6 +499,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - Admin links each team, or an individual position within a team, to a category in the default list (e.g. team "Production" → position "Camera 2" → "Camera Operators").
 - A position-level link overrides its team-level link.
 - Admin can mark a team or position as **"sees all departments"** (e.g. Technical Director). People scheduled in it see every category by default (US-05).
+- Admin can mark a linked position **"Gets the Director role while scheduled"** (C41): people scheduled in it (not declined) are Directors for the current service only.
 - One category can have many teams/positions linked to it, but each team or position links to only one category.
 - Only teams with at least one link count as "media teams" for access (US-02).
 - Teams or positions with no link are clearly marked as unlinked.
@@ -507,7 +508,7 @@ A mobile-friendly web app for a church's media/production volunteers. Volunteers
 - A **"Refresh from Planning Center"** button fetches the teams and positions again at once, so a position just added in Planning Center shows up without waiting for the cache to expire.
 - Admins see a **notice**, on the mapping screen and on its tab in the Admin area, while any position on a media team leads to no department (no link of its own and none on its team), or a link points to a team or position deleted in Planning Center. Teams with no links at all are not media teams and are not counted.
 - A team with no links that nobody has reviewed shows an **informational note** (not a warning): "New team in Planning Center: link it if it's a media team." An Admin can mark such a team **"Not a media team"** once (e.g. a worship band), which stops the note. A marked team can't be linked until the mark is undone, and a team with links can't be marked.
-- Every mapping change (link, unlink, "sees all departments", "Not a media team", Service Type) is logged with who and when, append-only, like other admin changes.
+- Every mapping change (link, unlink, "sees all departments", "Gets the Director role while scheduled", "Not a media team", Service Type) is logged with who and when, append-only, like other admin changes.
 - Links are stored with their source (Planning Center today) and that source's IDs, in provider-neutral columns, so another scheduling source could be added without changing the rest of the app (C22).
 
 ---

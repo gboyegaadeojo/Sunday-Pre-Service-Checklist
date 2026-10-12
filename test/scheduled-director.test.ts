@@ -7,7 +7,7 @@
 // request tests prove the server enforces whatever grants exist.
 import { env } from "cloudflare:test";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { ChecklistResponse, MeResponse, RoleEditsResponse } from "../src/shared/types";
+import type { ChecklistResponse, MeResponse, RoleEditsResponse, UsersResponse } from "../src/shared/types";
 import { activeDirectorGrant, syncScheduledDirectors } from "../src/worker/db/scheduled-directors";
 import { getCurrentService } from "../src/worker/db/services";
 import { createFakeScheduleSource } from "../src/worker/dev/fake-schedule";
@@ -141,6 +141,17 @@ describe("a scheduled Technical Director", () => {
     expect((await me(cookies.td)).isDirector).toBe(false);
     expect((await tryReset(cookies.td)).status).toBe(403);
     expect((await roleLog()).at(-1)?.after).toEqual({ scheduledDirector: null, reason: "not_scheduled" });
+  });
+});
+
+describe("Users & Permissions", () => {
+  it("lists a scheduled Director apart from the permanent role", async () => {
+    await me(cookies.td);
+    const { users } = (await (await request("/api/admin/users", { headers: { Cookie: cookies.admin } })).json()) as UsersResponse;
+    const td = users.find((u) => u.name === "Test Technical Director");
+    expect(td).toMatchObject({ isDirector: false, scheduledDirector: { position: "Production › Technical Director", serviceDate: expect.any(String) } });
+    expect(users.find((u) => u.name === "Test Director")).toMatchObject({ isDirector: true, scheduledDirector: null });
+    expect(users.find((u) => u.name === "Test Volunteer")).toMatchObject({ scheduledDirector: null });
   });
 });
 

@@ -11,6 +11,7 @@ const person = (id: number, name: string, roles: Partial<UserSummary> = {}): Use
   avatarUrl: null,
   isAdmin: false,
   isDirector: false,
+  scheduledDirector: null,
   onMediaTeam: true,
   lastSeenAt: "2026-10-04T15:00:00.000Z",
   ...roles,
@@ -66,7 +67,8 @@ const renderPage = async () => {
   render(<UsersPage me={ME} onAccessChanged={onAccessChanged} onNavigate={onNavigate} />);
   await screen.findByRole("heading", { name: "Users & Permissions" });
 };
-const toggle = (role: "Admin" | "Director", name: string) => screen.getByRole("switch", { name: `${role}: ${name}` });
+const toggle = (role: "Admin" | "Director", name: string) =>
+  screen.getByRole("switch", { name: `${role === "Director" ? "Director (permanent)" : role}: ${name}` });
 
 describe("users page", () => {
   it("lists people with what they can do, and their roles as switches", async () => {
@@ -129,6 +131,30 @@ describe("users page", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Remove my Admin role" }));
     await screen.findByText("You can't remove the last Admin. Make someone else an Admin first.");
     expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  // Requirements C41: a scheduled Director is shown in words; the switch is only the permanent role.
+  it("shows Director (scheduled) and Director (permanent) apart; the switch is the permanent role only", async () => {
+    const grant = { position: "Production › Technical Director", serviceDate: "2026-10-18" };
+    data = {
+      ...data,
+      users: [
+        person(1, "Test Admin", { isAdmin: true }),
+        person(4, "Scheduled TD", { scheduledDirector: grant }),
+        person(5, "Permanent Director", { isDirector: true }),
+        person(6, "Both Director", { isDirector: true, scheduledDirector: grant }),
+      ],
+    };
+    await renderPage();
+    const row = (name: string) => screen.getByText(name).closest("li") as HTMLElement;
+    expect(row("Scheduled TD").textContent).toContain("Director (scheduled)");
+    expect(row("Scheduled TD").textContent).toContain("Scheduled as Production › Technical Director for Sunday, October 18, 2026: Director for that service only, set in Team mapping");
+    expect(toggle("Director", "Scheduled TD").getAttribute("aria-checked")).toBe("false");
+    expect(row("Permanent Director").textContent).toContain("Director (permanent)");
+    expect(row("Permanent Director").textContent).not.toContain("Scheduled");
+    expect(row("Both Director").textContent).toContain("Director (permanent)");
+    expect(row("Both Director").textContent).toContain("Also scheduled as Production › Technical Director");
+    expect(toggle("Director", "Both Director").getAttribute("aria-checked")).toBe("true");
   });
 
   it("finds people by name", async () => {

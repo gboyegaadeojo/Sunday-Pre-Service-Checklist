@@ -65,7 +65,8 @@ The live app always uses Planning Center when the token is set. The sample sched
 ## Signing in and roles
 
 - **"Sign in with Planning Center"** works once the OAuth application is configured. The person approves the app on Planning Center's page and comes back signed in.
-- **Roles never come from Planning Center.** Someone signing in for the first time is a Volunteer if they're on a linked team, and has no access otherwise. Admins grant Admin or Director on **Users & Permissions**.
+- **Roles never come from Planning Center on their own.** Someone signing in for the first time is a Volunteer if they're on a linked team, and has no access otherwise. Admins grant Admin or a permanent Director on **Users & Permissions**.
+- **The one exception an Admin chooses: Scheduled Director** (requirements C41). In **Team mapping**, a linked position can be marked **"Gets the Director role while scheduled"**. Whoever is scheduled in it for the current service (not declined) is a Director for that service only; it ends by itself when the next service becomes current, or sooner if they're taken off the plan. Admin is never granted this way, and permanent Directors are unaffected. Users & Permissions shows **Director (scheduled)** or **Director (permanent)**, and Activity logs each automatic grant and its end. It follows the position name on the plan, like the department view: someone still carrying a position's old name after a rename isn't granted. If Planning Center can't be reached, the last check stands.
 - **Access** is decided by the team roster (being on a linked team), not by being scheduled this week (US-02).
 - **The very first Admin:**
   - Locally, an existing Admin (the developer "Test Admin") grants it.

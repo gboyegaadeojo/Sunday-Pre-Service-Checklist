@@ -118,6 +118,14 @@ export function MappingPage({ onAccessChanged }: { onAccessChanged: () => void }
                 data={data}
                 busy={busy}
                 setLink={setLink}
+                setDirector={(position, on) =>
+                  change(
+                    () => mapping.setDirector(team.externalId, position.externalId, on),
+                    on
+                      ? `People scheduled as ${team.name} › ${position.name} now get the Director role for that service.`
+                      : `${team.name} › ${position.name} no longer gives the Director role.`,
+                  )
+                }
                 setNotMediaTeam={(notMediaTeam) =>
                   change(
                     () => mapping.setNotMediaTeam(team.externalId, notMediaTeam),
@@ -217,12 +225,14 @@ function TeamCard({
   data,
   busy,
   setLink,
+  setDirector,
   setNotMediaTeam,
 }: {
   team: MappingTeam;
   data: MappingResponse;
   busy: boolean;
   setLink: (body: SetLinkRequest, done: string) => Promise<boolean>;
+  setDirector: (position: MappingPosition, on: boolean) => Promise<boolean>;
   setNotMediaTeam: (notMediaTeam: boolean) => Promise<boolean>;
 }) {
   const save = (position: MappingPosition | null, link: MappingLink | null, departmentId: number | null, seesAll: boolean) => {
@@ -290,6 +300,7 @@ function TeamCard({
             noneLabel={team.link ? `Same as the team (${team.link.department.name})` : "Not linked"}
             busy={busy}
             onChange={(departmentId, seesAll) => save(p, p.link, departmentId, seesAll)}
+            onDirector={(on) => void setDirector(p, on)}
           />
         ))}
       </ul>
@@ -297,7 +308,10 @@ function TeamCard({
   );
 }
 
-/** One team or position: its department, and whether people scheduled there see all departments. */
+/**
+ * One team or position: its department, whether people scheduled there see all departments, and (positions only)
+ * whether they get the Director role for that service (requirements C41). Both switches need the row's own link.
+ */
 function LinkRow({
   name,
   hint,
@@ -308,6 +322,7 @@ function LinkRow({
   noneLabel,
   busy,
   onChange,
+  onDirector,
 }: {
   name: string;
   hint?: string;
@@ -318,6 +333,8 @@ function LinkRow({
   noneLabel: string;
   busy: boolean;
   onChange: (departmentId: number | null, seesAll: boolean) => void;
+  /** Positions only: turns "Gets the Director role while scheduled" on or off. */
+  onDirector?: (on: boolean) => void;
 }) {
   const selectId = useId();
   // A link to a department outside the default list stays selectable, so it shows as it is.
@@ -358,6 +375,16 @@ function LinkRow({
           disabled={busy || !link}
           onToggle={() => link && onChange(link.department.id, !link.seesAll)}
         />
+        {onDirector && (
+          <Switch
+            label="Gets the Director role while scheduled"
+            shortLabel="Director while scheduled"
+            ariaLabel={`${name}: gets the Director role while scheduled`}
+            on={link?.grantsDirector ?? false}
+            disabled={busy || !link}
+            onToggle={() => link && onDirector(!link.grantsDirector)}
+          />
+        )}
       </div>
     </li>
   );

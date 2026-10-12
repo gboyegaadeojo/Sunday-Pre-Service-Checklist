@@ -4,6 +4,7 @@
 
 import type { RoleEditsResponse, RoleField, UpdateRolesRequest, UserSummary, UsersResponse } from "../../shared/types";
 import { type Actor, actorValues } from "./checkoffs";
+import { currentServiceDay } from "./services";
 import { getSettings } from "./settings";
 
 const COLUMN: Record<RoleField, string> = { isAdmin: "is_admin", isDirector: "is_director" };
@@ -19,8 +20,11 @@ interface UserRow {
   last_seen_at: string | null;
 }
 
-/** Everyone who has signed in, by name. Sign-in provider IDs are never included (US-03a). */
-export async function getUsers(db: D1Database): Promise<UsersResponse> {
+/**
+ * Everyone who has signed in, by name, with any scheduled Director grant for the current service (requirements C41;
+ * `now` decides which service that is). Sign-in provider IDs are never included (US-03a).
+ */
+export async function getUsers(db: D1Database, now: Date): Promise<UsersResponse> {
   const { time_zone: timeZone } = await getSettings(db, ["time_zone"]);
   if (!timeZone) throw new Error("The time_zone setting is missing.");
   const { results } = await db
@@ -29,6 +33,18 @@ export async function getUsers(db: D1Database): Promise<UsersResponse> {
          FROM users ORDER BY display_name COLLATE NOCASE, id`,
     )
     .all<UserRow>();
+  const { results: open } = await db
+    .prepare(
+      `SELECT g.user_id, g.position_name, s.service_date FROM scheduled_directors g JOIN services s ON s.id = g.service_id
+        WHERE g.ended_at IS NULL`,
+    )
+    .all<{ user_id: number; position_name: string; service_date: string }>();
+  // Only grants for the current service count (an open grant from another service has ended in effect).
+  const current = open.length > 0 ? (await currentServiceDay(db, now)).date : null;
+  const grantFor = (id: number) => {
+    const g = open.find((r) => r.user_id === id && r.service_date === current);
+    return g ? { position: g.position_name, serviceDate: g.service_date } : null;
+  };
   return {
     timeZone,
     users: results.map(
@@ -38,6 +54,7 @@ export async function getUsers(db: D1Database): Promise<UsersResponse> {
         avatarUrl: r.avatar_url,
         isAdmin: r.is_admin === 1,
         isDirector: r.is_director === 1,
+        scheduledDirector: grantFor(r.id),
         onMediaTeam: r.team_verified_at !== null,
         lastSeenAt: r.last_seen_at,
       }),

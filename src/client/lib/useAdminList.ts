@@ -123,6 +123,9 @@ export function useMapping({ onAccessChanged }: { onAccessChanged: () => void })
     ...rest,
     setServiceType: (externalId: string) => run(() => putJson("/api/admin/mapping/service-type", { externalId })),
     setLink: (body: SetLinkRequest) => run(() => putJson("/api/admin/mapping/link", body)),
+    /** "Gets the Director role while scheduled" on a linked position (requirements C41). */
+    setDirector: (teamExternalId: string, positionExternalId: string, grantsDirector: boolean) =>
+      run(() => putJson("/api/admin/mapping/director", { teamExternalId, positionExternalId, grantsDirector })),
     /** Marks a team with no links "Not a media team", or undoes it. */
     setNotMediaTeam: (teamExternalId: string, notMediaTeam: boolean) =>
       run(() => putJson("/api/admin/mapping/team-review", { teamExternalId, notMediaTeam })),

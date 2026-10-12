@@ -15,7 +15,7 @@ import type { AppEnv } from "../types";
 export const LAST_ADMIN_MESSAGE = "You can't remove the last Admin. Make someone else an Admin first.";
 export const adminUserRoutes = new Hono<AppEnv>()
   .use(requireAdmin)
-  .get("/", async (c) => c.json<UsersResponse>(await getUsers(c.env.DB)))
+  .get("/", async (c) => c.json<UsersResponse>(await getUsers(c.env.DB, new Date())))
   .get("/events", async (c) => c.json<RoleEditsResponse>(await getRoleEvents(c.env.DB)))
   .put("/:id/roles", async (c) => {
     const id = Number(c.req.param("id"));

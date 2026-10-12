@@ -135,6 +135,27 @@ describe("team mapping page", () => {
     );
   });
 
+  // Requirements C41: "Gets the Director role while scheduled", positions only, needing the position's own link.
+  it("turns on the Director role while scheduled for a linked position, and only there", async () => {
+    await renderPage();
+    const production = team("Production");
+    const audio = within(production).getByRole("switch", { name: "Audio: gets the Director role while scheduled" }) as HTMLButtonElement;
+    expect(audio.disabled).toBe(false);
+    expect(audio.getAttribute("aria-checked")).toBe("false");
+    // Unlinked position: nothing to attach it to yet. The whole team has no such switch.
+    expect((within(production).getByRole("switch", { name: "Camera 3: gets the Director role while scheduled" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(within(production).queryByRole("switch", { name: "Whole team: gets the Director role while scheduled" })).toBeNull();
+    fireEvent.click(audio);
+    await waitFor(() =>
+      expect(sent.at(-1)).toEqual({
+        method: "PUT",
+        path: "/api/admin/mapping/director",
+        body: { teamExternalId: "t-prod", positionExternalId: "p-audio", grantsDirector: true },
+      }),
+    );
+    await screen.findByText("People scheduled as Production › Audio now get the Director role for that service.");
+  });
+
   it("links a whole team, and shows positions following it", async () => {
     data.teams[0].link = { department: CAMERAS, seesAll: false, grantsDirector: false, outsideDefaultList: false };
     data.teams[0].positions[1] = { ...data.teams[0].positions[1], status: "team" };

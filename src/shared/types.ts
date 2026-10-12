@@ -534,7 +534,10 @@ export interface UserSummary {
   name: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  /** The permanent Director role, set here on Users & Permissions. */
   isDirector: boolean;
+  /** Director for the current service because they're scheduled in a marked position (requirements C41), or null. */
+  scheduledDirector: DirectorGrant | null;
   /** Verified as a member of a linked media team (US-02). Without it and without a role, they have no access. */
   onMediaTeam: boolean;
   lastSeenAt: string | null;

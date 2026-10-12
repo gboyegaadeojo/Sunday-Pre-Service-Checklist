@@ -8,6 +8,7 @@ import { ErrorFeedback, NoticeFeedback } from "../../components/ui/Feedback";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
 import { Switch } from "../../components/ui/Switch";
+import { formatServiceDate } from "../../lib/format";
 import type { Navigate } from "../../lib/router";
 import { useUsers } from "../../lib/useAdminList";
 
@@ -18,11 +19,19 @@ interface Props {
   onNavigate: Navigate;
 }
 
-const ROLE_LABEL: Record<RoleField, string> = { isAdmin: "Admin", isDirector: "Director" };
+// The switches set the permanent roles. A scheduled Director (requirements C41) comes from Team mapping and the
+// schedule, so it's shown in words, not as a switch.
+const ROLE_LABEL: Record<RoleField, string> = { isAdmin: "Admin", isDirector: "Director (permanent)" };
+const ROLE_SHORT: Record<RoleField, string> = { isAdmin: "Admin", isDirector: "Director" };
 
-/** What a person can do, in words. */
+/** Has a role now: Admin, a permanent Director, or Director while scheduled for the current service. */
+const hasRole = (u: UserSummary) => u.isAdmin || u.isDirector || u.scheduledDirector !== null;
+
+/** What a person can do, in words: "Director (permanent)" or "Director (scheduled)" (requirements C41). */
 function status(u: UserSummary): string {
-  const roles = [u.isAdmin && "Admin", u.isDirector && "Director"].filter(Boolean).join(" · ");
+  const roles = [u.isAdmin && "Admin", u.isDirector && "Director (permanent)", !u.isDirector && !u.isAdmin && u.scheduledDirector && "Director (scheduled)"]
+    .filter(Boolean)
+    .join(" · ");
   if (roles) return roles;
   return u.onMediaTeam ? "Volunteer" : "No access: not on a media team";
 }
@@ -113,9 +122,16 @@ export function UsersPage({ me, onAccessChanged, onNavigate }: Props) {
                         {u.name}
                         {u.id === me.id && <span className="ml-2 rounded-control border border-line px-1.5 text-meta font-normal text-fg-muted">You</span>}
                       </p>
-                      <p className={`text-meta wrap-anywhere ${u.isAdmin || u.isDirector || u.onMediaTeam ? "text-fg-muted" : "text-warning"}`}>
+                      <p className={`text-meta wrap-anywhere ${hasRole(u) || u.onMediaTeam ? "text-fg-muted" : "text-warning"}`}>
                         {status(u)} · last seen {lastSeen(u.lastSeenAt, timeZone)}
                       </p>
+                      {u.scheduledDirector && !u.isAdmin && (
+                        <p className="text-meta text-fg-muted wrap-anywhere">
+                          {u.isDirector ? "Also scheduled" : "Scheduled"} as {u.scheduledDirector.position} for{" "}
+                          {formatServiceDate(u.scheduledDirector.serviceDate)}
+                          {u.isDirector ? "" : ": Director for that service only, set in Team mapping"}
+                        </p>
+                      )}
                       {onlyAdmin && <p className="text-meta text-fg-muted">The only Admin, so this role can't be removed.</p>}
                     </div>
                   </div>
@@ -124,6 +140,7 @@ export function UsersPage({ me, onAccessChanged, onNavigate }: Props) {
                       <Switch
                         key={field}
                         label={ROLE_LABEL[field]}
+                        shortLabel={ROLE_SHORT[field]}
                         ariaLabel={`${ROLE_LABEL[field]}: ${u.name}`}
                         on={u[field]}
                         disabled={busyId !== null || (field === "isAdmin" && onlyAdmin)}

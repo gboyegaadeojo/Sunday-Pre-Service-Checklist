@@ -367,9 +367,10 @@ Clearly display:
 - Missing or deleted records in the schedule source.
 - Position-level mappings that override team-level mappings.
 - Teams or positions marked "sees all departments".
+- Positions marked **"Gets the Director role while scheduled"** (requirements C41): a second switch on a linked position's row, beside "Sees all departments" ("Director while scheduled" on phones). Not offered on the whole team or an unlinked position.
 
 ### Users
-Search users and grant or revoke Admin and Director roles (US-03). There must always be at least one Admin (requirements v1.17): the last Admin's role can't be removed, and Admins confirm before removing their own.
+Search users and grant or revoke Admin and the permanent Director role (US-03). The status line says **Director (permanent)** or **Director (scheduled)** (requirements C41); a scheduled Director also gets a line saying the position and service, and that it's set in Team mapping. The Director switch is the permanent role only ("Director (permanent)", "Director" on phones), so it stays off for someone who is only scheduled. There must always be at least one Admin (requirements v1.17): the last Admin's role can't be removed, and Admins confirm before removing their own.
 
 ### Activity
 The append-only logs, read-only: check-offs, resets and undos for the current service (US-07a), checklist edits (US-13b), settings changes and role changes, with a filter.

@@ -155,7 +155,7 @@ add things (new tables or columns) that the older code ignores. Data can be put 
 
 ## The first Admin
 
-Roles never come from Planning Center (US-03), so the very first Admin is set once in the database:
+Roles never come from Planning Center on their own (US-03; only Director, through positions an Admin marks, C41), so the very first Admin is set once in the database:
 
 1. They sign in on the live site with Planning Center. They see "The app is being set up", which is expected.
 2. List the people who have signed in (names and internal IDs only):
@@ -173,8 +173,9 @@ Roles never come from Planning Center (US-03), so the very first Admin is set on
 1. **Team mapping** (Administrative Settings › Team mapping): choose the Service Type and link each media position to
    its department. Until then only Admins and Directors can get in; everyone else sees "The app is being set up"
    (US-02).
-2. **Directors**: each person who needs reset and undo (e.g. Technical Directors) signs in once; an Admin then gives
-   them Director on Users & Permissions.
+2. **Directors**: either mark the position (e.g. Technical Director) **"Gets the Director role while scheduled"** in
+   Team mapping, so whoever is on duty that week gets reset and undo for that service only; or, for someone who
+   always needs them, sign them in once and turn on **Director (permanent)** on Users & Permissions.
 3. **Ask every volunteer to sign in once during the week** (US-04b). A session lasts 30 days, so on Sunday they're
    already signed in, even if Planning Center sign-in has a problem that morning.
 

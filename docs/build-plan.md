@@ -372,7 +372,7 @@ Built, shown and committed in parts: **7a** the fake schedule source and the map
   | Miscellaneous | Miscellaneous |
   | Technical Director | Technical Director |
 
-- **Technical Directors should also be given the app's Director role.** An Admin grants it on the Users page (Stage 6). The mapping above gives them access and highlights their Technical Director checklist, and marking the Technical Director position "sees all departments" shows them every department. The Director role adds reset/undo. Roles are never granted automatically from Planning Center (US-03).
+- **Technical Directors should also be given the app's Director role.** An Admin grants it on the Users page (Stage 6), or (Stage 12) marks the Technical Director position "Gets the Director role while scheduled" so whoever is on duty gets it for that service. The mapping above gives them access and highlights their Technical Director checklist, and marking the Technical Director position "sees all departments" shows them every department. The Director role adds reset/undo. Roles are never granted automatically from Planning Center (US-03).
 - **Test in the browser:**
   - Link "Camera 2" to Camera Operators and sign in as a fake Camera 2 volunteer: only Camera Operators shows. Turn on "Show all departments", check off a task in another department, and see it in the progress view.
   - Sign in as a volunteer scheduled in two positions and see both departments. Sign in as an unscheduled volunteer and see all departments with the choose-your-department note.
@@ -430,7 +430,7 @@ As built (October 11, 2026; `docs/deployment.md`):
 ### Stage 11 — Glass look (done)
 Requirements C40, design.md §2 "Surfaces". Built and deployed in three parts in October 2026: tokens, backdrop and surfaces with an automatic contrast test (`test/client/design-tokens.test.tsx`); glass and bar surfaces on every floating layer; and the per-device Glass effects On / Off switch.
 
-### Stage 12 — Scheduled Director (planned, not built)
+### Stage 12 — Scheduled Director (built, October 2026)
 Requirements C41. An Admin marks positions whose scheduled people get Director for the current service period.
 - **Team mapping:** a switch per position, "Gets the Director role while scheduled", stored with the position's link (a new migration adds a flag to `team_links`; never edit an existing migration). Logged to `mapping_events` like any mapping change. Offered only on positions with their own department link.
 - **How a scheduled person is matched (C38):** Planning Center gives a scheduled person's team by ID but their position **only by name**. The schedule source matches that name (ignoring capitals and extra spaces) to one of the team's current positions, which gives the position's ID; the switch is stored on that position's link, by ID. So renaming a position keeps the switch, and people scheduled after the rename (carrying the new name) get Director; people still carrying the old name match nothing (C39) and get no grant until their assignment is saved again in Planning Center.
