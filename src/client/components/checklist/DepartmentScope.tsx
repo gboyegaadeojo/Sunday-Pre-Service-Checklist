@@ -37,11 +37,11 @@ export function DepartmentScope({ view, own, showAll, onShowAllChange, published
     );
   }
   if (view.mode === "own") {
-    // One slim row, so the tasks start high on a phone (design.md §5). Phones get the short form: the sticky
-    // department bar just below names the department.
+    // One slim row, from 1024px only: below that, the department picker says whose checklist it is and its sheet holds
+    // "Show all departments" (design.md §3C).
     const names = own.map((d) => d.name).join(", ");
     return (
-      <div className="mt-3 flex items-center justify-between gap-3 rounded-card border border-line bg-surface py-1.5 pr-1.5 pl-4">
+      <div className="mt-3 hidden items-center justify-between gap-3 rounded-card border border-line bg-surface py-1.5 pr-1.5 pl-4 lg:flex">
         <p className="min-w-0 text-sm wrap-anywhere">
           <span className="text-fg-muted sm:hidden">{showAll ? "Yours first, then the rest" : "Showing only yours"}</span>
           <span className="hidden sm:inline">

@@ -16,6 +16,7 @@
   --color-panel: var(--c-panel); /* primary panels and navigation */
   --color-surface: var(--c-surface); /* secondary surfaces */
   --color-card: var(--c-card); /* cards and task groups */
+  --color-control: var(--c-control); /* a control that looks like one: the department picker (purple-tinted card) */
   --color-hover: var(--c-hover); /* hover states */
   --color-line: var(--c-line); /* borders and separators */
   --color-accent: var(--c-accent); /* primary accent: fills, selected markers */
@@ -68,6 +69,7 @@
   --c-panel: #0a0a0a;
   --c-surface: #0f0f0f;
   --c-card: #141414;
+  --c-control: #21192e; /* 12% of the accent over the card colour */
   --c-hover: #1a1a1a;
   --c-line: #242424;
   --c-accent: #7c3aed;
@@ -104,6 +106,7 @@
   --c-panel: #ffffff;
   --c-surface: #f1f2f5;
   --c-card: #ffffff;
+  --c-control: #f5f0fc; /* 7% of the accent over white */
   --c-hover: #ececf1;
   --c-line: #e2e4e9;
   --c-accent: #6d28d9;
@@ -265,6 +268,16 @@ html[data-glass="off"] :is(.glass, .bar) {
   }
 }
 
+/* The department sheet (components/checklist/DepartmentSheet.tsx) slides up from the bottom as it opens. */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+dialog.sheet[open] {
+  animation: sheet-up 0.22s ease-out;
+}
+
 /*
  * Reduce Motion (design.md §8): the backdrop stays where it is, and nothing animates or transitions. Unlayered, so it
  * wins over Tailwind's transition and animation utilities (which are in a layer) without !important.
@@ -279,7 +292,8 @@ html[data-glass="off"] :is(.glass, .bar) {
     scroll-behavior: auto;
   }
   body::before,
-  body::after {
+  body::after,
+  dialog.sheet[open] {
     animation: none;
   }
 }

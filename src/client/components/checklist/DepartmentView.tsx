@@ -19,10 +19,10 @@ export function DepartmentView({ department, collapsedSections, onToggleSection,
   const progress = categoryProgress(department);
   return (
     <section aria-labelledby="department-heading">
-      {/* On phones the sticky department bar already names the department and its count, so the heading is for
-          screen readers only there and the tasks start higher up (design.md §5). */}
+      {/* Below 1024px the department picker already names the department and its count, so the heading is for
+          screen readers only there and the tasks start higher up (design.md §3C, §5). */}
       {/* The department's header card: name, "X of Y complete · Z remaining" and its bar (design.md §3). */}
-      <Card className="mb-3 px-5 py-4 max-md:sr-only">
+      <Card className="mb-3 px-5 py-4 max-lg:sr-only">
         <h1 id="department-heading" className="text-title font-semibold wrap-anywhere">
           {department.name}
         </h1>

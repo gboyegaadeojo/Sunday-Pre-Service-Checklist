@@ -13,6 +13,18 @@ export function CheckIcon({ className = "size-4" }: { className?: string }) {
   );
 }
 
+/** Up-and-down arrows: "choose from a list" (a select control), unlike the collapse chevron. */
+export function SelectIcon({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className={className}>
+      <path
+        fill="currentColor"
+        d="M10 3a1 1 0 0 1 .7.3l3 3a1 1 0 1 1-1.4 1.4L10 5.4 7.7 7.7a1 1 0 0 1-1.4-1.4l3-3A1 1 0 0 1 10 3Zm-3.7 9.3a1 1 0 0 1 1.4 0l2.3 2.3 2.3-2.3a1 1 0 1 1 1.4 1.4l-3 3a1 1 0 0 1-1.4 0l-3-3a1 1 0 0 1 0-1.4Z"
+      />
+    </svg>
+  );
+}
+
 export function AlertIcon({ className = "size-4" }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 20 20" className={className}>

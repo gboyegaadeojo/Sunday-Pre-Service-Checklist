@@ -61,7 +61,7 @@ describe.each(Object.entries(THEMES))("%s theme", (_, t) => {
   };
 
   it("every text colour passes on the solid surfaces", () => {
-    expectAA(worst(TEXT, ["--c-bg", "--c-panel", "--c-surface", "--c-card"].map((k) => solid(t[k]))));
+    expectAA(worst(TEXT, ["--c-bg", "--c-panel", "--c-surface", "--c-card", "--c-control"].map((k) => solid(t[k]))));
   });
 
   it("every text colour passes directly on the backdrop, at its strongest", () => {
@@ -85,6 +85,10 @@ describe.each(Object.entries(THEMES))("%s theme", (_, t) => {
     const content = ["--c-card", "--c-accent", "--c-success", "--c-warning", "--c-danger", "--c-fg", "--bd-base"].map((k) => solid(t[k]));
     const dimmed = [...backdrop, ...content].map((u) => over([...solid(t["--c-bg"]), dim] as RGBA, u));
     expectAA(worst(TEXT, dimmed.map((u) => over(color(t["--bar-bg"]), u))));
+  });
+
+  it("white text on the accent passes (primary buttons, the \"Your checklist\" badge)", () => {
+    expect(contrast([255, 255, 255], solid(t["--c-accent"]))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("the text on the danger button passes", () => {

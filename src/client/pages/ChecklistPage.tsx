@@ -102,9 +102,17 @@ export function ChecklistPage({ user, onAccessChanged }: { user: CurrentUser; on
           onShowAllChange={changeShowAll}
           published={checklist.service.published}
         />
-        <DepartmentPicker departments={departments} selected={selected} onSelect={selectDepartment} ownIds={marked} saveState={saveState} />
-        <div className="mt-3 md:mt-6 md:grid md:grid-cols-[15rem_minmax(0,1fr)] md:gap-6 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-8">
-          <aside className="hidden md:block">
+        {/* Phones and tablets; the sidebar takes over from 1024px. */}
+        <DepartmentPicker
+          selected={selected}
+          onSelect={selectDepartment}
+          own={own}
+          others={others}
+          showAll={view.mode === "own" ? { on: showAll ?? false, onChange: changeShowAll } : undefined}
+          saveState={saveState}
+        />
+        <div className="mt-3 lg:mt-6 lg:grid lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:gap-8">
+          <aside className="hidden lg:block">
             <nav
               aria-label="Departments"
               className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain pb-2"
