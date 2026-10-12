@@ -43,6 +43,7 @@ const SETTING: Record<SettingField, string> = {
   shortName: "Short name",
   teamName: "Team name",
   appName: "App name",
+  homeScreenName: "Home screen name",
 };
 
 type Filter = "all" | "checkoffs" | "edits" | "settings" | "roles" | "mapping";

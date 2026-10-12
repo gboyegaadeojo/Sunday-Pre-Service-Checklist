@@ -147,3 +147,11 @@ export const MonitorIcon = ({ className }: { className?: string }) => (
     <path d="M7 16.5h6M10 13.5v3" />
   </Outline>
 );
+
+/** An arrow into a tray: install the app (Stage 13). */
+export const InstallIcon = ({ className }: { className?: string }) => (
+  <Outline className={className}>
+    <path d="M10 3v9M6.5 8.5 10 12l3.5-3.5" />
+    <path d="M3.5 12.5v2a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-2" />
+  </Outline>
+);

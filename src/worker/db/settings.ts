@@ -6,6 +6,8 @@ export type SettingKey =
   | "church_short_name"
   | "team_name"
   | "app_name"
+  // The label under the installed app's icon (Stage 13, requirements C42).
+  | "home_screen_name"
   | "time_zone"
   | "service_weekday"
   // The schedule source and the Service Type the app follows (Stage 7a, US-15), set on the mapping screen.
@@ -33,6 +35,7 @@ const FIELD_KEY: Record<SettingField, SettingKey> = {
   shortName: "church_short_name",
   teamName: "team_name",
   appName: "app_name",
+  homeScreenName: "home_screen_name",
 };
 const FIELDS = Object.keys(FIELD_KEY) as SettingField[];
 
@@ -53,6 +56,7 @@ export async function getChurchSettings(db: D1Database): Promise<ChurchSettings>
     shortName: s.church_short_name ?? "",
     teamName: s.team_name ?? "",
     appName: s.app_name ?? "",
+    homeScreenName: s.home_screen_name ?? "",
   };
 }
 

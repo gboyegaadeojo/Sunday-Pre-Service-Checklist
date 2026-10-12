@@ -2,16 +2,16 @@
 
 > **Version:** 1.25 · **Date:** October 2026  
 > **Audience:** Security Architect / Project Owner  
-> **Status:** All decisions closed — ready for build. C41 is built; C42 is planned, not built yet.
+> **Status:** All decisions closed — ready for build. C41 and C42 are built.
 
 ---
 
-## 0. Changes in Version 1.25 (C41 built October 2026; C42 planned, not built yet)
+## 0. Changes in Version 1.25 (C41 and C42 built October 2026)
 
 | # | Change | Why |
 |---|--------|-----|
 | C41 | **Scheduled Director** (built; build plan Stage 12). In Team mapping, each position gets a switch, **"Gets the Director role while scheduled"**. People scheduled in such a position for the current service (not declined) get the Director role for that service period only, and lose it when the next service becomes current, or sooner if they're taken off the plan. As with the department view, a scheduled person's position comes from Planning Center by name (C38): someone still carrying a position's old name after a rename matches nothing and isn't granted (C39). Directors set on Users & Permissions are permanent and stay as they are. If Planning Center can't be reached, the grant from the last successful schedule check for that service stands (US-04a). Users & Permissions shows **"Director (scheduled)"** or **"Director (permanent)"**, and the role log records each automatic grant and its end. **This changes the rule that roles never come from Planning Center** (US-03): roles still never come from Planning Center on their own, but an Admin can choose positions that grant Director while someone is scheduled in them. Admin is never granted this way. | Technical Directors rotate week to week; the one on duty needs reset and undo without an Admin changing roles every Sunday. |
-| C42 | **Installable app** (planned; build plan Stage 13). The app can be installed on phones and computers with no app store: an app icon, opens full screen without the browser bar, an **Install** button on Android and desktop browsers that support it, and **Add to Home Screen** on iPhone (with a short how-to). It stays the same website underneath: same address, same sign-in, updates arrive with each deploy, and it still needs a connection (no offline mode). | One tap from the home screen on a Sunday morning, like the other apps the team uses, at no cost. |
+| C42 | **Installable app** (built; build plan Stage 13). Named from Church settings, with a **Home screen name** setting for the label under the icon; the icon is made from the logo mark. The app can be installed on phones and computers with no app store: an app icon, opens full screen without the browser bar, an **Install** button on Android and desktop browsers that support it, and **Add to Home Screen** on iPhone (with a short how-to). It stays the same website underneath: same address, same sign-in, updates arrive with each deploy, and it still needs a connection (no offline mode). | One tap from the home screen on a Sunday morning, like the other apps the team uses, at no cost. |
 
 ## Changes in Version 1.24
 

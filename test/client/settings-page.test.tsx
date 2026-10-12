@@ -5,6 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingsResponse } from "../../src/shared/types";
 import { SettingsPage } from "../../src/client/pages/admin/SettingsPage";
 
+// The icons are drawn on a canvas in a real browser; this test browser has none, so the drawing is stood in for.
+vi.mock("../../src/client/lib/appIcons", () => ({
+  drawAppIcons: (shortName: string) => ({ "icon-192": `png:${shortName}`, "icon-512": "png", "maskable-512": "png", "apple-touch-icon": "png" }),
+}));
+
 let data: SettingsResponse;
 let puts: unknown[];
 const onBrandingChanged = vi.fn();
@@ -14,14 +19,21 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-09T17:00:00Z"));
   data = {
-    settings: { timeZone: "America/Winnipeg", serviceWeekday: 0, shortName: "IFC", teamName: "IFC Production", appName: "Pre-Service Checklist" },
+    settings: { timeZone: "America/Winnipeg", serviceWeekday: 0, shortName: "IFC", teamName: "IFC Production", appName: "Pre-Service Checklist", homeScreenName: "" },
     currentService: { date: "2026-10-11", checkedCount: 0, fromPlan: false },
+    appIcons: null,
   };
   puts = [];
   onBrandingChanged.mockReset();
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (_input: RequestInfo | URL, init: RequestInit = {}) => {
+    vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      if (init.method === "PUT" && String(input).endsWith("/app-icons")) {
+        const body = JSON.parse(String(init.body));
+        puts.push({ icons: body.icons["icon-192"] });
+        data = { ...data, appIcons: { shortName: body.shortName, updatedAt: "2026-10-09T17:00:00.000Z" } };
+        return new Response(null, { status: 204 });
+      }
       if (init.method === "PUT") {
         const body = JSON.parse(String(init.body));
         puts.push(body);
@@ -91,6 +103,28 @@ describe("Settings page", () => {
     await waitFor(() => expect(puts).toEqual([{ ...data.settings, serviceWeekday: 6 }]));
     await screen.findByText("Settings saved. The current service is now Saturday, October 10, 2026.");
     expect(onBrandingChanged).not.toHaveBeenCalled();
+  });
+
+  // Stage 13 (requirements C42): the installed app's home screen name and icon.
+  it("saves the home screen name, and makes the app icon from the logo mark on request", async () => {
+    await renderPage();
+    const card = screen.getByRole("heading", { name: "Installed app" }).closest("div.space-y-4") as HTMLElement;
+    expect(card.textContent).toContain("Not made from the logo mark yet");
+    fireEvent.change(screen.getByLabelText("Home screen name"), { target: { value: "IFC Checklist" } });
+    fireEvent.click(save());
+    await waitFor(() => expect(puts).toEqual([{ ...data.settings, homeScreenName: "IFC Checklist" }]));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Make the app icon" }));
+    await screen.findByText("App icon made from the logo mark.");
+    expect(puts.at(-1)).toEqual({ icons: "png:IFC" });
+    expect(await screen.findByText("Made from the logo mark, “IFC”.")).toBeTruthy();
+  });
+
+  it("makes new app icons when the short name changes", async () => {
+    await renderPage();
+    fireEvent.change(screen.getByLabelText("Short name (logo mark)"), { target: { value: "IFCW" } });
+    fireEvent.click(save());
+    await waitFor(() => expect(puts).toContainEqual({ icons: "png:IFCW" }));
   });
 
   it("discards unsaved changes", async () => {

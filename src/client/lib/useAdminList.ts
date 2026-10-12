@@ -15,6 +15,7 @@ import type {
   UsersResponse,
 } from "../../shared/types";
 import { deleteJson, patchJson, postJson, putJson } from "../api";
+import { drawAppIcons } from "./appIcons";
 import { useServerFirst } from "./useServerFirst";
 
 /** URL segment for each kind under /api/admin. */
@@ -96,6 +97,12 @@ export function useSettings({ onAccessChanged }: { onAccessChanged: () => void }
   const { run, ...rest } = useServerFirst<SettingsResponse>("/api/admin/settings", { onAccessChanged });
   return {
     ...rest,
+    /**
+     * Draws the app icons from the logo mark in this browser and uploads them (Stage 13, requirements C42); true if
+     * they were saved.
+     */
+    makeAppIcons: (shortName: string) =>
+      run(() => putJson("/api/admin/settings/app-icons", { shortName, icons: drawAppIcons(shortName) })),
     /** Resolves to what the server saved, or null if it failed. */
     save: async (body: UpdateSettingsRequest) => {
       let saved: UpdateSettingsResponse | null = null;

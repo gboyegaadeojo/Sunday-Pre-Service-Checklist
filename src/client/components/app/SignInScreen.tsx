@@ -1,10 +1,12 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
+import { useInstall } from "../../lib/install";
 import { useGlassPreference, useThemePreference } from "../../lib/theme";
 import { Button } from "../ui/Button";
-import { InfoIcon, MonitorIcon, MoonIcon, SunIcon } from "../ui/Icons";
+import { InfoIcon, InstallIcon, MonitorIcon, MoonIcon, SunIcon } from "../ui/Icons";
 import { SegmentedControl } from "../ui/SegmentedControl";
 import { Switch } from "../ui/Switch";
 import { Brand } from "./Brand";
+import { InstallHowTo } from "./InstallHowTo";
 
 interface Props {
   /** Starts sign-in. Undefined while sign-in is not available (button shown disabled with a note). */
@@ -68,6 +70,8 @@ export function SignInScreen({ onSignIn, signingIn = false, error = null, notice
 function AppearanceChoice() {
   const { preference, setPreference } = useThemePreference();
   const { glassOn, setGlassOn } = useGlassPreference();
+  const { way: installWay, install } = useInstall();
+  const [howTo, setHowTo] = useState(false);
   return (
     <div className="mt-6">
       <p className="mb-1.5 text-meta text-fg-muted">Appearance</p>
@@ -81,9 +85,17 @@ function AppearanceChoice() {
           { value: "system", label: "System", icon: <MonitorIcon className="size-4 shrink-0 text-fg-muted" /> },
         ]}
       />
-      <div className="mt-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         <Switch label="Glass effects" on={glassOn} onToggle={() => setGlassOn(!glassOn)} />
+        {/* Installing the app (Stage 13, requirements C42), where it can be installed and isn't yet. */}
+        {installWay && (
+          <Button onClick={() => (installWay === "prompt" ? void install() : setHowTo(true))}>
+            <InstallIcon className="size-4 shrink-0" />
+            {installWay === "prompt" ? "Install app" : "Add to Home Screen"}
+          </Button>
+        )}
       </div>
+      <InstallHowTo open={howTo} onClose={() => setHowTo(false)} />
     </div>
   );
 }

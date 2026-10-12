@@ -398,6 +398,8 @@ export interface SetDefaultRequest {
 export const SHORT_NAME_MAX = 8;
 /** Longest team name or app name the server accepts (trimmed). */
 export const BRANDING_MAX = 60;
+/** The home screen name: phones show about 12 characters under an icon, so it's kept short. */
+export const HOME_SCREEN_NAME_MAX = 20;
 
 export interface ChurchSettings {
   /** IANA time zone name, e.g. "America/Winnipeg". Empty if missing. */
@@ -408,6 +410,11 @@ export interface ChurchSettings {
   shortName: string;
   teamName: string;
   appName: string;
+  /**
+   * The label under the installed app's icon on a phone (Stage 13, requirements C42), e.g. "IFC Checklist". Empty: the
+   * short name is used. Phones may keep the name an app had when it was installed.
+   */
+  homeScreenName: string;
 }
 
 export type SettingField = keyof ChurchSettings;
@@ -420,6 +427,18 @@ export interface SettingsResponse {
    * fromPlan: its date comes from a published Planning Center plan, so the service day applies only without one (US-07).
    */
   currentService: { date: string; checkedCount: number; fromPlan: boolean } | null;
+  /** When the app icons were last made from the logo mark, and the short name on them; null: the neutral icon is served. */
+  appIcons: { updatedAt: string; shortName: string } | null;
+}
+
+/** The app icons (Stage 13, requirements C42): drawn in an Admin's browser from the logo mark, served by the Worker. */
+export const APP_ICONS = ["icon-192", "icon-512", "maskable-512", "apple-touch-icon"] as const;
+export type AppIconName = (typeof APP_ICONS)[number];
+
+/** PUT /api/admin/settings/app-icons: every icon as base64 PNG, and the short name drawn on them. */
+export interface UploadAppIconsRequest {
+  shortName: string;
+  icons: Record<AppIconName, string>;
 }
 
 /** PUT /api/admin/settings: every field, as the form shows it. */

@@ -6,6 +6,7 @@ import { adminMappingRoutes } from "./routes/admin-mapping";
 import { adminSettingsRoutes } from "./routes/admin-settings";
 import { adminStructureRoutes } from "./routes/admin-structure";
 import { adminUserRoutes } from "./routes/admin-users";
+import { installRoutes } from "./routes/app-install";
 import { authRoutes } from "./routes/auth";
 import { planningCenterAuthRoutes } from "./routes/auth-planning-center";
 import { brandingRoutes } from "./routes/branding";
@@ -53,6 +54,8 @@ app.route("/api/admin/settings", adminSettingsRoutes);
 app.route("/api/admin/history", adminHistoryRoutes);
 app.route("/api/admin/users", adminUserRoutes);
 app.route("/api/admin/mapping", adminMappingRoutes);
+// Installing the app (Stage 13): the manifest and the app icons, public, outside /api.
+app.route("/", installRoutes);
 
 // Fake sign-in exists only in local development (vite dev server and tests). `vite build` replaces
 // import.meta.env.DEV with false, so this branch and the test users are removed from the production

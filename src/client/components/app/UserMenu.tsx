@@ -1,13 +1,15 @@
-import { type KeyboardEvent, useEffect, useRef } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import type { CurrentUser } from "../../../shared/types";
+import { useInstall } from "../../lib/install";
 import { type Navigate, type Route, isAdminRoute } from "../../lib/router";
 import { roleLabel } from "../../lib/roles";
 import { type ThemePreference, useGlassPreference, useThemePreference } from "../../lib/theme";
 import { usePopover } from "../../lib/usePopover";
 import { Avatar } from "../ui/Avatar";
 import { Chevron } from "../ui/Chevron";
-import { AlertIcon, MonitorIcon, MoonIcon, OverviewIcon, SignOutIcon, SunIcon } from "../ui/Icons";
+import { AlertIcon, InstallIcon, MonitorIcon, MoonIcon, OverviewIcon, SignOutIcon, SunIcon } from "../ui/Icons";
 import { SwitchTrack } from "../ui/Switch";
+import { InstallHowTo } from "./InstallHowTo";
 import { RouteLink } from "./RouteLink";
 
 interface Props {
@@ -35,7 +37,8 @@ const STOPS = "[role=menuitem]:not([disabled]), [role=menuitemradio][aria-checke
 
 /**
  * The menu under the person's name (design.md §3A, requirements v1.20): who they are; Appearance (Dark / Light /
- * System, US-08a, and Glass effects on or off, requirements C40) for everyone; Administrative Settings for Admins only (the server refuses everyone else too), with a
+ * System, US-08a, and Glass effects on or off, requirements C40) for everyone; Install app or Add to Home Screen where
+ * the app can be installed and isn't yet (Stage 13, requirements C42); Administrative Settings for Admins only (the server refuses everyone else too), with a
  * count when something needs their attention; then Sign out, set apart.
  * A real menu for keyboards: focus moves in on opening, ↑/↓ and Home/End move between items (the appearance row is one
  * stop), ←/→ move along the row, Enter or Space picks; Escape or Tab closes, and Escape returns focus to the button.
@@ -47,6 +50,8 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
   const role = roleLabel(user);
   const { preference, setPreference } = useThemePreference();
   const { glassOn, setGlassOn } = useGlassPreference();
+  const { way: installWay, install } = useInstall();
+  const [howTo, setHowTo] = useState(false);
   const attention = user.isAdmin && attentionCount > 0 ? attentionCount : 0;
 
   useEffect(() => {
@@ -159,6 +164,24 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
             </button>
           </fieldset>
 
+          {installWay && (
+            <div role="none" className="mt-0.5 border-t border-line py-1.5">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  if (installWay === "prompt") void install();
+                  else setHowTo(true);
+                }}
+                className={`${ITEM} text-fg-muted hover:text-fg`}
+              >
+                <InstallIcon className="size-5 shrink-0" />
+                {installWay === "prompt" ? "Install app" : "Add to Home Screen"}
+              </button>
+            </div>
+          )}
+
           {user.isAdmin && (
             <div role="none" className="mt-0.5 border-t border-line py-1.5">
               <RouteLink
@@ -200,6 +223,7 @@ export function UserMenu({ user, route, onNavigate, onSignOut, signingOut, signO
           </div>
         </div>
       )}
+      <InstallHowTo open={howTo} onClose={() => setHowTo(false)} />
     </div>
   );
 }

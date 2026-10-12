@@ -176,7 +176,11 @@ Roles never come from Planning Center on their own (US-03; only Director, throug
 2. **Directors**: either mark the position (e.g. Technical Director) **"Gets the Director role while scheduled"** in
    Team mapping, so whoever is on duty that week gets reset and undo for that service only; or, for someone who
    always needs them, sign them in once and turn on **Director (permanent)** on Users & Permissions.
-3. **Ask every volunteer to sign in once during the week** (US-04b). A session lasts 30 days, so on Sunday they're
+3. **Installed app** (Stage 13): in Church settings, set the **Home screen name** (e.g. "IFC Checklist") and press
+   **Make the app icon** if the icon still shows the plain purple one, *before* telling people to install it: phones may
+   keep the name and icon an app had when it was installed. Then share: on Android or a computer, "Install app" in the
+   name menu (or the browser's install button); on iPhone, "Add to Home Screen" in the name menu shows how.
+4. **Ask every volunteer to sign in once during the week** (US-04b). A session lasts 30 days, so on Sunday they're
    already signed in, even if Planning Center sign-in has a problem that morning.
 
 ## Custom domain (optional)

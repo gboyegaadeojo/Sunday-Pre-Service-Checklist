@@ -1,6 +1,13 @@
 import { type FormEvent, type ReactNode, useCallback, useId, useMemo, useState } from "react";
 import { currentServiceDate, isTimeZone } from "../../../shared/service-day";
-import { BRANDING_MAX, type ChurchSettings, SHORT_NAME_MAX, type SettingsResponse, type UpdateSettingsRequest } from "../../../shared/types";
+import {
+  BRANDING_MAX,
+  type ChurchSettings,
+  HOME_SCREEN_NAME_MAX,
+  SHORT_NAME_MAX,
+  type SettingsResponse,
+  type UpdateSettingsRequest,
+} from "../../../shared/types";
 import { Brand } from "../../components/app/Brand";
 import { SaveIndicator } from "../../components/checklist/SaveIndicator";
 import { Button } from "../../components/ui/Button";
@@ -48,6 +55,7 @@ const clean = (v: Values): Values => ({
   shortName: v.shortName.trim(),
   teamName: v.teamName.trim(),
   appName: v.appName.trim(),
+  homeScreenName: v.homeScreenName.trim(),
 });
 
 const sameValues = (a: Values, b: Values) => JSON.stringify(clean(a)) === JSON.stringify(clean(b));
@@ -109,10 +117,15 @@ export function SettingsPage({ onAccessChanged, onBrandingChanged }: Props) {
         data={state.data}
         error={settings.error}
         dismissError={settings.dismissError}
+        onMakeIcons={async (shortName) => {
+          if (await settings.makeAppIcons(shortName)) setNotice("App icon made from the logo mark.");
+        }}
         onSave={async (body, before) => {
           const saved = await settings.save(body);
           if (!saved) return false;
           if (saved.changed.some((f) => f === "shortName" || f === "teamName" || f === "appName")) onBrandingChanged();
+          // A new short name: make the installed app's icons show it (Stage 13). With none, the neutral icon is served.
+          if (saved.changed.includes("shortName") && body.shortName) void settings.makeAppIcons(body.shortName);
           const moved = saved.currentServiceDate !== before;
           setNotice(
             saved.changed.length === 0
@@ -133,10 +146,12 @@ function SettingsForm({
   error,
   dismissError,
   onSave,
+  onMakeIcons,
 }: {
   data: SettingsResponse;
   error: string | null;
   dismissError: () => void;
+  onMakeIcons: (shortName: string) => Promise<void>;
   onSave: (body: UpdateSettingsRequest, currentServiceDate: string | null) => Promise<boolean>;
 }) {
   const saved: Values = data.settings;
@@ -281,6 +296,53 @@ function SettingsForm({
             className={FIELD}
           />
         </Field>
+      </Card>
+
+      {/* The installed app (Stage 13, requirements C42): its home screen name and icon. */}
+      <Card className="space-y-4 p-4">
+        <div>
+          <h2 className="font-semibold">Installed app</h2>
+          <p className="text-meta text-fg-muted">
+            How the app looks on a phone's home screen when someone installs it. Phones may keep the name and icon it had
+            when it was installed, so settle these before sharing the app.
+          </p>
+        </div>
+        <Field
+          id={`${id}-home`}
+          label="Home screen name"
+          hint={`The label under the icon. Phones show about 12 characters. Empty: the short name${saved.shortName ? ` (“${saved.shortName}”)` : ""}.`}
+        >
+          <input
+            id={`${id}-home`}
+            aria-describedby={`${id}-home-hint`}
+            value={values.homeScreenName}
+            maxLength={HOME_SCREEN_NAME_MAX}
+            onChange={(e) => set({ homeScreenName: e.target.value })}
+            className={FIELD}
+          />
+        </Field>
+        <div className="flex flex-wrap items-center gap-4">
+          <img
+            src={`/app-icons/icon-192.png${data.appIcons ? `?v=${Date.parse(data.appIcons.updatedAt)}` : ""}`}
+            alt="App icon"
+            width={64}
+            height={64}
+            className="size-16 shrink-0"
+          />
+          <div className="min-w-0 flex-1 basis-56">
+            <p className="text-sm">App icon</p>
+            <p className="text-meta text-fg-muted">
+              {data.appIcons
+                ? `Made from the logo mark, “${data.appIcons.shortName}”.`
+                : saved.shortName
+                  ? "Not made from the logo mark yet: a plain purple icon is used."
+                  : "A plain purple icon, since there's no short name."}
+            </p>
+          </div>
+          <Button disabled={!saved.shortName || busy} onClick={() => void onMakeIcons(saved.shortName)}>
+            {data.appIcons ? "Make it again" : "Make the app icon"}
+          </Button>
+        </div>
       </Card>
 
       <div className="flex flex-wrap gap-2">

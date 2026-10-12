@@ -21,6 +21,7 @@ const SEED: UpdateSettingsRequest = {
   shortName: "IFC",
   teamName: "IFC Production",
   appName: "Pre-Service Checklist",
+  homeScreenName: "",
 };
 
 const cookies = { admin: "", director: "", volunteer: "" };
